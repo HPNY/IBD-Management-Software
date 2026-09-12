@@ -10,11 +10,11 @@ commits: 600b66e..592fbea
 
 ## Report
 
-**What was built** — 基于 PRD 完成全系统架构分析与技术栈定稿：四层拓扑（多端 → Gateway → 领域服务 → AI/推送/存储）、4 子域 18 模块边界与 MVP★ 优先级、本地/云同步双模式 + 信封加密密钥模型、PDF Skill+AI 双引擎管线与降级、HLC 多端冲突策略，以及 Flutter/Taro/React/NestJS/PostgreSQL/Drift/Python Parse Worker 等各域唯一推荐、monorepo 结构与明确不选清单。
+**What was built** — 基于 PRD 完成全系统架构分析与技术栈定稿：四层拓扑（多端 → Gateway → 领域服务 → AI/推送/存储）、4 子域 18 模块边界与 MVP★ 优先级、本地/云同步双模式 + 信封加密密钥模型、PDF Skill+AI 双引擎管线与降级、HLC 多端冲突策略，以及 Flutter/Taro/React/NestJS/PostgreSQL/Drift/Python Parse Worker 等各域唯一推荐、monorepo 结构与明确不选清单。随后按 MVP 初始化 monorepo 骨架：pnpm workspace、Nest API（health + lab/med/injection/symptom/parse/reminder/sync/auth/patient 内存实现 + Swagger）、Python parse-worker（pymupdf/skill/ai/rules + 样例 Skill + FastAPI）、docker-compose（postgres/redis/api/parse-worker）、domain-types 与 openapi 占位；Flutter/Taro 为 SDK 占位 README。
 
-**Verification** — 文档结构含 Report/S1/S2/S2b/S3/Tasks；独立审查 7 项验收均满足；3 项 major（加密与服务端能力冲突、模块计数、排便记录优先级漂移）及全部相关 minor 已修复并复核。
+**Verification** — 文档结构与审查见前。骨架：`pnpm install` + `pnpm --filter @ibd/api build` PASS；`domain-types` typecheck PASS；`python -m py_compile` parse-worker PASS；本地 `node dist/main.js` 后 `GET /health` → 200。本机无 Docker，`docker compose up` 未实跑（ENV）。
 
-**Journey log** — 初稿把「云端只存密文」与服务端解析/预聚合/医生端读写写在一起，复审指出矛盾后改为双模式信封加密（本地 MK / 云同步 AK / 医生 Grant 再包裹）。模块数量曾出现 mermaid 与表格不一致，定稿为 18 模块且 Summary/Report 拆行对齐。排便记录按 PRD 归 V1.0，仅在 Symptom 注记中说明与日记字段的边界，避免静默升优先级。
+**Journey log** — 初稿把「云端只存密文」与服务端解析/预聚合/医生端读写写在一起，复审指出矛盾后改为双模式信封加密（本地 MK / 云同步 AK / 医生 Grant 再包裹）。模块数量曾出现 mermaid 与表格不一致，定稿为 18 模块且 Summary/Report 拆行对齐。排便记录按 PRD 归 V1.0，仅在 Symptom 注记中说明与日记字段的边界，避免静默升优先级。pnpm 全局安装在 `C:\Xiaomi MiMo\pnpm.cmd`，PATH 未刷新时需全路径调用。
 
 ## [S1] Problem
 
@@ -384,4 +384,4 @@ ibd-management/
 - [x] T3: 产出 AI 解析与多端同步设计 — acceptance: 双引擎流程、降级路径、冲突策略写清 (covers: S2)
 - [x] T4: 产出技术栈定稿与取舍 — acceptance: 每域有唯一推荐、备选与否决原因 (covers: S2b; depends: T2)
 - [x] T5: 给出 monorepo 结构与里程碑落地顺序 — acceptance: MVP/V1/V2 能力与模块可对齐 (covers: S2b, S2)
-- [ ] T6: （后续）按 MVP 范围初始化 monorepo 与 Nest/Flutter/Parse Worker 骨架 — acceptance: 空壳可 docker compose 起 API 与 parse-worker（covers: S2b; depends: T2, T4）
+- [x] T6: （后续）按 MVP 范围初始化 monorepo 与 Nest/Flutter/Parse Worker 骨架 — acceptance: 空壳可 docker compose 起 API 与 parse-worker（covers: S2b; depends: T2, T4）
