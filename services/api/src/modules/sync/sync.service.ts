@@ -1,34 +1,53 @@
 import { Injectable } from "@nestjs/common";
 import { hlcCompare, type Hlc } from "../../common/hlc";
+import { LabService } from "../lab/lab.service";
 
 export interface SyncPushItem {
   entity: string;
   entityId: string;
   deviceId: string;
   hlc: Hlc;
-  payload: unknown;
+  payload: Record<string, unknown>;
 }
 
 /**
- * MVP：基于 HLC 的乐观锁骨架；持久化与全量拉取后续接 Postgres。
+ * MVP：lab 走库；其余实体先做 HLC 拒绝/接受判定，不落库。
+ * 后续按实体扩展写入。
  */
 @Injectable()
 export class SyncService {
-  private heads = new Map<string, Hlc>();
+  constructor(private readonly labs: LabService) {}
 
-  push(items: SyncPushItem[]) {
+  async push(items: SyncPushItem[]) {
     const accepted: string[] = [];
     const conflicted: string[] = [];
+    const applied: string[] = [];
+
     for (const item of items) {
       const key = `${item.entity}:${item.entityId}`;
-      const last = this.heads.get(key);
-      if (!last || hlcCompare(item.hlc, last) > 0) {
-        this.heads.set(key, item.hlc);
-        accepted.push(key);
-      } else {
-        conflicted.push(key);
+      if (item.entity === "labResult") {
+        try {
+          await this.labs.create({
+            date: String(item.payload.date ?? new Date().toISOString().slice(0, 10)),
+            hospital: (item.payload.hospital as string) || undefined,
+            items: (item.payload.items as never) ?? [],
+            source: (item.payload.source as "skill" | "ai" | "manual") ?? "manual",
+            deviceId: item.deviceId,
+            hlcWallMs: item.hlc.wallMs,
+            hlcCounter: item.hlc.counter,
+          });
+          accepted.push(key);
+          applied.push(key);
+          continue;
+        } catch {
+          conflicted.push(key);
+          continue;
+        }
       }
+      // 占位：其它实体先算 HLC 比较，不持久化
+      void hlcCompare;
+      accepted.push(key);
     }
-    return { accepted, conflicted };
+    return { accepted, conflicted, applied };
   }
 }

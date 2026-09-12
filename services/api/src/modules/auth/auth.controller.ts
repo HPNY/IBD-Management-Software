@@ -8,7 +8,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Get("status")
-  status() {
+  async status() {
     return this.auth.health();
   }
 }

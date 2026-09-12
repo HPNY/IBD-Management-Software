@@ -1,25 +1,33 @@
 import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { ReminderRuleEntity } from "../../database/entities";
+import { PatientService } from "../patient/patient.service";
 
-export interface ReminderRule {
-  id: string;
-  patientId: string;
-  kind: "injection" | "medication" | "followup";
-  leadDays: number;
-  enabled: boolean;
-}
+export type CreateReminderDto = Omit<
+  ReminderRuleEntity,
+  "id" | "patient" | "createdAt" | "updatedAt"
+> &
+  Partial<Pick<ReminderRuleEntity, "patientId" | "enabled">>;
 
 @Injectable()
 export class ReminderService {
-  private rules = new Map<string, ReminderRule>();
+  constructor(
+    @InjectRepository(ReminderRuleEntity)
+    private readonly rules: Repository<ReminderRuleEntity>,
+    private readonly patients: PatientService,
+  ) {}
 
-  list(patientId: string): ReminderRule[] {
-    return [...this.rules.values()].filter((r) => r.patientId === patientId);
+  async list(patientId?: string): Promise<ReminderRuleEntity[]> {
+    const pid = patientId || (await this.patients.ensureDemoPatient()).id;
+    return this.rules.find({ where: { patientId: pid } });
   }
 
-  create(dto: Omit<ReminderRule, "id">): ReminderRule {
-    const id = `rem_${Date.now()}`;
-    const rule = { ...dto, id };
-    this.rules.set(id, rule);
-    return rule;
+  async create(dto: CreateReminderDto): Promise<ReminderRuleEntity> {
+    const patientId = dto.patientId || (await this.patients.ensureDemoPatient()).id;
+    const { patient: _p, createdAt: _c, updatedAt: _u, ...rest } = dto as ReminderRuleEntity;
+    return this.rules.save(
+      this.rules.create({ ...rest, patientId, enabled: dto.enabled ?? true }),
+    );
   }
 }

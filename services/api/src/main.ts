@@ -1,6 +1,7 @@
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
+import { PatientService } from "./modules/patient/patient.service";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -16,6 +17,14 @@ async function bootstrap() {
 
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port);
+
+  try {
+    await app.get(PatientService).ensureDemoPatient();
+  } catch {
+    // eslint-disable-next-line no-console
+    console.warn("demo patient seed skipped (DB unavailable?)");
+  }
+
   // eslint-disable-next-line no-console
   console.log(`API listening on :${port}`);
 }

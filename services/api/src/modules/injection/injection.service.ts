@@ -1,32 +1,34 @@
 import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { InjectionEntity } from "../../database/entities";
+import { PatientService } from "../patient/patient.service";
 
-export interface InjectionRecord {
-  id: string;
-  patientId: string;
-  drug: string;
-  plannedDate: string;
-  actualDate?: string;
-  phase: "induction" | "maintenance";
-  dose: string;
-  route: "sc" | "iv";
-  weekNumber: number;
-  notes?: string;
-}
+export type CreateInjectionDto = Omit<
+  InjectionEntity,
+  "id" | "patient" | "createdAt" | "updatedAt"
+> &
+  Partial<Pick<InjectionEntity, "patientId" | "actualDate" | "notes">>;
 
 @Injectable()
 export class InjectionService {
-  private store = new Map<string, InjectionRecord>();
+  constructor(
+    @InjectRepository(InjectionEntity)
+    private readonly injections: Repository<InjectionEntity>,
+    private readonly patients: PatientService,
+  ) {}
 
-  list(patientId: string): InjectionRecord[] {
-    return [...this.store.values()]
-      .filter((i) => i.patientId === patientId)
-      .sort((a, b) => a.plannedDate.localeCompare(b.plannedDate));
+  async list(patientId?: string): Promise<InjectionEntity[]> {
+    const pid = patientId || (await this.patients.ensureDemoPatient()).id;
+    return this.injections.find({
+      where: { patientId: pid },
+      order: { plannedDate: "ASC" },
+    });
   }
 
-  create(dto: Omit<InjectionRecord, "id">): InjectionRecord {
-    const id = `inj_${Date.now()}`;
-    const record = { ...dto, id };
-    this.store.set(id, record);
-    return record;
+  async create(dto: CreateInjectionDto): Promise<InjectionEntity> {
+    const patientId = dto.patientId || (await this.patients.ensureDemoPatient()).id;
+    const { patient: _p, createdAt: _c, updatedAt: _u, ...rest } = dto as InjectionEntity;
+    return this.injections.save(this.injections.create({ ...rest, patientId }));
   }
 }

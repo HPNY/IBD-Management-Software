@@ -1,5 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { hlcNow, type Hlc } from "../../common/hlc";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { LabItemEntity, LabResultEntity } from "../../database/entities";
+import { PatientService } from "../patient/patient.service";
 
 export interface LabItemDto {
   nameNorm: string;
@@ -8,40 +11,56 @@ export interface LabItemDto {
   unit?: string;
   refMin?: number;
   refMax?: number;
+  flag?: "high" | "low" | null;
 }
 
 export interface CreateLabDto {
-  patientId: string;
+  patientId?: string;
   date: string;
   hospital?: string;
   items: LabItemDto[];
   source?: "skill" | "ai" | "manual";
   deviceId: string;
-}
-
-export interface LabResultRecord extends CreateLabDto {
-  id: string;
-  source: "skill" | "ai" | "manual";
-  hlc: Hlc;
+  hlcWallMs?: number;
+  hlcCounter?: number;
 }
 
 @Injectable()
 export class LabService {
-  private store = new Map<string, LabResultRecord>();
+  constructor(
+    @InjectRepository(LabResultEntity)
+    private readonly labs: Repository<LabResultEntity>,
+    private readonly patients: PatientService,
+  ) {}
 
-  list(patientId: string): LabResultRecord[] {
-    return [...this.store.values()].filter((r) => r.patientId === patientId);
+  async list(patientId?: string): Promise<LabResultEntity[]> {
+    const pid = patientId || (await this.patients.ensureDemoPatient()).id;
+    return this.labs.find({
+      where: { patientId: pid },
+      order: { date: "DESC", createdAt: "DESC" },
+    });
   }
 
-  create(dto: CreateLabDto): LabResultRecord {
-    const id = `lab_${Date.now()}`;
-    const record: LabResultRecord = {
-      ...dto,
-      id,
+  async create(dto: CreateLabDto): Promise<LabResultEntity> {
+    const patientId = dto.patientId || (await this.patients.ensureDemoPatient()).id;
+    const entity = this.labs.create({
+      patientId,
+      date: dto.date,
+      hospital: dto.hospital ?? null,
       source: dto.source ?? "manual",
-      hlc: hlcNow(dto.deviceId),
-    };
-    this.store.set(id, record);
-    return record;
+      deviceId: dto.deviceId,
+      hlcWallMs: String(dto.hlcWallMs ?? Date.now()),
+      hlcCounter: dto.hlcCounter ?? 0,
+      items: (dto.items ?? []).map((i) => ({
+        nameNorm: i.nameNorm,
+        nameRaw: i.nameRaw ?? i.nameNorm,
+        value: i.value,
+        unit: i.unit ?? null,
+        refMin: i.refMin ?? null,
+        refMax: i.refMax ?? null,
+        flag: i.flag ?? null,
+      })) as LabItemEntity[],
+    });
+    return this.labs.save(entity);
   }
 }

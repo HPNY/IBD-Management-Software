@@ -8,7 +8,7 @@ export class LabController {
   constructor(private readonly labs: LabService) {}
 
   @Get()
-  list(@Query("patientId") patientId = "demo") {
+  list(@Query("patientId") patientId?: string) {
     return this.labs.list(patientId);
   }
 

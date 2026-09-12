@@ -1,49 +1,44 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { ParseJobEntity } from "../../database/entities";
+import { PatientService } from "../patient/patient.service";
 
-export type ParseJobStatus = "queued" | "running" | "awaiting_review" | "done" | "failed";
-
-export interface ParseJob {
-  id: string;
-  patientId: string;
-  objectKey: string;
-  hospitalHint?: string;
-  status: ParseJobStatus;
-  createdAt: string;
-  skillVersionId?: string;
-  items?: unknown[];
-}
-
-/**
- * MVP 骨架：进程内队列占位。
- * 生产：入 BullMQ `parse` 队列，由 parse-worker 消费。
- */
 @Injectable()
 export class ParseService {
-  private jobs = new Map<string, ParseJob>();
+  constructor(
+    @InjectRepository(ParseJobEntity)
+    private readonly jobs: Repository<ParseJobEntity>,
+    private readonly patients: PatientService,
+  ) {}
 
-  enqueue(input: {
-    patientId: string;
+  async enqueue(input: {
+    patientId?: string;
     objectKey: string;
     hospitalHint?: string;
-  }): ParseJob {
-    const id = `job_${Date.now()}`;
-    const job: ParseJob = {
-      id,
-      patientId: input.patientId,
-      objectKey: input.objectKey,
-      hospitalHint: input.hospitalHint,
-      status: "queued",
-      createdAt: new Date().toISOString(),
-    };
-    this.jobs.set(id, job);
+  }): Promise<ParseJobEntity> {
+    const patientId = input.patientId || (await this.patients.ensureDemoPatient()).id;
+    return this.jobs.save(
+      this.jobs.create({
+        patientId,
+        objectKey: input.objectKey,
+        hospitalHint: input.hospitalHint ?? null,
+        status: "queued",
+      }),
+    );
+  }
+
+  async get(id: string): Promise<ParseJobEntity> {
+    const job = await this.jobs.findOne({ where: { id } });
+    if (!job) throw new NotFoundException(`parse job ${id} not found`);
     return job;
   }
 
-  get(id: string): ParseJob | undefined {
-    return this.jobs.get(id);
-  }
-
-  list(patientId: string): ParseJob[] {
-    return [...this.jobs.values()].filter((j) => j.patientId === patientId);
+  async list(patientId?: string): Promise<ParseJobEntity[]> {
+    const pid = patientId || (await this.patients.ensureDemoPatient()).id;
+    return this.jobs.find({
+      where: { patientId: pid },
+      order: { createdAt: "DESC" },
+    });
   }
 }

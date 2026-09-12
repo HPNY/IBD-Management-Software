@@ -1,43 +1,52 @@
 import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { SymptomDiaryEntity } from "../../database/entities";
+import { PatientService } from "../patient/patient.service";
 
-/** MVP：症状日记字段；独立排便流水表 BathroomRecord 属 V1.0。 */
-export interface SymptomDiaryRecord {
-  id: string;
-  patientId: string;
+export type UpsertSymptomDto = Partial<
+  Omit<SymptomDiaryEntity, "patient" | "createdAt" | "updatedAt">
+> & {
   date: string;
-  painLevel?: number;
-  diarrheaCount?: number;
-  stoolType?: 1 | 2 | 3 | 4 | 5 | 6 | 7;
-  bloodyStool?: "none" | "trace" | "obvious";
-  bloating?: number;
-  fatigue?: number;
-  nausea?: boolean;
-  overallFeeling?: "better" | "same" | "worse";
-}
+  patientId?: string;
+};
 
 @Injectable()
 export class SymptomService {
-  private store = new Map<string, SymptomDiaryRecord>();
+  constructor(
+    @InjectRepository(SymptomDiaryEntity)
+    private readonly diaries: Repository<SymptomDiaryEntity>,
+    private readonly patients: PatientService,
+  ) {}
 
-  list(patientId: string): SymptomDiaryRecord[] {
-    return [...this.store.values()]
-      .filter((s) => s.patientId === patientId)
-      .sort((a, b) => b.date.localeCompare(a.date));
+  async list(patientId?: string): Promise<SymptomDiaryEntity[]> {
+    const pid = patientId || (await this.patients.ensureDemoPatient()).id;
+    return this.diaries.find({
+      where: { patientId: pid },
+      order: { date: "DESC" },
+    });
   }
 
-  upsert(dto: SymptomDiaryRecord): SymptomDiaryRecord {
-    const key = `${dto.patientId}:${dto.date}`;
-    const existing = [...this.store.values()].find(
-      (s) => `${s.patientId}:${s.date}` === key,
-    );
+  async upsert(dto: UpsertSymptomDto): Promise<SymptomDiaryEntity> {
+    const patientId = dto.patientId || (await this.patients.ensureDemoPatient()).id;
+    const existing = await this.diaries.findOne({
+      where: { patientId, date: dto.date },
+    });
+    const payload = {
+      painLevel: dto.painLevel ?? null,
+      diarrheaCount: dto.diarrheaCount ?? null,
+      stoolType: dto.stoolType ?? null,
+      bloodyStool: dto.bloodyStool ?? null,
+      bloating: dto.bloating ?? null,
+      fatigue: dto.fatigue ?? null,
+      nausea: dto.nausea ?? null,
+      overallFeeling: dto.overallFeeling ?? null,
+    };
     if (existing) {
-      const merged = { ...existing, ...dto, id: existing.id };
-      this.store.set(existing.id, merged);
-      return merged;
+      return this.diaries.save({ ...existing, ...payload });
     }
-    const id = `symp_${Date.now()}`;
-    const record = { ...dto, id };
-    this.store.set(id, record);
-    return record;
+    return this.diaries.save(
+      this.diaries.create({ patientId, date: dto.date, ...payload }),
+    );
   }
 }

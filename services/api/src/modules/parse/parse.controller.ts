@@ -11,7 +11,7 @@ export class ParseController {
   enqueue(
     @Body()
     body: {
-      patientId: string;
+      patientId?: string;
       objectKey: string;
       hospitalHint?: string;
     },
@@ -20,7 +20,7 @@ export class ParseController {
   }
 
   @Get()
-  list(@Query("patientId") patientId = "demo") {
+  list(@Query("patientId") patientId?: string) {
     return this.parse.list(patientId);
   }
 
