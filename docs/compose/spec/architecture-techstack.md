@@ -3,7 +3,7 @@ feature: architecture-techstack
 status: delivered
 updated: 2026-09-12
 branch: feature/architecture-techstack
-commits: 600b66e..<head>
+commits: 600b66e..592fbea
 ---
 
 # 肠安通（IBD 病程管理系统）：架构分析与技术栈分析
