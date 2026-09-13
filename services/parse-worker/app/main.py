@@ -74,16 +74,67 @@ def run_pipeline(
     )
 
 
+def fetch_object_bytes(data: dict[str, Any]) -> bytes | None:
+    """按 storage.driver 取直传对象。"""
+    object_key = data.get("objectKey") or ""
+    if not object_key:
+        return None
+
+    storage = data.get("storage") or {}
+    driver = storage.get("driver") or os.getenv("STORAGE_DRIVER", "local")
+
+    if object_key.startswith("http://") or object_key.startswith("https://"):
+        import urllib.request
+
+        with urllib.request.urlopen(object_key, timeout=60) as resp:  # noqa: S310
+            return resp.read()
+
+    if driver == "s3":
+        try:
+            import boto3  # noqa: PLC0415
+        except ImportError as exc:
+            raise RuntimeError("boto3 required for S3 storage") from exc
+        bucket = storage.get("bucket") or os.getenv("S3_BUCKET")
+        endpoint = storage.get("endpoint") or os.getenv("S3_ENDPOINT")
+        client = boto3.client(
+            "s3",
+            endpoint_url=endpoint,
+            aws_access_key_id=os.getenv("S3_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.getenv("S3_SECRET_ACCESS_KEY"),
+            region_name=os.getenv("S3_REGION", "us-east-1"),
+        )
+        obj = client.get_object(Bucket=bucket, Key=object_key)
+        return obj["Body"].read()
+
+    # local：objectKey 相对 STORAGE_LOCAL_DIR，也允许绝对路径
+    local_dir = storage.get("localDir") or os.getenv("STORAGE_LOCAL_DIR", "var/uploads")
+    candidates = []
+    if os.path.isabs(object_key):
+        candidates.append(object_key)
+    candidates.append(os.path.join(local_dir, object_key))
+    candidates.append(object_key)  # 兼容 worker 与 API 同机绝对相对路径
+    for path in candidates:
+        if os.path.isfile(path):
+            with open(path, "rb") as f:
+                return f.read()
+    raise FileNotFoundError(f"object not found: {object_key}")
+
+
 async def process_bullmq_job(job, *args: Any) -> dict[str, Any]:
     # bullmq-py 会传入 (job, token) 等额外位置参数
     data = job.data or {}
-    object_key = data.get("objectKey") or ""
     text = data.get("text")
     raw: bytes | None = None
 
-    if not text and object_key and os.path.isfile(object_key):
-        with open(object_key, "rb") as f:
-            raw = f.read()
+    if not text:
+        raw = fetch_object_bytes(data)
+        if raw is not None and not raw.lstrip()[:5].startswith(b"%PDF"):
+            # 非 PDF（如 txt/ocr 文本）按文本处理
+            try:
+                text = raw.decode("utf-8")
+                raw = None
+            except UnicodeDecodeError:
+                pass
 
     result = run_pipeline(
         raw_pdf=raw,

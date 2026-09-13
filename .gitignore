@@ -16,3 +16,4 @@ coverage/
 .vscode/
 .worktrees/
 .tools/
+var/

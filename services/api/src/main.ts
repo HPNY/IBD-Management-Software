@@ -4,7 +4,7 @@ import { AppModule } from "./app.module";
 import { PatientService } from "./modules/patient/patient.service";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.setGlobalPrefix("api/v1", { exclude: ["health"] });
   app.enableCors({ origin: true });
 

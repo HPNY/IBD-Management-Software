@@ -12,6 +12,7 @@ import { SymptomModule } from "./modules/symptom/symptom.module";
 import { ParseModule } from "./modules/parse/parse.module";
 import { ReminderModule } from "./modules/reminder/reminder.module";
 import { SyncModule } from "./modules/sync/sync.module";
+import { StorageModule } from "./storage/storage.module";
 import { dataSourceOptions } from "./database/data-source";
 
 const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
@@ -33,6 +34,7 @@ const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
     ParseModule,
     ReminderModule,
     SyncModule,
+    StorageModule,
   ],
 })
 export class AppModule {}

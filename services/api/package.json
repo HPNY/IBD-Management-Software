@@ -7,9 +7,12 @@
     "start": "node dist/main.js",
     "start:dev": "ts-node -r tsconfig-paths/register src/main.ts",
     "smoke:entities": "ts-node --transpile-only scripts/entity-smoke.ts",
+    "smoke:storage": "ts-node --transpile-only scripts/storage-smoke.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1131.0",
+    "@aws-sdk/s3-request-presigner": "^3.1131.0",
     "@nestjs/bullmq": "^10.2.3",
     "@nestjs/common": "^10.4.4",
     "@nestjs/config": "^3.3.0",

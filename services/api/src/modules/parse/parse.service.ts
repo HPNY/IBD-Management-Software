@@ -5,11 +5,13 @@ import { Queue } from "bullmq";
 import { Repository } from "typeorm";
 import { ParseJobEntity } from "../../database/entities";
 import { PatientService } from "../patient/patient.service";
+import { StorageService } from "../../storage/storage.service";
 import { PARSE_QUEUE } from "./parse.module";
 
 export interface EnqueueParseInput {
   patientId?: string;
-  objectKey: string;
+  /** 直传后的 objectKey；与 text 二选一 */
+  objectKey?: string;
   hospitalHint?: string;
   /** MVP：无对象存储时可直接塞报告文本 */
   text?: string;
@@ -34,15 +36,20 @@ export class ParseService {
     @InjectRepository(ParseJobEntity)
     private readonly jobs: Repository<ParseJobEntity>,
     private readonly patients: PatientService,
+    private readonly storage: StorageService,
   ) {}
 
   async enqueue(input: EnqueueParseInput): Promise<ParseJobEntity> {
+    if (!input.objectKey && !input.text) {
+      throw new NotFoundException("objectKey or text required");
+    }
     const patientId =
       input.patientId || (await this.patients.ensureDemoPatient()).id;
+    const objectKey = input.objectKey ?? `inline://${patientId}`;
     const entity = await this.jobs.save(
       this.jobs.create({
         patientId,
-        objectKey: input.objectKey,
+        objectKey,
         hospitalHint: input.hospitalHint ?? null,
         status: "queued",
       }),
@@ -54,10 +61,17 @@ export class ParseService {
         {
           jobId: entity.id,
           patientId,
-          objectKey: input.objectKey,
+          objectKey: input.objectKey ?? null,
           hospitalHint: input.hospitalHint ?? null,
           text: input.text ?? null,
           reportType: input.reportType ?? null,
+          storage: {
+            driver: this.storage.driver,
+            localDir: process.env.STORAGE_LOCAL_DIR ?? "var/uploads",
+            // worker 侧读 S3 时用环境变量；这里只传 driver 提示
+            bucket: process.env.S3_BUCKET ?? null,
+            endpoint: process.env.S3_ENDPOINT ?? null,
+          },
         },
         {
           jobId: entity.id,

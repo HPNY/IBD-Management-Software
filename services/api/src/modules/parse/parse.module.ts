@@ -6,6 +6,7 @@ import { ParseService } from "./parse.service";
 import { ParseEventsService } from "./parse-events.service";
 import { ParseJobEntity } from "../../database/entities";
 import { PatientModule } from "../patient/patient.module";
+import { StorageModule } from "../../storage/storage.module";
 
 export const PARSE_QUEUE = "parse";
 
@@ -14,6 +15,7 @@ export const PARSE_QUEUE = "parse";
     BullModule.registerQueue({ name: PARSE_QUEUE }),
     TypeOrmModule.forFeature([ParseJobEntity]),
     PatientModule,
+    StorageModule,
   ],
   controllers: [ParseController],
   providers: [ParseService, ParseEventsService],
