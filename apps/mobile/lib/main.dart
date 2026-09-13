@@ -57,7 +57,7 @@ class _IbdAppState extends State<IbdApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '肠安通',
+      title: 'IBDers',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0B6E4F)),
         useMaterial3: true,
@@ -84,7 +84,7 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('肠安通'),
+        title: const Text('IBDers'),
         actions: [
           IconButton(
             tooltip: '退出登录',

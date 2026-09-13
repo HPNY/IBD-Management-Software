@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: 肠安通 IBD API
+  title: IBDers IBD API
   version: 0.1.0
   description: MVP 骨架契约；后续用 Nest DTO 生成并覆盖本文件。
 servers:

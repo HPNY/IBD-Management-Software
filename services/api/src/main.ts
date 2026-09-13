@@ -9,7 +9,7 @@ async function bootstrap() {
   app.enableCors({ origin: true });
 
   const config = new DocumentBuilder()
-    .setTitle("肠安通 IBD API")
+    .setTitle("IBDers IBD API")
     .setVersion("0.1.0")
     .addBearerAuth()
     .build();

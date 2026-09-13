@@ -1,7 +1,7 @@
 [project]
 name = "ibd-parse-worker"
 version = "0.1.0"
-description = "肠安通 PDF 双引擎解析 Worker"
+description = "IBDers PDF 双引擎解析 Worker"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115.0",

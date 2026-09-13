@@ -1,4 +1,4 @@
-# 肠安通 · IBD 病程管理 monorepo
+# IBDers · IBD 病程管理 monorepo
 
 基于 [PRD](docs/IBD病程管理程序PRD.md) 与 [架构分析](docs/compose/spec/architecture-techstack.md) 的 MVP 骨架。
 

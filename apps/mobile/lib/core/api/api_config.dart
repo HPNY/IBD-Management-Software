@@ -1,4 +1,4 @@
-/// 肠安通 API 基址。开发：Android 模拟器用 10.0.2.2，真机用局域网 IP。
+/// IBDers API 基址。开发：Android 模拟器用 10.0.2.2，真机用局域网 IP。
 class ApiConfig {
   ApiConfig({required this.baseUrl});
 
