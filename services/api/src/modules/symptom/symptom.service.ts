@@ -19,16 +19,17 @@ export class SymptomService {
     private readonly patients: PatientService,
   ) {}
 
-  async list(patientId?: string): Promise<SymptomDiaryEntity[]> {
-    const pid = patientId || (await this.patients.ensureDemoPatient()).id;
+  async list(userId: string, patientId?: string): Promise<SymptomDiaryEntity[]> {
+    const pid = patientId || (await this.patients.ensurePatientForUser(userId)).id;
     return this.diaries.find({
       where: { patientId: pid },
       order: { date: "DESC" },
     });
   }
 
-  async upsert(dto: UpsertSymptomDto): Promise<SymptomDiaryEntity> {
-    const patientId = dto.patientId || (await this.patients.ensureDemoPatient()).id;
+  async upsert(userId: string, dto: UpsertSymptomDto): Promise<SymptomDiaryEntity> {
+    const patientId =
+      dto.patientId || (await this.patients.ensurePatientForUser(userId)).id;
     const existing = await this.diaries.findOne({
       where: { patientId, date: dto.date },
     });

@@ -33,16 +33,17 @@ export class LabService {
     private readonly patients: PatientService,
   ) {}
 
-  async list(patientId?: string): Promise<LabResultEntity[]> {
-    const pid = patientId || (await this.patients.ensureDemoPatient()).id;
+  async list(userId: string, patientId?: string): Promise<LabResultEntity[]> {
+    const pid = patientId || (await this.patients.ensurePatientForUser(userId)).id;
     return this.labs.find({
       where: { patientId: pid },
       order: { date: "DESC", createdAt: "DESC" },
     });
   }
 
-  async create(dto: CreateLabDto): Promise<LabResultEntity> {
-    const patientId = dto.patientId || (await this.patients.ensureDemoPatient()).id;
+  async create(userId: string, dto: CreateLabDto): Promise<LabResultEntity> {
+    const patientId =
+      dto.patientId || (await this.patients.ensurePatientForUser(userId)).id;
     const entity = this.labs.create({
       patientId,
       date: dto.date,

@@ -3,7 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { BullModule } from "@nestjs/bullmq";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { HealthModule } from "./common/health.module";
-import { AuthModule } from "./modules/auth/auth.module";
+import { AuthModule } from "./auth/auth.module";
 import { PatientModule } from "./modules/patient/patient.module";
 import { LabModule } from "./modules/lab/lab.module";
 import { MedicationModule } from "./modules/medication/medication.module";
@@ -24,8 +24,8 @@ const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
     BullModule.forRoot({
       connection: { url: redisUrl },
     }),
-    HealthModule,
     AuthModule,
+    HealthModule,
     PatientModule,
     LabModule,
     MedicationModule,

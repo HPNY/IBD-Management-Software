@@ -39,12 +39,12 @@ export class ParseService {
     private readonly storage: StorageService,
   ) {}
 
-  async enqueue(input: EnqueueParseInput): Promise<ParseJobEntity> {
+  async enqueue(userId: string, input: EnqueueParseInput): Promise<ParseJobEntity> {
     if (!input.objectKey && !input.text) {
       throw new NotFoundException("objectKey or text required");
     }
     const patientId =
-      input.patientId || (await this.patients.ensureDemoPatient()).id;
+      input.patientId || (await this.patients.ensurePatientForUser(userId)).id;
     const objectKey = input.objectKey ?? `inline://${patientId}`;
     const entity = await this.jobs.save(
       this.jobs.create({
@@ -100,8 +100,8 @@ export class ParseService {
     return job;
   }
 
-  async list(patientId?: string): Promise<ParseJobEntity[]> {
-    const pid = patientId || (await this.patients.ensureDemoPatient()).id;
+  async list(userId: string, patientId?: string): Promise<ParseJobEntity[]> {
+    const pid = patientId || (await this.patients.ensurePatientForUser(userId)).id;
     return this.jobs.find({
       where: { patientId: pid },
       order: { createdAt: "DESC" },

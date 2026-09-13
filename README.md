@@ -13,6 +13,19 @@
 | `packages/domain-types` | 共享领域类型 | 是 |
 | `apps/web` / `apps/doctor-web` | V1 / V2 | 否 |
 
+## 登录（JWT）
+
+- `POST /api/v1/auth/login` `{ phone, code }` — 开发验证码默认 `123456`（`DEV_SMS_CODE`）
+- 返回 `accessToken`（15m）+ `refreshToken`（30 天，轮转）
+- `POST /auth/refresh` / `POST /auth/logout` / `GET /auth/me`
+- 业务 API 全局 `JwtAuthGuard`；`@Public()` 仅 health、login/refresh/logout、`PUT /files/upload`（HMAC）
+
+```bash
+curl -X POST :3000/api/v1/auth/login \
+  -H 'content-type: application/json' \
+  -d '{"phone":"13800000000","code":"123456"}'
+```
+
 ## 直传（Object Storage）
 
 1. `POST /api/v1/files/presign` `{ filename, contentType }` → `{ objectKey, uploadUrl, method:"PUT" }`

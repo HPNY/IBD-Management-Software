@@ -18,17 +18,19 @@ export class InjectionService {
     private readonly patients: PatientService,
   ) {}
 
-  async list(patientId?: string): Promise<InjectionEntity[]> {
-    const pid = patientId || (await this.patients.ensureDemoPatient()).id;
+  async list(userId: string, patientId?: string): Promise<InjectionEntity[]> {
+    const pid = patientId || (await this.patients.ensurePatientForUser(userId)).id;
     return this.injections.find({
       where: { patientId: pid },
       order: { plannedDate: "ASC" },
     });
   }
 
-  async create(dto: CreateInjectionDto): Promise<InjectionEntity> {
-    const patientId = dto.patientId || (await this.patients.ensureDemoPatient()).id;
-    const { patient: _p, createdAt: _c, updatedAt: _u, ...rest } = dto as InjectionEntity;
+  async create(userId: string, dto: CreateInjectionDto): Promise<InjectionEntity> {
+    const patientId =
+      dto.patientId || (await this.patients.ensurePatientForUser(userId)).id;
+    const { patient: _p, createdAt: _c, updatedAt: _u, ...rest } =
+      dto as InjectionEntity;
     return this.injections.save(this.injections.create({ ...rest, patientId }));
   }
 }

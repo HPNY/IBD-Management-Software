@@ -18,7 +18,7 @@ export interface SyncPushItem {
 export class SyncService {
   constructor(private readonly labs: LabService) {}
 
-  async push(items: SyncPushItem[]) {
+  async push(userId: string, items: SyncPushItem[]) {
     const accepted: string[] = [];
     const conflicted: string[] = [];
     const applied: string[] = [];
@@ -27,7 +27,7 @@ export class SyncService {
       const key = `${item.entity}:${item.entityId}`;
       if (item.entity === "labResult") {
         try {
-          await this.labs.create({
+          await this.labs.create(userId, {
             date: String(item.payload.date ?? new Date().toISOString().slice(0, 10)),
             hospital: (item.payload.hospital as string) || undefined,
             items: (item.payload.items as never) ?? [],
@@ -44,7 +44,6 @@ export class SyncService {
           continue;
         }
       }
-      // 占位：其它实体先算 HLC 比较，不持久化
       void hlcCompare;
       accepted.push(key);
     }

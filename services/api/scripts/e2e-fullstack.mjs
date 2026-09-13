@@ -1,20 +1,19 @@
 /**
- * P0-1 全栈联调：presign → PUT → parse/jobs → 轮询 → 校验落库。
+ * P0 全栈联调：登录 JWT → presign → PUT → parse/jobs → 轮询 → 写入 labs。
  * 用法: node scripts/e2e-fullstack.mjs
  */
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
 const base = process.env.IBD_API_BASE ?? "http://127.0.0.1:3000";
+const DEV_CODE = process.env.DEV_SMS_CODE ?? "123456";
 
-async function req(method, path, { body, headers, raw } = {}) {
+async function req(method, path, { body, headers, token } = {}) {
   const res = await fetch(base + path, {
     method,
     headers: {
-      ...(body && !raw ? { "content-type": "application/json" } : {}),
+      ...(body ? { "content-type": "application/json" } : {}),
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
-    body: raw ? body : body ? JSON.stringify(body) : undefined,
+    body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
   let json;
@@ -37,18 +36,47 @@ const sample = [
 ].join("\n");
 
 const steps = [];
+const phone = `138${String(Date.now()).slice(-8)}`;
 
-// 1 health
+// 1 health (public)
 const health = await req("GET", "/health");
 steps.push({ step: "health", db: health.db, status: health.status });
 if (health.db !== "ok") throw new Error("API db not ok");
 
-// 2 labs empty (auto demo patient)
-const labsBefore = await req("GET", "/api/v1/labs");
+// 2 login (public)
+const tokens = await req("POST", "/api/v1/auth/login", {
+  body: { phone, code: DEV_CODE, deviceId: "e2e-device" },
+});
+steps.push({
+  step: "login",
+  userId: tokens.user.id,
+  hasAccess: Boolean(tokens.accessToken),
+  hasRefresh: Boolean(tokens.refreshToken),
+});
+const access = tokens.accessToken;
+
+// 3 unauthenticated labs should fail
+const unauth = await fetch(`${base}/api/v1/labs`);
+steps.push({ step: "labs_unauth", status: unauth.status });
+if (unauth.status !== 401) throw new Error("expected 401 without token");
+
+// 4 me
+const me = await req("GET", "/api/v1/auth/me", { token: access });
+steps.push({ step: "me", phone: me.phone });
+
+// 5 refresh rotation
+const rotated = await req("POST", "/api/v1/auth/refresh", {
+  body: { refreshToken: tokens.refreshToken },
+});
+steps.push({ step: "refresh", hasNewAccess: Boolean(rotated.accessToken) });
+
+// 6 labs before
+const labsBefore = await req("GET", "/api/v1/labs", { token: access });
 steps.push({ step: "labs_before", count: labsBefore.length });
 
-// 3 presign
+// 7 presign
 const presign = await req("POST", "/api/v1/files/presign", {
+  token: access,
   body: {
     filename: "e2e-blood.txt",
     contentType: "text/plain",
@@ -57,7 +85,7 @@ const presign = await req("POST", "/api/v1/files/presign", {
 });
 steps.push({ step: "presign", objectKey: presign.objectKey, driver: presign.driver });
 
-// 4 PUT upload
+// 8 PUT upload (public + HMAC)
 const putRes = await fetch(presign.uploadUrl, {
   method: "PUT",
   headers: presign.headers ?? {},
@@ -66,8 +94,9 @@ const putRes = await fetch(presign.uploadUrl, {
 if (!putRes.ok) throw new Error(`upload failed ${putRes.status} ${await putRes.text()}`);
 steps.push({ step: "upload", status: putRes.status });
 
-// 5 enqueue parse
+// 9 enqueue parse
 const job0 = await req("POST", "/api/v1/parse/jobs", {
+  token: access,
   body: {
     objectKey: presign.objectKey,
     hospitalHint: "示例三甲医院A",
@@ -76,11 +105,11 @@ const job0 = await req("POST", "/api/v1/parse/jobs", {
 });
 steps.push({ step: "enqueue", id: job0.id, status: job0.status });
 
-// 6 poll
+// 10 poll
 let job = job0;
 const deadline = Date.now() + 30000;
 while (Date.now() < deadline) {
-  job = await req("GET", `/api/v1/parse/jobs/${job0.id}`);
+  job = await req("GET", `/api/v1/parse/jobs/${job0.id}`, { token: access });
   if (job.status === "done" || job.status === "failed") break;
   await new Promise((r) => setTimeout(r, 1000));
 }
@@ -95,7 +124,7 @@ if (job.status !== "done") {
   process.exit(1);
 }
 
-// 7 write lab from parsed items (manual confirm step that app would do)
+// 11 write lab
 const items = (job.items ?? []).map((i) => ({
   nameNorm: i.name,
   nameRaw: i.name_raw ?? i.name,
@@ -106,6 +135,7 @@ const items = (job.items ?? []).map((i) => ({
   flag: i.flag,
 }));
 const lab = await req("POST", "/api/v1/labs", {
+  token: access,
   body: {
     date: "2026-03-01",
     hospital: "示例三甲医院A",
@@ -116,8 +146,7 @@ const lab = await req("POST", "/api/v1/labs", {
 });
 steps.push({ step: "lab_save", id: lab.id, items: lab.items?.length });
 
-// 8 reload labs
-const labsAfter = await req("GET", "/api/v1/labs");
+const labsAfter = await req("GET", "/api/v1/labs", { token: access });
 const found = labsAfter.find((l) => l.id === lab.id);
 steps.push({
   step: "labs_after",

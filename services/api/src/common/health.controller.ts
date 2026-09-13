@@ -1,6 +1,7 @@
 import { Controller, Get } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
+import { Public } from "../auth/public.decorator";
 
 @Controller("health")
 export class HealthController {
@@ -9,6 +10,7 @@ export class HealthController {
     private readonly dataSource: DataSource,
   ) {}
 
+  @Public()
   @Get()
   async check() {
     let db = "down";

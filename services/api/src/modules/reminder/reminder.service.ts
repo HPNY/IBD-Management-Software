@@ -18,14 +18,16 @@ export class ReminderService {
     private readonly patients: PatientService,
   ) {}
 
-  async list(patientId?: string): Promise<ReminderRuleEntity[]> {
-    const pid = patientId || (await this.patients.ensureDemoPatient()).id;
+  async list(userId: string, patientId?: string): Promise<ReminderRuleEntity[]> {
+    const pid = patientId || (await this.patients.ensurePatientForUser(userId)).id;
     return this.rules.find({ where: { patientId: pid } });
   }
 
-  async create(dto: CreateReminderDto): Promise<ReminderRuleEntity> {
-    const patientId = dto.patientId || (await this.patients.ensureDemoPatient()).id;
-    const { patient: _p, createdAt: _c, updatedAt: _u, ...rest } = dto as ReminderRuleEntity;
+  async create(userId: string, dto: CreateReminderDto): Promise<ReminderRuleEntity> {
+    const patientId =
+      dto.patientId || (await this.patients.ensurePatientForUser(userId)).id;
+    const { patient: _p, createdAt: _c, updatedAt: _u, ...rest } =
+      dto as ReminderRuleEntity;
     return this.rules.save(
       this.rules.create({ ...rest, patientId, enabled: dto.enabled ?? true }),
     );

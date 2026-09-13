@@ -2,7 +2,6 @@ import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { DataSource } from "typeorm";
 import { AppModule } from "./app.module";
-import { PatientService } from "./modules/patient/patient.service";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
@@ -12,11 +11,11 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle("肠安通 IBD API")
     .setVersion("0.1.0")
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup("docs", app, document);
 
-  // 默认启动跑 migrations；设 RUN_MIGRATIONS=false 可关
   if (process.env.RUN_MIGRATIONS !== "false") {
     try {
       const ds = app.get(DataSource);
@@ -36,14 +35,6 @@ async function bootstrap() {
 
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port);
-
-  try {
-    await app.get(PatientService).ensureDemoPatient();
-  } catch {
-    // eslint-disable-next-line no-console
-    console.warn("demo patient seed skipped (DB unavailable?)");
-  }
-
   // eslint-disable-next-line no-console
   console.log(`API listening on :${port}`);
 }

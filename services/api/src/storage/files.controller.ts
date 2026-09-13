@@ -13,6 +13,7 @@ import {
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
+import { Public } from "../auth/public.decorator";
 import { StorageService } from "./storage.service";
 
 @ApiTags("files")
@@ -20,7 +21,7 @@ import { StorageService } from "./storage.service";
 export class FilesController {
   constructor(private readonly storage: StorageService) {}
 
-  /** 生成直传预签名（local 返回 API PUT URL；s3 返回对象存储 URL） */
+  /** 生成直传预签名（需登录；local 返回 API PUT URL；s3 返回对象存储 URL） */
   @Post("presign")
   async presign(
     @Body()
@@ -35,7 +36,8 @@ export class FilesController {
     return this.storage.presign(body);
   }
 
-  /** 仅 local driver：接受客户端 PUT 直传 */
+  /** 仅 local driver：HMAC 签名校验，免 JWT */
+  @Public()
   @Put("upload")
   async upload(
     @Query("objectKey") objectKey: string,
