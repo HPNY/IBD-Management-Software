@@ -51,7 +51,7 @@ services:
       REDIS_URL: redis://redis:6379
       PORT: "3000"
       NODE_ENV: development
-      DB_SYNC: "true"
+      RUN_MIGRATIONS: "true"
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
       STORAGE_LOCAL_DIR: /data/uploads
       STORAGE_SECRET: ${STORAGE_SECRET:-dev-storage-secret}

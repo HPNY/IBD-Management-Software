@@ -41,13 +41,26 @@ docker compose up --build
 - Swagger: `http://localhost:3000/docs`
 - Parse Worker: BullMQ 队列 `parse`，job 名 `parsePdf`；完成后由 API `QueueEvents` 回写 `parse_jobs`
 - Postgres: `5432` / Redis: `6379`（BullMQ 需 Redis ≥5，建议 ≥6.2）
-- 数据库：`DATABASE_URL`，骨架阶段 `DB_SYNC=true` 自动建表
+- 数据库：`DATABASE_URL`；**默认 migrations**（启动 `RUN_MIGRATIONS=true` 自动执行）；仅调试可用 `DB_SYNC=true`（勿用于生产）
 - 队列：`REDIS_URL`；`PARSE_QUEUE` 默认 `parse`
+
+### Migrations
+
+```bash
+pnpm --filter @ibd/api migration:show
+pnpm --filter @ibd/api migration:run
+pnpm --filter @ibd/api migration:revert
+# 改实体后生成增量迁移
+pnpm --filter @ibd/api migration:generate src/database/migrations/AlterXxx
+```
+
+初始迁移：`src/database/migrations/1726200000000-InitSchema.ts`
 
 无 Docker / 无 Postgres 时的实体层验收：
 
 ```bash
 pnpm --filter @ibd/api smoke:entities   # pg-mem 内存库跑通 Lab/症状级联写入
+pnpm --filter @ibd/api smoke:migration  # InitSchema raw SQL 建表 + 关联插入
 ```
 
 BullMQ 契约冒烟（需本机 Redis）：
