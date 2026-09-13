@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import '../auth/auth_session.dart';
 import 'api_config.dart';
 
 class PresignResult {
@@ -63,87 +64,62 @@ class ParseJobDto {
   }
 }
 
-/// 对接 services/api：files/presign · files/upload · parse/jobs
+class IbdApiException implements Exception {
+  IbdApiException(this.message, {this.body, this.statusCode});
+
+  final String message;
+  final String? body;
+  final int? statusCode;
+
+  @override
+  String toString() =>
+      body == null || body!.isEmpty ? message : '$message\n$body';
+}
+
+/// 业务 API：自动附带 Bearer；401 时尝试 refresh 一次。
 class IbdApiClient {
-  IbdApiClient(this.config, {http.Client? client})
+  IbdApiClient(this.config, this.session, {http.Client? client})
       : _client = client ?? http.Client();
 
   final ApiConfig config;
+  final AuthSession session;
   final http.Client _client;
 
-  Future<PresignResult> presign({
-    required String filename,
-    String contentType = 'application/octet-stream',
-    int expiresInSec = 900,
+  Future<http.Response> _send(
+    String method,
+    Uri uri, {
+    Map<String, String>? headers,
+    Object? body,
+    bool auth = true,
+    bool isJsonBody = true,
   }) async {
-    final res = await _client.post(
-      config.uri('/api/v1/files/presign'),
-      headers: {'content-type': 'application/json'},
-      body: jsonEncode({
-        'filename': filename,
-        'contentType': contentType,
-        'expiresInSec': expiresInSec,
-      }),
-    );
-    _ensureOk(res, 'presign');
-    return PresignResult.fromJson(
-      jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>,
-    );
-  }
-
-  /// 对预签名 URL 直传（local 指向 API；s3 指向 MinIO/OSS）。
-  Future<void> uploadBytes({
-    required PresignResult presign,
-    required Uint8List bytes,
-    String? contentType,
-  }) async {
-    final headers = <String, String>{
-      ...presign.headers,
-      if (contentType != null) 'content-type': contentType,
-    };
-    final uri = Uri.parse(presign.uploadUrl);
-    final res = await _client.send(
-      http.Request(presign.method, uri)
-        ..headers.addAll(headers)
-        ..bodyBytes = bytes,
-    );
-    final body = await res.stream.bytesToString();
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw IbdApiException(
-        'upload failed: HTTP ${res.statusCode}',
-        body: body,
-      );
+    Future<http.Response> once() {
+      final h = {
+        if (isJsonBody && body != null) 'content-type': 'application/json',
+        if (auth) ...session.authHeaders(),
+        ...?headers,
+      };
+      final encoded = body == null
+          ? null
+          : (body is String ? body : jsonEncode(body));
+      switch (method) {
+        case 'GET':
+          return _client.get(uri, headers: h);
+        case 'POST':
+          return _client.post(uri, headers: h, body: encoded);
+        case 'PUT':
+          return _client.put(uri, headers: h, body: encoded);
+        default:
+          throw ArgumentError('unsupported $method');
+      }
     }
-  }
 
-  Future<ParseJobDto> enqueueParse({
-    required String objectKey,
-    String? hospitalHint,
-    String? reportType,
-    String? patientId,
-  }) async {
-    final res = await _client.post(
-      config.uri('/api/v1/parse/jobs'),
-      headers: {'content-type': 'application/json'},
-      body: jsonEncode({
-        'objectKey': objectKey,
-        if (hospitalHint != null) 'hospitalHint': hospitalHint,
-        if (reportType != null) 'reportType': reportType,
-        if (patientId != null) 'patientId': patientId,
-      }),
-    );
-    _ensureOk(res, 'enqueueParse');
-    return ParseJobDto.fromJson(
-      jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>,
-    );
-  }
-
-  Future<ParseJobDto> getParseJob(String id) async {
-    final res = await _client.get(config.uri('/api/v1/parse/jobs/$id'));
-    _ensureOk(res, 'getParseJob');
-    return ParseJobDto.fromJson(
-      jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>,
-    );
+    var res = await once();
+    if (res.statusCode == 401 && auth) {
+      final ok = await session.tryRefresh();
+      if (ok) res = await once();
+    }
+    return res;
   }
 
   void _ensureOk(http.Response res, String op) {
@@ -151,20 +127,106 @@ class IbdApiClient {
       throw IbdApiException(
         '$op failed: HTTP ${res.statusCode}',
         body: utf8.decode(res.bodyBytes, allowMalformed: true),
+        statusCode: res.statusCode,
       );
     }
   }
 
+  Map<String, dynamic> _json(http.Response res) =>
+      jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+
+  Future<List<dynamic>> listLabs() async {
+    final res = await _send('GET', config.uri('/api/v1/labs'));
+    _ensureOk(res, 'listLabs');
+    return jsonDecode(utf8.decode(res.bodyBytes)) as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createLab({
+    required String date,
+    String? hospital,
+    required List<Map<String, dynamic>> items,
+    String source = 'manual',
+    String deviceId = 'mobile',
+  }) async {
+    final res = await _send(
+      'POST',
+      config.uri('/api/v1/labs'),
+      body: {
+        'date': date,
+        if (hospital != null && hospital.isNotEmpty) 'hospital': hospital,
+        'items': items,
+        'source': source,
+        'deviceId': deviceId,
+      },
+    );
+    _ensureOk(res, 'createLab');
+    return _json(res);
+  }
+
+  Future<PresignResult> presign({
+    required String filename,
+    String contentType = 'application/octet-stream',
+    int expiresInSec = 900,
+  }) async {
+    final res = await _send(
+      'POST',
+      config.uri('/api/v1/files/presign'),
+      body: {
+        'filename': filename,
+        'contentType': contentType,
+        'expiresInSec': expiresInSec,
+      },
+    );
+    _ensureOk(res, 'presign');
+    return PresignResult.fromJson(_json(res));
+  }
+
+  Future<void> uploadBytes({
+    required PresignResult presign,
+    required Uint8List bytes,
+    String? contentType,
+  }) async {
+    final headers = {
+      ...presign.headers,
+      if (contentType != null) 'content-type': contentType,
+    };
+    final uri = Uri.parse(presign.uploadUrl);
+    // 直传 URL 不带 JWT（local 用 HMAC；s3 用预签名）
+    final streamed = http.Request(presign.method, uri)
+      ..headers.addAll(headers)
+      ..bodyBytes = bytes;
+    final res = await _client.send(streamed);
+    final body = await res.stream.bytesToString();
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw IbdApiException('upload failed: HTTP ${res.statusCode}', body: body);
+    }
+  }
+
+  Future<ParseJobDto> enqueueParse({
+    required String objectKey,
+    String? hospitalHint,
+    String? reportType,
+  }) async {
+    final res = await _send(
+      'POST',
+      config.uri('/api/v1/parse/jobs'),
+      body: {
+        'objectKey': objectKey,
+        if (hospitalHint != null && hospitalHint.isNotEmpty)
+          'hospitalHint': hospitalHint,
+        if (reportType != null && reportType.isNotEmpty)
+          'reportType': reportType,
+      },
+    );
+    _ensureOk(res, 'enqueueParse');
+    return ParseJobDto.fromJson(_json(res));
+  }
+
+  Future<ParseJobDto> getParseJob(String id) async {
+    final res = await _send('GET', config.uri('/api/v1/parse/jobs/$id'));
+    _ensureOk(res, 'getParseJob');
+    return ParseJobDto.fromJson(_json(res));
+  }
+
   void dispose() => _client.close();
-}
-
-class IbdApiException implements Exception {
-  IbdApiException(this.message, {this.body});
-
-  final String message;
-  final String? body;
-
-  @override
-  String toString() =>
-      body == null || body!.isEmpty ? message : '$message\n$body';
 }

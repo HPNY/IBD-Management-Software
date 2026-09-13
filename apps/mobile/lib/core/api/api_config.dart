@@ -13,9 +13,6 @@ class ApiConfig {
 
   Uri uri(String path, [Map<String, String>? query]) {
     final normalized = path.startsWith('/') ? path : '/$path';
-    return Uri.parse(baseUrl).replace(
-      path: normalized,
-      queryParameters: query,
-    );
+    return Uri.parse(baseUrl).replace(path: normalized, queryParameters: query);
   }
 }

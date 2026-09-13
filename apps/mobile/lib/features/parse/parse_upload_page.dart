@@ -3,23 +3,20 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/api/api_config.dart';
 import '../../core/api/ibd_api_client.dart';
 import '../../core/storage/direct_upload_service.dart';
 
-/// 检验 PDF 直传 + 解析入口（MVP）。
 class ParseUploadPage extends StatefulWidget {
-  const ParseUploadPage({super.key, IbdApiClient? api}) : _api = api;
+  const ParseUploadPage({super.key, required this.api});
 
-  final IbdApiClient? _api;
+  final IbdApiClient api;
 
   @override
   State<ParseUploadPage> createState() => _ParseUploadPageState();
 }
 
 class _ParseUploadPageState extends State<ParseUploadPage> {
-  late final IbdApiClient _api = widget._api ?? IbdApiClient(ApiConfig.dev());
-  late final DirectUploadService _upload = DirectUploadService(_api);
+  late final DirectUploadService _upload = DirectUploadService(widget.api);
 
   final _hospitalCtrl = TextEditingController();
   final _reportTypeCtrl = TextEditingController(text: '血常规');
@@ -35,7 +32,6 @@ class _ParseUploadPageState extends State<ParseUploadPage> {
   void dispose() {
     _hospitalCtrl.dispose();
     _reportTypeCtrl.dispose();
-    if (widget._api == null) _api.dispose();
     super.dispose();
   }
 
@@ -73,8 +69,9 @@ class _ParseUploadPageState extends State<ParseUploadPage> {
       final job = await _upload.uploadAndEnqueue(
         filename: name,
         bytes: bytes,
-        hospitalHint:
-            _hospitalCtrl.text.trim().isEmpty ? null : _hospitalCtrl.text.trim(),
+        hospitalHint: _hospitalCtrl.text.trim().isEmpty
+            ? null
+            : _hospitalCtrl.text.trim(),
         reportType: _reportTypeCtrl.text.trim().isEmpty
             ? null
             : _reportTypeCtrl.text.trim(),

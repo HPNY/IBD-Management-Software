@@ -1,35 +1,38 @@
 # Flutter App（MVP）
 
-按架构定稿：Flutter 3.x + 离线优先（Drift 后续接入）。
+## 已实现
 
-## 当前能力
+| 页面 | 路径 |
+|------|------|
+| 登录（手机号+验证码） | `lib/features/auth/login_page.dart` |
+| 检验直传解析 | `lib/features/parse/parse_upload_page.dart` |
+| 检验手动录入 | `lib/features/lab/lab_manual_page.dart` |
 
-- **直传解析**：`lib/features/parse/parse_upload_page.dart`
-  1. `POST /api/v1/files/presign`
-  2. 对 `uploadUrl` PUT 文件字节
-  3. `POST /api/v1/parse/jobs`
-  4. 轮询 job 至 `done` / `failed`，展示 items
-- API 客户端：`lib/core/api/ibd_api_client.dart`
-- 上传服务：`lib/core/storage/direct_upload_service.dart`
+- Token 持久化：`shared_preferences`（`TokenStore`）
+- 会话：`AuthSession`（login / refresh / logout）
+- API：`IbdApiClient` 自动 Bearer，401 自动 refresh 一次
 
-## 运行
-
-需本机安装 [Flutter SDK](https://docs.flutter.dev/get-started/install)，然后：
+## 首次工程化（需本机 Flutter SDK）
 
 ```bash
 cd apps/mobile
+# 在现有 lib/ 旁生成 android/ios 等平台工程
 flutter create --org com.ibd --project-name ibd_mobile .
-# 保留已有 lib/ 与 pubspec（冲突时以仓库 pubspec 为准）
+# 若 create 覆盖 pubspec，以仓库版本为准恢复 dependencies
 flutter pub get
-# Android 模拟器默认 API http://10.0.2.2:3000
-# 真机请覆盖：
-flutter run --dart-define=IBD_API_BASE=http://192.168.x.x:3000
+flutter run --dart-define=IBD_API_BASE=http://10.0.2.2:3000
 ```
 
-后端需已启动：Postgres migrations + Redis + `services/api`（见根 README）。
+或运行：
+
+```powershell
+pwsh ./bootstrap.ps1
+```
+
+后端：`DATABASE_URL` + `REDIS_URL` + API；登录验证码开发默认 `123456`。
 
 ## 环境变量
 
-| 变量 | 说明 | 默认 |
-|------|------|------|
-| `IBD_API_BASE` | API 基址 | `http://10.0.2.2:3000` |
+| 变量 | 默认 |
+|------|------|
+| `IBD_API_BASE` | `http://10.0.2.2:3000` |

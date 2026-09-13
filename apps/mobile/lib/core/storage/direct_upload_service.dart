@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import '../api/ibd_api_client.dart';
+import '../../api/ibd_api_client.dart';
 
 class UploadProgress {
   UploadProgress(this.stage, {this.job});
@@ -9,7 +9,6 @@ class UploadProgress {
   final ParseJobDto? job;
 }
 
-/// 直传 + 解析入队：presign → PUT → POST parse/jobs → 轮询。
 class DirectUploadService {
   DirectUploadService(this._api);
 
