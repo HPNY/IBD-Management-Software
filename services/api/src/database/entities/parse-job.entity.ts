@@ -28,6 +28,12 @@ export class ParseJobEntity {
   @Column({ type: "varchar", length: 128, nullable: true })
   hospitalHint: string | null;
 
+  @Column({ type: "varchar", length: 64, nullable: true })
+  reportType: string | null;
+
+  @Column({ type: "date", nullable: true })
+  reportDate: string | null;
+
   @Column({ type: "varchar", length: 32, default: "queued" })
   status: "queued" | "running" | "awaiting_review" | "done" | "failed";
 
@@ -36,6 +42,15 @@ export class ParseJobEntity {
 
   @Column({ type: "jsonb", nullable: true })
   items: unknown[] | null;
+
+  @Column({ type: "jsonb", nullable: true })
+  confirmedItems: unknown[] | null;
+
+  @Column({ type: "timestamp", nullable: true })
+  confirmedAt: Date | null;
+
+  @Column({ type: "uuid", nullable: true })
+  labResultId: string | null;
 
   @Column({ type: "text", nullable: true })
   error: string | null;

@@ -6,6 +6,8 @@ import { ParseService } from "./parse.service";
 import { ParseEventsService } from "./parse-events.service";
 import { ParseJobEntity } from "../../database/entities";
 import { PatientModule } from "../patient/patient.module";
+import { SkillModule } from "../skill/skill.module";
+import { LabModule } from "../lab/lab.module";
 import { StorageModule } from "../../storage/storage.module";
 import { PARSE_QUEUE } from "./parse.constants";
 
@@ -14,6 +16,8 @@ import { PARSE_QUEUE } from "./parse.constants";
     BullModule.registerQueue({ name: PARSE_QUEUE }),
     TypeOrmModule.forFeature([ParseJobEntity]),
     PatientModule,
+    SkillModule,
+    LabModule,
     StorageModule,
   ],
   controllers: [ParseController],

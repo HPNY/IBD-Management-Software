@@ -29,6 +29,19 @@ class SkillParseResult(BaseModel):
     items: list[ParsedItem] = []
 
 
+def _normalize_date(raw: str | None) -> str | None:
+    """尽量输出 YYYY-MM-DD，避免 API date 列写入失败。"""
+    if not raw:
+        return None
+    s = str(raw).strip()
+    m = re.search(r"(\d{4})[/-](\d{1,2})[/-](\d{1,2})", s)
+    if m:
+        return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+    if re.match(r"^\d{4}-\d{2}-\d{2}$", s):
+        return s
+    return None
+
+
 def load_skill(hospital: str, report_type: str) -> dict[str, Any] | None:
     path = SKILL_DIR / f"{hospital}__{report_type}.json"
     if not path.exists():
@@ -53,7 +66,9 @@ def skill_parse(skill: dict[str, Any], text: str) -> SkillParseResult:
             continue
         m = re.search(pattern, text)
         if m:
-            date = m.group(0)
+            date = _normalize_date(m.group(0))
+            if not date and m.groups():
+                date = _normalize_date("-".join(g for g in m.groups() if g))
             break
 
     items: list[ParsedItem] = []

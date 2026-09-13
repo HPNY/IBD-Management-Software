@@ -51,20 +51,25 @@ def run_pipeline(
     text: str | None,
     hospital: str,
     report_type: str,
+    skill: dict[str, Any] | None = None,
 ) -> ParseResult:
     images: list[bytes] = []
     if text is None and raw_pdf is not None:
         text, images = extract_text_or_images(raw_pdf)
 
-    skill = load_skill(hospital, report_type) if hospital and report_type else None
-    if skill is not None:
-        parsed = skill_parse(skill, text or "")
+    # 1) 任务下发的库内 Skill 优先  2) 本地样例 Skill  3) AI
+    effective_skill = skill
+    if effective_skill is None and hospital and report_type:
+        effective_skill = load_skill(hospital, report_type)
+
+    if effective_skill is not None:
+        parsed = skill_parse(effective_skill, text or "")
         if parsed.items:
             return ParseResult(
                 engine="skill",
                 date=parsed.date,
                 items=[i.model_dump() for i in parsed.items],
-                skill_version=skill.get("version"),
+                skill_version=effective_skill.get("version"),
             )
 
     parsed = ai_parse(text=text or "", images=images)
@@ -143,6 +148,7 @@ async def process_bullmq_job(job, *args: Any) -> dict[str, Any]:
         text=text,
         hospital=data.get("hospitalHint") or "",
         report_type=data.get("reportType") or "",
+        skill=data.get("skill"),
     )
     payload = result.model_dump()
     logger.info(

@@ -26,6 +26,18 @@ curl -X POST :3000/api/v1/auth/login \
   -d '{"phone":"13800000000","code":"123456"}'
 ```
 
+## Skill 自动入库
+
+1. 解析完成 → `POST /api/v1/parse/jobs/:id/confirm` `{ items, date }`
+2. 写入 `labs`，并按 `hospitalHint + reportType` **新建/升版** `parse_skills` / `parse_skill_versions`
+3. 下次同院同类型入队时，API 把库内 Skill JSON 下发给 worker（优先于本地样例）
+
+```bash
+# 列表
+GET /api/v1/skills?hospital=某三甲医院A
+GET /api/v1/skills/:id/versions
+```
+
 ## AI 解析（LLM 兜底）
 
 Skill 未命中时走 OpenAI 兼容接口：

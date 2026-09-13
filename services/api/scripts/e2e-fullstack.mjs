@@ -124,7 +124,7 @@ if (job.status !== "done") {
   process.exit(1);
 }
 
-// 11 write lab
+// 11 confirm → lab + skill 生成
 const items = (job.items ?? []).map((i) => ({
   nameNorm: i.name,
   nameRaw: i.name_raw ?? i.name,
@@ -134,29 +134,84 @@ const items = (job.items ?? []).map((i) => ({
   refMax: i.ref_max,
   flag: i.flag,
 }));
-const lab = await req("POST", "/api/v1/labs", {
+const confirmed = await req("POST", `/api/v1/parse/jobs/${job0.id}/confirm`, {
   token: access,
   body: {
-    date: "2026-03-01",
-    hospital: "示例三甲医院A",
     items,
-    source: "skill",
+    date: "2026-03-01",
     deviceId: "e2e-device",
+    generateSkill: true,
   },
 });
-steps.push({ step: "lab_save", id: lab.id, items: lab.items?.length });
+steps.push({
+  step: "confirm",
+  labResultId: confirmed.labResultId,
+  skillVersion: confirmed.skill?.version,
+  skillCreated: confirmed.skill?.created,
+});
 
 const labsAfter = await req("GET", "/api/v1/labs", { token: access });
-const found = labsAfter.find((l) => l.id === lab.id);
+const found = labsAfter.find((l) => l.id === confirmed.labResultId);
 steps.push({
   step: "labs_after",
   count: labsAfter.length,
   foundItems: found?.items?.map((i) => `${i.nameNorm}=${i.value}`),
 });
-
 if (!found || found.items?.length !== 2) {
   console.log(JSON.stringify({ ok: false, steps }, null, 2));
   process.exit(1);
 }
+
+// 12 二次上传同院同类型 → 应命中库内 Skill
+const sample2 = [
+  "示例三甲医院A 血常规报告",
+  "采集日期: 2026/03/15",
+  "白细胞计数 6.8",
+  "血红蛋白 141",
+].join("\n");
+const presign2 = await req("POST", "/api/v1/files/presign", {
+  token: access,
+  body: { filename: "e2e-blood-2.txt", contentType: "text/plain" },
+});
+const put2 = await fetch(presign2.uploadUrl, {
+  method: "PUT",
+  headers: presign2.headers ?? {},
+  body: Buffer.from(sample2, "utf8"),
+});
+if (!put2.ok) throw new Error(`upload2 failed ${put2.status}`);
+const job2 = await req("POST", "/api/v1/parse/jobs", {
+  token: access,
+  body: {
+    objectKey: presign2.objectKey,
+    hospitalHint: "示例三甲医院A",
+    reportType: "血常规",
+  },
+});
+let job2s = job2;
+const deadline2 = Date.now() + 30000;
+while (Date.now() < deadline2) {
+  job2s = await req("GET", `/api/v1/parse/jobs/${job2.id}`, { token: access });
+  if (job2s.status === "done" || job2s.status === "failed") break;
+  await new Promise((r) => setTimeout(r, 1000));
+}
+steps.push({
+  step: "second_parse",
+  status: job2s.status,
+  itemCount: (job2s.items ?? []).length,
+  values: (job2s.items ?? []).map((i) => `${i.name}=${i.value}`),
+});
+if (job2s.status !== "done" || (job2s.items ?? []).length !== 2) {
+  console.log(JSON.stringify({ ok: false, steps }, null, 2));
+  process.exit(1);
+}
+
+const skills = await req("GET", "/api/v1/skills?hospital=示例三甲医院A", {
+  token: access,
+});
+steps.push({
+  step: "skills_list",
+  count: skills.length,
+  current: skills[0]?.currentVersion,
+});
 
 console.log(JSON.stringify({ ok: true, steps }, null, 2));

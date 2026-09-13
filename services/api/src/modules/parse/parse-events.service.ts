@@ -20,12 +20,17 @@ export class ParseEventsService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     const url = this.config.get<string>("REDIS_URL") ?? "redis://localhost:6379";
-    // 无 Redis 时跳过监听，不影响 API 启动
     if (this.config.get("REDIS_EVENTS") === "off") return;
 
     try {
       this.events = new QueueEvents(PARSE_QUEUE, {
         connection: { url },
+      });
+
+      void this.events.waitUntilReady().then(() => {
+        this.logger.log("Parse QueueEvents ready");
+      }).catch((e: unknown) => {
+        this.logger.warn(`QueueEvents not ready: ${String(e)}`);
       });
 
       this.events.on("completed", async ({ jobId, returnvalue }) => {
