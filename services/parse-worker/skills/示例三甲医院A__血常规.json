@@ -1,0 +1,32 @@
+{
+  "hospital": "示例三甲医院A",
+  "report_type": "血常规",
+  "version": "0.1.0",
+  "date_extraction": {
+    "primary": "采集日期:\\s*(\\d{4})/(\\d{1,2})/(\\d{1,2})",
+    "fallback": "(\\d{8})G\\d+"
+  },
+  "items": [
+    {
+      "name": "白细胞计数",
+      "alias": "WBC",
+      "pattern": "白细胞计数\\s+([\\d.]+)",
+      "unit": "10^9/L",
+      "ref_range": [3.5, 9.5]
+    },
+    {
+      "name": "血红蛋白",
+      "alias": "Hb",
+      "pattern": "血红蛋白\\s+([\\d.]+)",
+      "unit": "g/L",
+      "ref_range": [130, 175]
+    }
+  ],
+  "special_rules": [
+    {
+      "filter": "patient_id_mismatch",
+      "description": "病案号可能被误匹配为检验值",
+      "action": "discard"
+    }
+  ]
+}

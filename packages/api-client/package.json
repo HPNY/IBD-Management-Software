@@ -1,0 +1,10 @@
+{
+  "name": "@ibd/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenAPI 生成客户端占位（openapi-typescript / openapi-fetch）",
+  "main": "src/index.ts",
+  "scripts": {
+    "gen": "echo \"openapi-typescript ../openapi.yaml -o src/schema.d.ts\""
+  }
+}

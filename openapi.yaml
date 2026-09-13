@@ -1,0 +1,49 @@
+openapi: 3.0.3
+info:
+  title: 肠安通 IBD API
+  version: 0.1.0
+  description: MVP 骨架契约；后续用 Nest DTO 生成并覆盖本文件。
+servers:
+  - url: http://localhost:3000
+paths:
+  /health:
+    get:
+      summary: 健康检查
+      responses:
+        "200":
+          description: OK
+  /api/v1/labs:
+    get:
+      summary: 检验结果列表
+      responses:
+        "200":
+          description: OK
+    post:
+      summary: 新建检验结果
+      responses:
+        "201":
+          description: Created
+  /api/v1/medications:
+    get:
+      summary: 用药记录
+      responses:
+        "200":
+          description: OK
+  /api/v1/injections:
+    get:
+      summary: 注射排期
+      responses:
+        "200":
+          description: OK
+  /api/v1/symptoms:
+    get:
+      summary: 症状日记
+      responses:
+        "200":
+          description: OK
+  /api/v1/parse/jobs:
+    post:
+      summary: 创建 PDF 解析任务
+      responses:
+        "202":
+          description: Accepted

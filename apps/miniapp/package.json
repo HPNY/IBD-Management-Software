@@ -1,0 +1,12 @@
+{
+  "name": "@ibd/miniapp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:weapp": "echo \"run: npx @tarojs/cli init && taro build --type weapp --watch\"",
+    "build:weapp": "echo \"scaffold with Taro 3 first\""
+  },
+  "dependencies": {
+    "@tarojs/taro": "3.6.34"
+  }
+}

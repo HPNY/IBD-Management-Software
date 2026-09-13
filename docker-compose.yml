@@ -1,0 +1,102 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ibd
+      POSTGRES_PASSWORD: ibd
+      POSTGRES_DB: ibd
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ibd -d ibd"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ibdminio
+      MINIO_ROOT_PASSWORD: ibdminio-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    environment:
+      DATABASE_URL: postgres://ibd:ibd@postgres:5432/ibd
+      REDIS_URL: redis://redis:6379
+      PORT: "3000"
+      NODE_ENV: development
+      RUN_MIGRATIONS: "true"
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      STORAGE_LOCAL_DIR: /data/uploads
+      STORAGE_SECRET: ${STORAGE_SECRET:-dev-storage-secret}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ibd-uploads
+      S3_ACCESS_KEY_ID: ibdminio
+      S3_SECRET_ACCESS_KEY: ibdminio-secret
+      S3_FORCE_PATH_STYLE: "true"
+      S3_REGION: us-east-1
+    ports:
+      - "3000:3000"
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  parse-worker:
+    build:
+      context: .
+      dockerfile: services/parse-worker/Dockerfile
+    environment:
+      REDIS_URL: redis://redis:6379
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      STORAGE_LOCAL_DIR: /data/uploads
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ibd-uploads
+      S3_ACCESS_KEY_ID: ibdminio
+      S3_SECRET_ACCESS_KEY: ibdminio-secret
+      S3_REGION: us-east-1
+      LLM_API_BASE: ${LLM_API_BASE:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+volumes:
+  pgdata:
+  miniodata:
+  uploads:

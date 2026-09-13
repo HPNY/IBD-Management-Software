@@ -1,0 +1,20 @@
+[project]
+name = "ibd-parse-worker"
+version = "0.1.0"
+description = "肠安通 PDF 双引擎解析 Worker"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn>=0.32.0",
+  "pymupdf>=1.24.0",
+  "pydantic>=2.9.0",
+  "redis>=5.1.0",
+  "bullmq>=1.0.0",
+  "python-multipart>=0.0.12",
+]
+
+[project.optional-dependencies]
+dev = ["ruff>=0.7.0"]
+
+[tool.ruff]
+line-length = 100
