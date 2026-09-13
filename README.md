@@ -26,6 +26,21 @@ curl -X POST :3000/api/v1/auth/login \
   -d '{"phone":"13800000000","code":"123456"}'
 ```
 
+## 注射排期与提醒
+
+| 接口 | 说明 |
+|------|------|
+| `GET /injections/protocols` | 内置协议：skyrizi / humira / stelara / entyvio |
+| `POST /injections/schedule` | `{ drugKey, startDate }` 生成诱导+维持排期 |
+| `GET /injections/upcoming` | 含逾期的未完成计划 |
+| `POST /injections/:id/complete` | 记录实际日期，延迟自动顺延后续 |
+| `POST /reminders` | `{ kind:"injection", leadDays:3 }` |
+| `GET /reminders/due` | 窗口内/逾期提醒文案，客户端本地通知 |
+
+```bash
+pnpm --filter @ibd/api e2e:injection
+```
+
 ## Skill 自动入库
 
 1. 解析完成 → `POST /api/v1/parse/jobs/:id/confirm` `{ items, date }`
