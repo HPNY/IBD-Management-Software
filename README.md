@@ -8,7 +8,7 @@
 |------|------|-----|
 | `services/api` | NestJS 模块化单体 + TypeORM(Postgres) + Object Storage | 是 |
 | `services/parse-worker` | Python PDF 双引擎 Worker | 是 |
-| `apps/mobile` | Flutter（占位） | 是 |
+| `apps/mobile` | Flutter（直传解析页已实现） | 是 |
 | `apps/miniapp` | Taro 小程序（占位） | 是 |
 | `packages/domain-types` | 共享领域类型 | 是 |
 | `apps/web` / `apps/doctor-web` | V1 / V2 | 否 |
@@ -25,6 +25,8 @@
 - `STORAGE_DRIVER=s3`：MinIO / OSS（S3 兼容）预签名；需 `S3_ENDPOINT` / `S3_BUCKET` / 密钥
 
 compose 已带 MinIO（`9000/9001`）；`STORAGE_DRIVER=s3 docker compose up` 可切到对象存储。
+
+Flutter 端直传入口见 `apps/mobile/README.md`（`ParseUploadPage`）。
 
 ## 本地启动
 
