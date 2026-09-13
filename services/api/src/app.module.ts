@@ -1,4 +1,6 @@
 import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { BullModule } from "@nestjs/bullmq";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { HealthModule } from "./common/health.module";
 import { AuthModule } from "./modules/auth/auth.module";
@@ -12,9 +14,15 @@ import { ReminderModule } from "./modules/reminder/reminder.module";
 import { SyncModule } from "./modules/sync/sync.module";
 import { dataSourceOptions } from "./database/data-source";
 
+const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
+
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot(dataSourceOptions),
+    BullModule.forRoot({
+      connection: { url: redisUrl },
+    }),
     HealthModule,
     AuthModule,
     PatientModule,

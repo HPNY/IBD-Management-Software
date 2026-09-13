@@ -26,14 +26,22 @@ docker compose up --build
 
 - API: `http://localhost:3000` 健康检查 `GET /health`（含 db 探活）
 - Swagger: `http://localhost:3000/docs`
-- Parse Worker: 队列消费者（BullMQ `parse` 队列）
-- Postgres: `5432` / Redis: `6379`
+- Parse Worker: BullMQ 队列 `parse`，job 名 `parsePdf`；完成后由 API `QueueEvents` 回写 `parse_jobs`
+- Postgres: `5432` / Redis: `6379`（BullMQ 需 Redis ≥5，建议 ≥6.2）
 - 数据库：`DATABASE_URL`，骨架阶段 `DB_SYNC=true` 自动建表
+- 队列：`REDIS_URL`；`PARSE_QUEUE` 默认 `parse`
 
 无 Docker / 无 Postgres 时的实体层验收：
 
 ```bash
 pnpm --filter @ibd/api smoke:entities   # pg-mem 内存库跑通 Lab/症状级联写入
+```
+
+BullMQ 契约冒烟（需本机 Redis）：
+
+```bash
+# 起 worker 后另开终端
+REDIS_URL=redis://127.0.0.1:6379 node services/api/scripts/queue-smoke.mjs
 ```
 
 无 Docker 时可分别运行：

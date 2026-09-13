@@ -9,6 +9,7 @@ dependencies = [
   "pymupdf>=1.24.0",
   "pydantic>=2.9.0",
   "redis>=5.1.0",
+  "bullmq>=1.0.0",
   "python-multipart>=0.0.12",
 ]
 

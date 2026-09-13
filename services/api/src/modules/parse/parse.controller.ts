@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { ParseService } from "./parse.service";
+import { EnqueueParseInput, ParseService } from "./parse.service";
 
 @ApiTags("parse")
 @Controller("parse/jobs")
@@ -8,14 +8,7 @@ export class ParseController {
   constructor(private readonly parse: ParseService) {}
 
   @Post()
-  enqueue(
-    @Body()
-    body: {
-      patientId?: string;
-      objectKey: string;
-      hospitalHint?: string;
-    },
-  ) {
+  enqueue(@Body() body: EnqueueParseInput) {
     return this.parse.enqueue(body);
   }
 
