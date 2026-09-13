@@ -87,6 +87,7 @@ services:
       S3_REGION: us-east-1
       LLM_API_BASE: ${LLM_API_BASE:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
     volumes:
       - uploads:/data/uploads
     depends_on:

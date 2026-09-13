@@ -7,7 +7,7 @@
 | 路径 | 说明 | MVP |
 |------|------|-----|
 | `services/api` | NestJS 模块化单体 + TypeORM(Postgres) + Object Storage | 是 |
-| `services/parse-worker` | Python PDF 双引擎 Worker | 是 |
+| `services/parse-worker` | Python PDF 双引擎 Worker（Skill + AI/LLM） | 是 |
 | `apps/mobile` | Flutter（直传解析页已实现） | 是 |
 | `apps/miniapp` | Taro 小程序（占位） | 是 |
 | `packages/domain-types` | 共享领域类型 | 是 |
@@ -24,6 +24,23 @@
 curl -X POST :3000/api/v1/auth/login \
   -H 'content-type: application/json' \
   -d '{"phone":"13800000000","code":"123456"}'
+```
+
+## AI 解析（LLM 兜底）
+
+Skill 未命中时走 OpenAI 兼容接口：
+
+| 环境变量 | 说明 |
+|----------|------|
+| `LLM_API_BASE` | 如 `https://api.openai.com/v1` 或兼容网关 |
+| `LLM_API_KEY` | API Key |
+| `LLM_MODEL` | 默认 `gpt-4o-mini` |
+| `LLM_TIMEOUT_SEC` | 默认 60 |
+
+无配置时降级为空结果（客户端手动录入）。单测：
+
+```bash
+cd services/parse-worker && python -m app.tests.test_ai_engine
 ```
 
 ## 直传（Object Storage）

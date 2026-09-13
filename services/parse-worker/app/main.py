@@ -30,6 +30,7 @@ class ParseResult(BaseModel):
     date: str | None = None
     items: list[dict[str, Any]] = []
     skill_version: str | None = None
+    engine_detail: str | None = None
 
 
 def redis_connection_options() -> dict[str, Any]:
@@ -68,9 +69,10 @@ def run_pipeline(
 
     parsed = ai_parse(text=text or "", images=images)
     return ParseResult(
-        engine="ai",
+        engine="ai" if parsed.items else "ai-empty",
         date=parsed.date,
         items=[i.model_dump() for i in parsed.items],
+        engine_detail=parsed.engine_detail,
     )
 
 
@@ -198,12 +200,17 @@ app = FastAPI(title="ibd-parse-worker", version="0.1.0", lifespan=lifespan)
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
+def health() -> dict[str, Any]:
+    from .ai_engine import llm_port_config
+
+    llm = llm_port_config()
     return {
         "status": "ok",
         "service": "ibd-parse-worker",
         "queue": QUEUE_NAME,
         "redis_configured": str(bool(os.getenv("REDIS_URL"))).lower(),
+        "llm_configured": str(bool(llm["base"] and llm["key_set"])).lower(),
+        "llm_model": llm["model"],
     }
 
 
