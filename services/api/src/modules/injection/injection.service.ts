@@ -41,15 +41,14 @@ export class InjectionService {
     withinDays = 30,
   ): Promise<InjectionEntity[]> {
     const pid = patientId || (await this.patients.ensurePatientForUser(userId)).id;
-    const today = new Date().toISOString().slice(0, 10);
     const until = new Date(Date.now() + withinDays * 86400000)
       .toISOString()
       .slice(0, 10);
+    // 含逾期未打
     return this.injections
       .createQueryBuilder("i")
       .where("i.patientId = :pid", { pid })
       .andWhere("i.actualDate IS NULL")
-      .andWhere("i.plannedDate >= :today", { today })
       .andWhere("i.plannedDate <= :until", { until })
       .orderBy("i.plannedDate", "ASC")
       .getMany();
