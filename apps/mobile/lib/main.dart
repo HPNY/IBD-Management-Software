@@ -31,14 +31,18 @@ class IbdApp extends StatefulWidget {
 }
 
 class _IbdAppState extends State<IbdApp> {
-  late final IbdApiClient _api = IbdApiClient(widget.config, context.read<AuthSession>());
+  AuthSession get _session => context.read<AuthSession>();
+  late final IbdApiClient _api = IbdApiClient(widget.config, _session);
   bool _restored = false;
 
   @override
   void initState() {
     super.initState();
-    context.read<AuthSession>().restore().whenComplete(() {
-      if (mounted) setState(() => _restored = true);
+    // 首帧后恢复 token，避免在 build 前依赖 context.read
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _session.restore().whenComplete(() {
+        if (mounted) setState(() => _restored = true);
+      });
     });
   }
 
