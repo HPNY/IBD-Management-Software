@@ -6,7 +6,7 @@ import { Repository } from "typeorm";
 import { ParseJobEntity } from "../../database/entities";
 import { PatientService } from "../patient/patient.service";
 import { StorageService } from "../../storage/storage.service";
-import { PARSE_QUEUE } from "./parse.module";
+import { PARSE_QUEUE } from "./parse.constants";
 
 export interface EnqueueParseInput {
   patientId?: string;

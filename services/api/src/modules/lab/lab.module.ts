@@ -12,5 +12,6 @@ import { PatientModule } from "../patient/patient.module";
   ],
   controllers: [LabController],
   providers: [LabService],
+  exports: [LabService],
 })
 export class LabModule {}

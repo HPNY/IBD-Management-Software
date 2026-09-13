@@ -7,8 +7,7 @@ import { ParseEventsService } from "./parse-events.service";
 import { ParseJobEntity } from "../../database/entities";
 import { PatientModule } from "../patient/patient.module";
 import { StorageModule } from "../../storage/storage.module";
-
-export const PARSE_QUEUE = "parse";
+import { PARSE_QUEUE } from "./parse.constants";
 
 @Module({
   imports: [

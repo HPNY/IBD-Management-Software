@@ -7,13 +7,14 @@
     "start": "node dist/main.js",
     "start:dev": "ts-node -r tsconfig-paths/register src/main.ts",
     "typeorm": "typeorm-ts-node-commonjs -d src/database/data-source-cli.ts",
-    "migration:show": "typeorm migration:show",
-    "migration:run": "typeorm migration:run",
-    "migration:revert": "typeorm migration:revert",
-    "migration:generate": "typeorm migration:generate",
+    "migration:show": "typeorm-ts-node-commonjs migration:show -d src/database/data-source-cli.ts",
+    "migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/data-source-cli.ts",
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/database/data-source-cli.ts",
+    "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/database/data-source-cli.ts",
     "smoke:entities": "ts-node --transpile-only scripts/entity-smoke.ts",
     "smoke:storage": "ts-node --transpile-only scripts/storage-smoke.ts",
     "smoke:migration": "ts-node --transpile-only scripts/migration-smoke.ts",
+    "e2e:fullstack": "node scripts/e2e-fullstack.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

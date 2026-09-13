@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/commo
 import { ConfigService } from "@nestjs/config";
 import { QueueEvents } from "bullmq";
 import { ParseService, ParseWorkerResult } from "./parse.service";
-import { PARSE_QUEUE } from "./parse.module";
+import { PARSE_QUEUE } from "./parse.constants";
 
 /**
  * 监听 Python parse-worker 的完成/失败事件，回写 Postgres。

@@ -80,6 +80,30 @@ REDIS_URL=redis://127.0.0.1:6379 node services/api/scripts/storage-queue-smoke.m
 pnpm --filter @ibd/api smoke:storage
 ```
 
+### 全栈联调（无 Docker 时）
+
+依赖：Postgres + Redis（端口示例 `5433` / `6380`）。
+
+```bash
+export DATABASE_URL=postgres://ibd:ibd@127.0.0.1:5433/ibd
+export REDIS_URL=redis://127.0.0.1:6380
+export STORAGE_DRIVER=local
+export STORAGE_LOCAL_DIR=var/uploads
+export PUBLIC_BASE_URL=http://127.0.0.1:3000
+export RUN_MIGRATIONS=true
+
+pnpm --filter @ibd/api migration:run
+pnpm --filter @ibd/api build
+# 终端 A
+node services/api/dist/main.js
+# 终端 B（勿继承 PORT=3000）
+cd services/parse-worker && PORT=8081 python -m app.main
+# 终端 C
+pnpm --filter @ibd/api e2e:fullstack
+```
+
+E2E 会走通：health → presign → PUT → parse/jobs → worker Skill 解析 → 确认写入 labs。
+
 无 Docker 时可分别运行：
 
 ```bash
