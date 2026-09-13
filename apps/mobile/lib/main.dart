@@ -6,6 +6,7 @@ import 'core/api/ibd_api_client.dart';
 import 'core/auth/auth_session.dart';
 import 'core/auth/token_store.dart';
 import 'features/auth/login_page.dart';
+import 'features/injection/injection_page.dart';
 import 'features/lab/lab_manual_page.dart';
 import 'features/parse/parse_upload_page.dart';
 
@@ -113,6 +114,18 @@ class HomePage extends StatelessWidget {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => LabManualPage(api: api),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.vaccines),
+            title: const Text('注射排期'),
+            subtitle: const Text('协议生成 · 到期提醒 · 延迟顺延'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => InjectionPage(api: api),
                 ),
               );
             },

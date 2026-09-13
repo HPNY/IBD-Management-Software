@@ -7,6 +7,7 @@
 | 登录（手机号+验证码） | `lib/features/auth/login_page.dart` |
 | 检验直传解析 | `lib/features/parse/parse_upload_page.dart` |
 | 检验手动录入 | `lib/features/lab/lab_manual_page.dart` |
+| 注射排期/提醒 | `lib/features/injection/injection_page.dart` |
 
 - Token 持久化：`shared_preferences`（`TokenStore`）
 - 会话：`AuthSession`（login / refresh / logout）

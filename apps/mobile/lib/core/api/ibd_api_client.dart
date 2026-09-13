@@ -228,5 +228,70 @@ class IbdApiClient {
     return ParseJobDto.fromJson(_json(res));
   }
 
+  Future<List<dynamic>> listProtocols() async {
+    final res = await _send('GET', config.uri('/api/v1/injections/protocols'));
+    _ensureOk(res, 'listProtocols');
+    return jsonDecode(utf8.decode(res.bodyBytes)) as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>> generateSchedule({
+    required String drugKey,
+    required String startDate,
+    String? untilDate,
+  }) async {
+    final res = await _send(
+      'POST',
+      config.uri('/api/v1/injections/schedule'),
+      body: {
+        'drugKey': drugKey,
+        'startDate': startDate,
+        if (untilDate != null) 'untilDate': untilDate,
+      },
+    );
+    _ensureOk(res, 'generateSchedule');
+    return _json(res);
+  }
+
+  Future<List<dynamic>> listInjections() async {
+    final res = await _send('GET', config.uri('/api/v1/injections'));
+    _ensureOk(res, 'listInjections');
+    return jsonDecode(utf8.decode(res.bodyBytes)) as List<dynamic>;
+  }
+
+  Future<List<dynamic>> listDueReminders() async {
+    final res = await _send('GET', config.uri('/api/v1/reminders/due'));
+    _ensureOk(res, 'listDueReminders');
+    return jsonDecode(utf8.decode(res.bodyBytes)) as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>> completeInjection(
+    String id, {
+    String? actualDate,
+    bool rescheduleDelay = true,
+  }) async {
+    final res = await _send(
+      'POST',
+      config.uri('/api/v1/injections/$id/complete'),
+      body: {
+        if (actualDate != null) 'actualDate': actualDate,
+        'rescheduleDelay': rescheduleDelay,
+      },
+    );
+    _ensureOk(res, 'completeInjection');
+    return _json(res);
+  }
+
+  Future<void> ensureInjectionReminderRule({int leadDays = 3}) async {
+    try {
+      await _send(
+        'POST',
+        config.uri('/api/v1/reminders'),
+        body: {'kind': 'injection', 'leadDays': leadDays, 'enabled': true},
+      );
+    } catch (_) {
+      // 可能已存在；MVP 忽略
+    }
+  }
+
   void dispose() => _client.close();
 }
