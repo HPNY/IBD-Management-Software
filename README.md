@@ -26,6 +26,22 @@ curl -X POST :3000/api/v1/auth/login \
   -d '{"phone":"13800000000","code":"123456"}'
 ```
 
+## 用药管理
+
+| 接口 | 说明 |
+|------|------|
+| `GET/POST /medications` | 列表 / 新增 |
+| `GET /medications/current` | 在用+暂停 |
+| `GET /medications/timeline` | 切换链 + 副作用 |
+| `POST /medications/:id/adjust` | 调剂量：关旧开新 |
+| `POST /medications/:id/pause\|resume\|stop` | 状态与停药原因 |
+| `POST /medications/switch` | 换药 |
+| `POST /medications/:id/adverse-events` | 副作用 |
+
+```bash
+pnpm --filter @ibd/api e2e:medication
+```
+
 ## 注射排期与提醒
 
 | 接口 | 说明 |

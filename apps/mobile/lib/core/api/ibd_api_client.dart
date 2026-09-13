@@ -293,5 +293,72 @@ class IbdApiClient {
     }
   }
 
+  Future<List<dynamic>> listCurrentMedications() async {
+    final res = await _send('GET', config.uri('/api/v1/medications/current'));
+    _ensureOk(res, 'listCurrentMedications');
+    return jsonDecode(utf8.decode(res.bodyBytes)) as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>> medicationTimeline() async {
+    final res = await _send('GET', config.uri('/api/v1/medications/timeline'));
+    _ensureOk(res, 'medicationTimeline');
+    return _json(res);
+  }
+
+  Future<Map<String, dynamic>> createMedication(
+      Map<String, dynamic> body) async {
+    final res = await _send('POST', config.uri('/api/v1/medications'), body: body);
+    _ensureOk(res, 'createMedication');
+    return _json(res);
+  }
+
+  Future<Map<String, dynamic>> updateMedication(
+      String id, Map<String, dynamic> body) async {
+    final res = await _send('PATCH', config.uri('/api/v1/medications/$id'),
+        body: body);
+    _ensureOk(res, 'updateMedication');
+    return _json(res);
+  }
+
+  Future<Map<String, dynamic>> stopMedication(
+    String id, {
+    String? reason,
+    String? endDate,
+  }) async {
+    final res = await _send(
+      'POST',
+      config.uri('/api/v1/medications/$id/stop'),
+      body: {
+        if (reason != null) 'reason': reason,
+        if (endDate != null) 'endDate': endDate,
+      },
+    );
+    _ensureOk(res, 'stopMedication');
+    return _json(res);
+  }
+
+  Future<Map<String, dynamic>> switchMedication(Map<String, dynamic> body) async {
+    final res = await _send(
+      'POST',
+      config.uri('/api/v1/medications/switch'),
+      body: body,
+    );
+    _ensureOk(res, 'switchMedication');
+    return _json(res);
+  }
+
+  Future<Map<String, dynamic>> addAdverseEvent(
+    String medId,
+    Map<String, dynamic> body,
+  ) async {
+    final res = await _send(
+      'POST',
+      config.uri('/api/v1/medications/$medId/adverse-events'),
+      body: body,
+    );
+    _ensureOk(res, 'addAdverseEvent');
+    return _json(res);
+  }
+
   void dispose() => _client.close();
 }

@@ -16,6 +16,7 @@
     "smoke:migration": "ts-node --transpile-only scripts/migration-smoke.ts",
     "e2e:fullstack": "node scripts/e2e-fullstack.mjs",
     "e2e:injection": "node scripts/e2e-injection.mjs",
+    "e2e:medication": "node scripts/e2e-medication.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

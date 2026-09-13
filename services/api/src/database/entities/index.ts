@@ -1,3 +1,4 @@
+export { AdverseEventEntity } from "./adverse-event.entity";
 export { DeviceEntity } from "./device.entity";
 export { InjectionEntity } from "./injection.entity";
 export { LabItemEntity } from "./lab-item.entity";
@@ -14,6 +15,7 @@ export { ReminderRuleEntity } from "./reminder-rule.entity";
 export { SymptomDiaryEntity } from "./symptom-diary.entity";
 export { UserEntity } from "./user.entity";
 
+import { AdverseEventEntity } from "./adverse-event.entity";
 import { DeviceEntity } from "./device.entity";
 import { InjectionEntity } from "./injection.entity";
 import { LabItemEntity } from "./lab-item.entity";
@@ -37,6 +39,7 @@ export const entities = [
   LabResultEntity,
   LabItemEntity,
   MedicationEntity,
+  AdverseEventEntity,
   InjectionEntity,
   SymptomDiaryEntity,
   ParseJobEntity,

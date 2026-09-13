@@ -8,6 +8,7 @@ import 'core/auth/token_store.dart';
 import 'features/auth/login_page.dart';
 import 'features/injection/injection_page.dart';
 import 'features/lab/lab_manual_page.dart';
+import 'features/medication/medication_page.dart';
 import 'features/parse/parse_upload_page.dart';
 
 void main() {
@@ -126,6 +127,18 @@ class HomePage extends StatelessWidget {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => InjectionPage(api: api),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.medication),
+            title: const Text('用药管理'),
+            subtitle: const Text('当前方案 · 切换链 · 副作用'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => MedicationPage(api: api),
                 ),
               );
             },
