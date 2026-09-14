@@ -1,5 +1,5 @@
-# Locked parse-worker dependencies (pip freeze).
-# Install with: pip install -r requirements.txt
+# Locked parse-worker dependencies (same as requirements.txt; install this in CI/Docker).
+# Verify freshness: pip install -r requirements.in && pip freeze | diff - requirements.txt
 annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.15.1

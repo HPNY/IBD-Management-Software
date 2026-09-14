@@ -1,0 +1,10 @@
+# Intent (ranges) — keep in sync with requirements.txt pins.
+# To refresh pins: pip install -r requirements.in && pip freeze > requirements.lock
+
+fastapi>=0.141,<0.142
+uvicorn>=0.52,<0.53
+pymupdf>=1.28,<1.29
+pydantic>=2.13,<3
+redis>=7.4,<8
+bullmq>=3.2,<4
+python-multipart>=0.0.32,<0.1

@@ -2,8 +2,11 @@ import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { DataSource } from "typeorm";
 import { AppModule } from "./app.module";
+import { assertSafeRuntimeConfig } from "./config/env-guard";
 
 async function bootstrap() {
+  assertSafeRuntimeConfig();
+
   const app = await NestFactory.create(AppModule, { rawBody: true });
   app.setGlobalPrefix("api/v1", { exclude: ["health"] });
   app.enableCors({ origin: true });
@@ -16,7 +19,13 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup("docs", app, document);
 
-  if (process.env.RUN_MIGRATIONS !== "false") {
+  const isProd = (process.env.NODE_ENV ?? "").toLowerCase() === "production";
+  // 生产默认不自动迁移；需显式 RUN_MIGRATIONS=true（或独立 Job）
+  const runMigrations =
+    process.env.RUN_MIGRATIONS === "true" ||
+    (!isProd && process.env.RUN_MIGRATIONS !== "false");
+
+  if (runMigrations) {
     try {
       const ds = app.get(DataSource);
       const executed = await ds.runMigrations({ transaction: "each" });

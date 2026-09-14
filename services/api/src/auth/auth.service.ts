@@ -12,6 +12,8 @@ import type { JwtUser } from "./types";
 
 /** 开发环境固定验证码；生产应接短信服务商。 */
 const DEV_SMS_CODE = process.env.DEV_SMS_CODE ?? "123456";
+const IS_PROD =
+  (process.env.NODE_ENV ?? "development").toLowerCase() === "production";
 const ACCESS_TTL = process.env.JWT_ACCESS_TTL ?? "15m";
 const REFRESH_TTL_DAYS = Number(process.env.JWT_REFRESH_TTL_DAYS ?? 30);
 
@@ -41,7 +43,10 @@ export class AuthService {
     if (!input.phone || !/^\d{6,20}$/.test(input.phone)) {
       throw new BadRequestException("invalid phone");
     }
-    // 开发桩：固定码；生产：校验短信/验证码服务
+    // 生产禁止使用开发固定码
+    if (IS_PROD && (DEV_SMS_CODE === "123456" || DEV_SMS_CODE.length < 6)) {
+      throw new UnauthorizedException("sms login disabled: invalid DEV_SMS_CODE");
+    }
     if (input.code !== DEV_SMS_CODE) {
       throw new UnauthorizedException("invalid sms code");
     }
