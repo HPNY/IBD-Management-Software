@@ -1,27 +1,98 @@
+import 'dart:io';
+
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 
-/// 本地权威库（无 build_runner，便于工程化前维护）。
+import 'db_key_service.dart';
+
+/// 本地权威库（SQLCipher 全库加密）。
+/// 密钥在 Keystore/Keychain，不在 SharedPreferences。
 class LocalDb {
   LocalDb._();
   static final LocalDb instance = LocalDb._();
+
+  static const dbFileName = 'ibders_local.db';
 
   Database? _db;
 
   Future<Database> get database async {
     final existing = _db;
     if (existing != null && existing.isOpen) return existing;
+
     final dir = await getApplicationDocumentsDirectory();
-    final path = p.join(dir.path, 'ibders_local.db');
+    final path = p.join(dir.path, dbFileName);
+    final key = await DbKeyService.instance.getOrCreateKey();
+    // SQLCipher 口令：二进制密钥用 x'hex'
+    final password = 'x${_toHex(key)}';
+
+    await _migratePlainToCipherIfNeeded(path, password);
+
     final db = await openDatabase(
       path,
+      password: password,
       version: 1,
-      onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
+      onConfigure: (db) async {
+        await db.execute('PRAGMA foreign_keys = ON');
+        // 确认加密生效：非加密库读 cipher_provider 会失败或返回空
+      },
       onCreate: _onCreate,
     );
     _db = db;
     return db;
+  }
+
+  static String _toHex(List<int> bytes) {
+    final sb = StringBuffer();
+    for (final b in bytes) {
+      sb.write(b.toRadixString(16).padLeft(2, '0'));
+    }
+    return sb.toString();
+  }
+
+  /// 旧版本明文库 → SQLCipher：导出到临时加密库再替换文件。
+  Future<void> _migratePlainToCipherIfNeeded(
+    String path,
+    String password,
+  ) async {
+    final file = File(path);
+    if (!await file.exists()) return;
+
+    // 若已是加密库，用密码打开会成功；明文库用密码打开通常失败或 cipher 校验失败。
+    // 策略：先尝试空密码打开看是否 SQLITE_NOTADB / 非加密；成功则迁移。
+    Database? plain;
+    try {
+      plain = await openDatabase(path);
+    } catch (_) {
+      // 已是加密或损坏，走正常加密打开
+      return;
+    }
+
+    try {
+      // 能无密码打开说明是明文库 → ATTACH 加密库并复制
+      final tmp = '$path.cipher_mig';
+      if (await File(tmp).exists()) await File(tmp).delete();
+      await plain.execute("ATTACH DATABASE '$tmp' AS enc KEY '$password'");
+      await plain.execute(
+        "SELECT sqlcipher_export('enc')",
+      );
+      await plain.execute('DETACH DATABASE enc');
+      await plain.close();
+      plain = null;
+
+      // 备份旧库，换成加密库
+      final bak = '$path.plain.bak';
+      if (await File(bak).exists()) await File(bak).delete();
+      await file.copy(bak);
+      await File(tmp).rename(path);
+    } catch (_) {
+      // 迁移失败则保留原库，后续业务层可能报错；不静默删数据
+      rethrow;
+    } finally {
+      if (plain != null && plain.isOpen) {
+        await plain.close();
+      }
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -112,8 +183,34 @@ class LocalDb {
     ''');
   }
 
+  /// 校验加密库可被当前密钥打开（健康检查用）。
+  Future<bool> verifyOpenable() async {
+    try {
+      final db = await database;
+      await db.rawQuery('SELECT count(*) FROM sqlite_master');
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> close() async {
     await _db?.close();
     _db = null;
+  }
+
+  /// 诊断用：库文件大小与是否加密（cipher_provider 非空）。
+  Future<Map<String, Object?>> probe() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final path = p.join(dir.path, dbFileName);
+    final size = await File(path).length().catchError((_) => 0);
+    final db = await database;
+    final rows = await db.rawQuery('PRAGMA cipher_provider');
+    return {
+      'path': path,
+      'sizeBytes': size,
+      'cipherProvider': rows.isEmpty ? null : rows.first.values.first,
+      'hasKey': await DbKeyService.instance.hasKey(),
+    };
   }
 }

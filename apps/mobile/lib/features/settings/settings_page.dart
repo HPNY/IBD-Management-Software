@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/api/api_config.dart';
 import '../../core/api/sync_api.dart';
 import '../../core/backup/backup_service.dart';
+import '../../core/db/local_db.dart';
 import '../../core/identity/local_identity.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -20,6 +21,22 @@ class _SettingsPageState extends State<SettingsPage> {
       BackupService(context.read<LocalIdentity>().uuid);
   bool _busy = false;
   String? _message;
+  Map<String, Object?>? _dbProbe;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDbProbe();
+  }
+
+  Future<void> _loadDbProbe() async {
+    try {
+      final probe = await LocalDb.instance.probe();
+      if (mounted) setState(() => _dbProbe = probe);
+    } catch (e) {
+      if (mounted) setState(() => _dbProbe = {'error': e.toString()});
+    }
+  }
 
   Future<void> _setPassphraseAndSync() async {
     final ctrl = TextEditingController();
@@ -183,6 +200,25 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           Text('应用标识（本机）', style: Theme.of(context).textTheme.titleSmall),
           SelectableText(identity.uuid),
+          const SizedBox(height: 12),
+          if (_dbProbe != null)
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.lock),
+                title: const Text('本地库 SQLCipher'),
+                subtitle: Text(
+                  _dbProbe!['error'] != null
+                      ? '${_dbProbe!['error']}'
+                      : 'provider=${_dbProbe!['cipherProvider']} · '
+                          'key=${_dbProbe!['hasKey'] == true ? '已生成' : '缺失'} · '
+                          'size=${_dbProbe!['sizeBytes']}',
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: _loadDbProbe,
+                ),
+              ),
+            ),
           const SizedBox(height: 16),
           SwitchListTile(
             title: const Text('启用云同步（端到端密文）'),
