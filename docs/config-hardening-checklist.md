@@ -33,11 +33,7 @@
 
 ## 建议执行顺序（剩余）
 
-```text
-7) configuration.md（含 STORAGE_LOCAL_DIR 双场景）
-8) Makefile / scripts/dev.ps1
-9) README 清理危险默认值示例
-```
+配置加固 P0–P2 均已完成。下一步：真机联调或 CI。
 
 ## 与功能线的关系
 

@@ -11,6 +11,7 @@ IBD（克罗恩病 / 溃疡性结肠炎）患者全病程自我管理应用。
 | [本地优先改造](docs/compose/spec/local-first.md) | 隐私架构与分期 |
 | [真机联调清单](docs/device-test-checklist.md) | 设备验证步骤 |
 | [配置加固清单](docs/config-hardening-checklist.md) | 环境变量 / 密钥 / 依赖 / 生产校验 |
+| [配置说明](docs/configuration.md) | 全部环境变量与 `STORAGE_LOCAL_DIR` 双场景 |
 
 ---
 
@@ -88,6 +89,7 @@ pnpm --filter @ibd/api build
 export DATABASE_URL=postgres://ibd:ibd@127.0.0.1:5433/ibd
 export REDIS_URL=redis://127.0.0.1:6380
 export STORAGE_DRIVER=local
+# 本机联调：API 与 Worker 必须使用同一 STORAGE_LOCAL_DIR
 export STORAGE_LOCAL_DIR=var/uploads
 export PUBLIC_BASE_URL=http://<电脑IP>:3000
 export RUN_MIGRATIONS=true
@@ -101,6 +103,17 @@ python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
 PORT=8081 python -m app.main
 ```
+
+一键启动（Windows）：
+
+```powershell
+pwsh ./scripts/dev.ps1              # 本机 Postgres/Redis
+pwsh ./scripts/dev.ps1 -Docker      # compose（先复制 .env.example → .env）
+```
+
+或 `make dev` / `make dev-local`。完整变量表见 [docs/configuration.md](docs/configuration.md)。
+
+**`STORAGE_LOCAL_DIR`**：Docker 用 `/data/uploads`（共享卷）；本机用仓库下 `var/uploads`，且 API 与 Worker 路径必须一致。真机 `PUBLIC_BASE_URL` 用电脑局域网 IP，不要用 `127.0.0.1`。
 
 Docker：`docker compose up --build`（Postgres / Redis / MinIO / API / Worker）。
 
