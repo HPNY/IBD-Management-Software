@@ -166,9 +166,9 @@ branch: main
 
 ## Tasks
 
-- [ ] T1: 冻结数据分类与同步加密模型 — acceptance: §S4 Phase 0 无未决项 (covers: S2, S3)
-- [ ] T2: Flutter Drift 本地库 + app_user_uuid — acceptance: 断网可增删改查病程 (covers: A, Phase 1; depends: T1)
-- [ ] T3: 去掉登录门禁，业务页本地优先 — acceptance: 冷启动无登录可用 (covers: A; depends: T2)
-- [ ] T4: AI 解析单次授权上传 — acceptance: 未同意不上传 PDF (covers: A, B; depends: T2)
+- [x] T1: 冻结数据分类与同步加密模型 — acceptance: §S4 Phase 0 无未决项 (covers: S2, S3)
+- [x] T2: Flutter 本地库 + app_user_uuid — acceptance: 断网可增删改查病程 (covers: A, Phase 1; depends: T1)
+- [x] T3: 去掉登录门禁，业务页本地优先 — acceptance: 冷启动无登录可用 (covers: A; depends: T2)
+- [x] T4: AI 解析单次授权上传 — acceptance: 未同意不上传 PDF (covers: A, B; depends: T2)
 - [ ] T5: 可选同步/备份（E2E 密文） — acceptance: 开关关=无云写；开=双端可恢复 (covers: B, Phase 2; depends: T3)
 - [ ] T6: 本地加密与云端删除 — acceptance: 敏感字段加密；可删云副本 (covers: Phase 3; depends: T5)
