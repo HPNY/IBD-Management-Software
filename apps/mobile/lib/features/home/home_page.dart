@@ -6,6 +6,7 @@ import '../injection/injection_page.dart';
 import '../lab/lab_manual_page.dart';
 import '../medication/medication_page.dart';
 import '../parse/parse_upload_page.dart';
+import '../settings/settings_page.dart';
 import '../symptom/symptom_page.dart';
 
 class HomePage extends StatelessWidget {
@@ -19,11 +20,14 @@ class HomePage extends StatelessWidget {
         title: const Text('IBDers'),
         actions: [
           IconButton(
-            tooltip: '隐私与同步',
+            tooltip: '隐私与备份',
             icon: Icon(
               identity.syncOptIn ? Icons.cloud_queue : Icons.cloud_off,
             ),
-            onPressed: () => _showPrivacy(context, identity),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsPage()),
+            ),
           ),
         ],
       ),
@@ -82,40 +86,6 @@ class HomePage extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Future<void> _showPrivacy(BuildContext context, LocalIdentity identity) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('隐私与同步', style: Theme.of(ctx).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Text('应用标识（本机生成）：\n${identity.uuid}'),
-              const SizedBox(height: 12),
-              SwitchListTile(
-                title: const Text('启用云同步（可选）'),
-                subtitle: const Text('开启后才会绑定账号并上传加密副本'),
-                value: identity.syncOptIn,
-                onChanged: (v) async {
-                  await identity.setSyncOptIn(v);
-                  if (ctx.mounted) Navigator.pop(ctx);
-                },
-              ),
-              const Text(
-                '说明：关闭同步时，病程数据只在本机；解析上传会在操作时单独询问。',
-                style: TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

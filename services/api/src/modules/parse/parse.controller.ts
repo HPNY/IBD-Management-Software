@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../../auth/current-user.decorator";
+import { RequireScope } from "../../auth/scope.guard";
 import type { JwtUser } from "../../auth/types";
 import {
   ConfirmParseInput,
@@ -10,6 +11,7 @@ import {
 
 @ApiTags("parse")
 @ApiBearerAuth()
+@UseGuards(RequireScope("full", "parse_session"))
 @Controller("parse/jobs")
 export class ParseController {
   constructor(private readonly parse: ParseService) {}

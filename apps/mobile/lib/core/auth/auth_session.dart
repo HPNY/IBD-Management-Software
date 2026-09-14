@@ -9,6 +9,17 @@ import 'token_store.dart';
 class AuthSession extends ChangeNotifier {
   AuthSession(this._config, this._store);
 
+  /// 短时解析会话：仅内存 token，不持久化。
+  factory AuthSession.parseSession(String accessToken, String appUserId) {
+    final s = AuthSession(ApiConfig.dev(), TokenStore());
+    s._tokens = AuthTokens(
+      accessToken: accessToken,
+      refreshToken: '',
+      userId: appUserId,
+    );
+    return s;
+  }
+
   final ApiConfig _config;
   final TokenStore _store;
   final http.Client _client = http.Client();

@@ -36,6 +36,20 @@ export class AuthController {
     return this.auth.logout(body.refreshToken);
   }
 
+  /** 本地优先：无登录解析会话（短时，仅 parse 相关） */
+  @Public()
+  @Post("parse-session")
+  parseSession(@Body() body: { appUserId: string; deviceId?: string }) {
+    return this.auth.issueParseSession(body);
+  }
+
+  /** 密文同步短时会话 */
+  @Public()
+  @Post("sync-session")
+  syncSession(@Body() body: { appUserId: string; deviceId?: string }) {
+    return this.auth.issueSyncSession(body);
+  }
+
   @ApiBearerAuth()
   @Get("me")
   me(@CurrentUser() user: JwtUser) {

@@ -6,13 +6,13 @@ import 'package:provider/provider.dart';
 
 import '../../core/api/api_config.dart';
 import '../../core/api/ibd_api_client.dart';
+import '../../core/api/sync_api.dart';
 import '../../core/auth/auth_session.dart';
-import '../../core/auth/token_store.dart';
 import '../../core/db/repositories.dart';
 import '../../core/identity/local_identity.dart';
 import '../../core/storage/direct_upload_service.dart';
 
-/// 解析上传：默认不上传；用户明确同意后才调用云端。
+/// 解析上传：默认不上传；用户明确同意后才调用云端（短时 parse_session）。
 class ParseUploadPage extends StatefulWidget {
   const ParseUploadPage({super.key});
 
@@ -22,6 +22,7 @@ class ParseUploadPage extends StatefulWidget {
 
 class _ParseUploadPageState extends State<ParseUploadPage> {
   IbdApiClient? _api;
+  AuthSession? _session;
   final _labRepo = LabRepository();
   final _hospitalCtrl = TextEditingController();
   final _reportTypeCtrl = TextEditingController(text: '血常规');
@@ -73,7 +74,8 @@ class _ParseUploadPageState extends State<ParseUploadPage> {
         title: const Text('确认上传到云端解析？'),
         content: Text(
           '文件「$name」（${bytes.length} 字节）将上传到服务器进行 AI/模板解析。\n'
-          '应用标识：${identity.uuid}\n\n'
+          '应用标识：${identity.uuid}\n'
+          '使用 30 分钟短时解析会话，无需长期账号。\n\n'
           '若取消，则不会上传任何数据。',
         ),
         actions: [
@@ -96,22 +98,19 @@ class _ParseUploadPageState extends State<ParseUploadPage> {
     setState(() {
       _busy = true;
       _error = null;
-      _stage = 'starting';
+      _stage = 'parse_session';
     });
 
     try {
-      // 可选云端：使用已登录会话；未登录则提示
-      final session = AuthSession(ApiConfig.dev(), TokenStore());
-      await session.restore();
-      if (!session.isLoggedIn) {
-        if (!mounted) return;
-        setState(() {
-          _stage = 'need_login';
-          _error = '云端解析需要先登录（仅用于本次解析授权）。请在「隐私与同步」说明的后续版本绑定账号，或先手动录入。';
-        });
-        return;
-      }
-      _api = IbdApiClient(ApiConfig.dev(), session);
+      final config = ApiConfig.dev();
+      final sessionJson =
+          await SyncApi(config).parseSession(identity.uuid);
+      final token = sessionJson['accessToken'] as String;
+      // 注入短时 token 到会话
+      final session = AuthSession.parseSession(token, identity.uuid);
+      _session = session;
+      _api = IbdApiClient(config, session);
+
       final upload = DirectUploadService(_api!);
       final job = await upload.uploadAndEnqueue(
         filename: name,
@@ -133,7 +132,6 @@ class _ParseUploadPageState extends State<ParseUploadPage> {
         _items = done.items;
       });
 
-      // 结果写入本地权威库
       if (done.items.isNotEmpty) {
         await _labRepo.insert(
           date: DateTime.now().toIso8601String().substring(0, 10),

@@ -100,6 +100,7 @@ export class AuthService {
       userId: user.id,
       phone: user.phone,
       deviceId,
+      scope: "full",
     };
     const accessToken = this.jwt.sign(payload, {
       expiresIn: ACCESS_TTL as `${number}m`,
@@ -122,6 +123,57 @@ export class AuthService {
       expiresIn: ACCESS_TTL,
       tokenType: "Bearer",
       user: { id: user.id, phone: user.phone, status: user.status },
+    };
+  }
+
+  /**
+   * 解析短时会话：仅用于「同意上传」后的 PDF 解析链路，
+   * 不要求长期账号；scope=parse_session。
+   */
+  issueParseSession(input: { appUserId: string; deviceId?: string }) {
+    if (!input.appUserId || input.appUserId.length < 8) {
+      throw new BadRequestException("appUserId required");
+    }
+    const accessToken = this.jwt.sign(
+      {
+        userId: input.appUserId,
+        phone: null,
+        deviceId: input.deviceId,
+        scope: "parse_session",
+        appUserId: input.appUserId,
+      } satisfies JwtUser,
+      { expiresIn: "30m" },
+    );
+    return {
+      accessToken,
+      expiresIn: "30m",
+      tokenType: "Bearer",
+      scope: "parse_session",
+      appUserId: input.appUserId,
+    };
+  }
+
+  /** 密文同步短时会话（scope=sync_ciphertext） */
+  issueSyncSession(input: { appUserId: string; deviceId?: string }) {
+    if (!input.appUserId || input.appUserId.length < 8) {
+      throw new BadRequestException("appUserId required");
+    }
+    const accessToken = this.jwt.sign(
+      {
+        userId: input.appUserId,
+        phone: null,
+        deviceId: input.deviceId,
+        scope: "sync_ciphertext",
+        appUserId: input.appUserId,
+      } satisfies JwtUser,
+      { expiresIn: "15m" },
+    );
+    return {
+      accessToken,
+      expiresIn: "15m",
+      tokenType: "Bearer",
+      scope: "sync_ciphertext",
+      appUserId: input.appUserId,
     };
   }
 

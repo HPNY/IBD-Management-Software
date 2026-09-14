@@ -24,7 +24,9 @@ export class JwtAuthGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
-    const req = context.switchToHttp().getRequest<Request & { user?: JwtUser }>();
+    const req = context
+      .switchToHttp()
+      .getRequest<Request & { user?: JwtUser }>();
     const header = req.headers.authorization;
     if (!header?.startsWith("Bearer ")) {
       throw new UnauthorizedException("missing bearer token");
@@ -36,6 +38,8 @@ export class JwtAuthGuard implements CanActivate {
         userId: payload.userId,
         phone: payload.phone ?? null,
         deviceId: payload.deviceId,
+        scope: payload.scope ?? "full",
+        appUserId: payload.appUserId,
       };
       return true;
     } catch {

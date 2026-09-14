@@ -1,19 +1,8 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  ForbiddenException,
-  Get,
-  Headers,
-  Post,
-  Put,
-  Query,
-  RawBodyRequest,
-  Req,
-} from "@nestjs/common";
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Headers, Post, Put, Query, RawBodyRequest, Req, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { Public } from "../auth/public.decorator";
+import { RequireScope } from "../auth/scope.guard";
 import { StorageService } from "./storage.service";
 
 @ApiTags("files")
@@ -21,7 +10,8 @@ import { StorageService } from "./storage.service";
 export class FilesController {
   constructor(private readonly storage: StorageService) {}
 
-  /** 生成直传预签名（需登录；local 返回 API PUT URL；s3 返回对象存储 URL） */
+  /** 生成直传预签名（需登录或 parse_session） */
+  @UseGuards(RequireScope("full", "parse_session"))
   @Post("presign")
   async presign(
     @Body()

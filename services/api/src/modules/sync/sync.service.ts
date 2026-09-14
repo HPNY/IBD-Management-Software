@@ -1,52 +1,73 @@
-import { Injectable } from "@nestjs/common";
-import { hlcCompare, type Hlc } from "../../common/hlc";
-import { LabService } from "../lab/lab.service";
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { SyncSnapshotEntity } from "../../database/entities";
 
-export interface SyncPushItem {
-  entity: string;
-  entityId: string;
-  deviceId: string;
-  hlc: Hlc;
-  payload: Record<string, unknown>;
+export interface PutSnapshotInput {
+  appUserId: string;
+  dataType: string;
+  cipher: string;
+  nonce: string;
+  clientUpdatedAt: string;
+  /** 本地 version，冲突时取较大者 */
+  version?: number;
 }
 
-/**
- * MVP：lab 走库；其余实体先做 HLC 拒绝/接受判定，不落库。
- * 后续按实体扩展写入。
- */
 @Injectable()
 export class SyncService {
-  constructor(private readonly labs: LabService) {}
+  constructor(
+    @InjectRepository(SyncSnapshotEntity)
+    private readonly snaps: Repository<SyncSnapshotEntity>,
+  ) {}
 
-  async push(userId: string, items: SyncPushItem[]) {
-    const accepted: string[] = [];
-    const conflicted: string[] = [];
-    const applied: string[] = [];
-
-    for (const item of items) {
-      const key = `${item.entity}:${item.entityId}`;
-      if (item.entity === "labResult") {
-        try {
-          await this.labs.create(userId, {
-            date: String(item.payload.date ?? new Date().toISOString().slice(0, 10)),
-            hospital: (item.payload.hospital as string) || undefined,
-            items: (item.payload.items as never) ?? [],
-            source: (item.payload.source as "skill" | "ai" | "manual") ?? "manual",
-            deviceId: item.deviceId,
-            hlcWallMs: item.hlc.wallMs,
-            hlcCounter: item.hlc.counter,
-          });
-          accepted.push(key);
-          applied.push(key);
-          continue;
-        } catch {
-          conflicted.push(key);
-          continue;
-        }
-      }
-      void hlcCompare;
-      accepted.push(key);
+  /** 上传端到端密文（服务端不解密）。 */
+  async putCipher(input: PutSnapshotInput) {
+    if (!input.appUserId || !input.dataType || !input.cipher || !input.nonce) {
+      throw new NotFoundException("appUserId/dataType/cipher/nonce required");
     }
-    return { accepted, conflicted, applied };
+    const existing = await this.snaps.findOne({
+      where: { appUserId: input.appUserId, dataType: input.dataType },
+    });
+    const version = String(input.version ?? Date.now());
+    if (existing) {
+      // 仅当客户端 version 更大才覆盖
+      if (Number(version) <= Number(existing.version)) {
+        return {
+          id: existing.id,
+          version: existing.version,
+          skipped: true,
+        };
+      }
+      return this.snaps.save({
+        ...existing,
+        cipher: input.cipher,
+        nonce: input.nonce,
+        version,
+        clientUpdatedAt: new Date(input.clientUpdatedAt),
+      });
+    }
+    return this.snaps.save(
+      this.snaps.create({
+        appUserId: input.appUserId,
+        dataType: input.dataType,
+        cipher: input.cipher,
+        nonce: input.nonce,
+        version,
+        clientUpdatedAt: new Date(input.clientUpdatedAt),
+      }),
+    );
+  }
+
+  async listCipher(appUserId: string) {
+    return this.snaps.find({
+      where: { appUserId },
+      order: { dataType: "ASC" },
+    });
+  }
+
+  /** 用户要求删除云端副本。 */
+  async wipe(appUserId: string) {
+    const res = await this.snaps.delete({ appUserId });
+    return { deleted: res.affected ?? 0 };
   }
 }

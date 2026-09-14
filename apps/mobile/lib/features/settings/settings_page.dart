@@ -1,0 +1,193 @@
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+
+import '../../core/api/api_config.dart';
+import '../../core/api/sync_api.dart';
+import '../../core/backup/backup_service.dart';
+import '../../core/identity/local_identity.dart';
+
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  late final BackupService _backup =
+      BackupService(context.read<LocalIdentity>().uuid);
+  bool _busy = false;
+  String? _message;
+
+  Future<void> _setPassphraseAndSync() async {
+    final ctrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('设置备份口令'),
+        content: TextField(
+          controller: ctrl,
+          obscureText: true,
+          decoration: const InputDecoration(
+            labelText: '口令（仅本机保存，用于加密云备份）',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确定')),
+        ],
+      ),
+    );
+    if (ok != true || ctrl.text.trim().isEmpty) return;
+    await _backup.savePassphrase(ctrl.text.trim());
+    await context.read<LocalIdentity>().setSyncOptIn(true);
+    if (mounted) setState(() => _message = '已开启云同步（密文）');
+  }
+
+  Future<void> _pushCipher() async {
+    final identity = context.read<LocalIdentity>();
+    if (!identity.syncOptIn) {
+      setState(() => _message = '请先开启云同步并设置口令');
+      return;
+    }
+    final pass = await _backup.loadPassphrase();
+    if (pass == null) {
+      setState(() => _message = '缺少备份口令');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      final snap = await _backup.encryptSnapshot(pass);
+      final session = await SyncApi(ApiConfig.dev()).syncSession(identity.uuid);
+      await SyncApi(ApiConfig.dev()).putCipher(
+        token: session['accessToken'] as String,
+        appUserId: identity.uuid,
+        dataType: 'full',
+        cipher: snap['cipher']!,
+        nonce: snap['nonce']!,
+        clientUpdatedAt: DateTime.now().toIso8601String(),
+        version: DateTime.now().millisecondsSinceEpoch,
+      );
+      // MAC 可扩展为单独字段；当前服务端仅存 cipher+nonce
+      setState(() => _message = '密文快照已上传');
+    } catch (e) {
+      setState(() => _message = '上传失败：$e');
+    } finally {
+      setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _export() async {
+    setState(() => _busy = true);
+    try {
+      final path = await _backup.exportToFile();
+      await Share.shareXFiles([XFile(path)], text: 'IBDers 本地备份');
+      setState(() => _message = '已导出 $path');
+    } catch (e) {
+      setState(() => _message = '导出失败：$e');
+    } finally {
+      setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _import() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+      withData: true,
+    );
+    final bytes = result?.files.singleOrNull?.bytes;
+    if (bytes == null) return;
+    setState(() => _busy = true);
+    try {
+      await _backup.importFromJsonString(String.fromCharCodes(bytes));
+      setState(() => _message = '导入完成');
+    } catch (e) {
+      setState(() => _message = '导入失败：$e');
+    } finally {
+      setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _wipeCloud() async {
+    final identity = context.read<LocalIdentity>();
+    final pass = await _backup.loadPassphrase();
+    if (pass == null) {
+      setState(() => _message = '缺少备份口令，无法证明身份');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final session = await SyncApi(ApiConfig.dev()).syncSession(identity.uuid);
+      await SyncApi(ApiConfig.dev()).wipe(
+        token: session['accessToken'] as String,
+        appUserId: identity.uuid,
+      );
+      await identity.setSyncOptIn(false);
+      setState(() => _message = '云端副本已删除，同步已关闭');
+    } catch (e) {
+      setState(() => _message = '删除失败：$e');
+    } finally {
+      setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final identity = context.watch<LocalIdentity>();
+    return Scaffold(
+      appBar: AppBar(title: const Text('隐私与备份')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('应用标识（本机）', style: Theme.of(context).textTheme.titleSmall),
+          SelectableText(identity.uuid),
+          const SizedBox(height: 16),
+          SwitchListTile(
+            title: const Text('启用云同步（端到端密文）'),
+            subtitle: const Text('需设置备份口令；服务端无法解密病历'),
+            value: identity.syncOptIn,
+            onChanged: (v) async {
+              if (v) {
+                await _setPassphraseAndSync();
+              } else {
+                await identity.setSyncOptIn(false);
+                setState(() {});
+              }
+            },
+          ),
+          FilledButton(
+            onPressed: _busy ? null : _pushCipher,
+            child: Text(_busy ? '处理中…' : '上传加密快照'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: _busy ? null : _export,
+            child: const Text('导出本地备份 JSON'),
+          ),
+          OutlinedButton(
+            onPressed: _busy ? null : _import,
+            child: const Text('导入备份 JSON'),
+          ),
+          TextButton(
+            onPressed: _busy ? null : _wipeCloud,
+            child: Text(
+              '删除云端副本',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+          if (_message != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(_message!),
+            ),
+        ],
+      ),
+    );
+  }
+}
