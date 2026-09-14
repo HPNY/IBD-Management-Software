@@ -8,6 +8,7 @@ export interface PutSnapshotInput {
   dataType: string;
   cipher: string;
   nonce: string;
+  mac?: string;
   clientUpdatedAt: string;
   /** 本地 version，冲突时取较大者 */
   version?: number;
@@ -42,6 +43,7 @@ export class SyncService {
         ...existing,
         cipher: input.cipher,
         nonce: input.nonce,
+        mac: input.mac ?? null,
         version,
         clientUpdatedAt: new Date(input.clientUpdatedAt),
       });
@@ -52,6 +54,7 @@ export class SyncService {
         dataType: input.dataType,
         cipher: input.cipher,
         nonce: input.nonce,
+        mac: input.mac ?? null,
         version,
         clientUpdatedAt: new Date(input.clientUpdatedAt),
       }),

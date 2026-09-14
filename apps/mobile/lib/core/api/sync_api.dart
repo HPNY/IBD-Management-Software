@@ -39,6 +39,7 @@ class SyncApi {
     required String dataType,
     required String cipher,
     required String nonce,
+    String? mac,
     required String clientUpdatedAt,
     int? version,
   }) async {
@@ -53,6 +54,7 @@ class SyncApi {
         'dataType': dataType,
         'cipher': cipher,
         'nonce': nonce,
+        if (mac != null) 'mac': mac,
         'clientUpdatedAt': clientUpdatedAt,
         if (version != null) 'version': version,
       }),

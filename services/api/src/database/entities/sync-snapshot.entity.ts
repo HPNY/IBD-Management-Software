@@ -33,6 +33,10 @@ export class SyncSnapshotEntity {
   @Column({ type: "text" })
   nonce: string;
 
+  /** base64 AES-GCM MAC（服务端不校验内容，只透传） */
+  @Column({ type: "text", nullable: true })
+  mac: string | null;
+
   /** 版本号，客户端单调递增 */
   @Column({ type: "bigint", default: "1" })
   version: string;

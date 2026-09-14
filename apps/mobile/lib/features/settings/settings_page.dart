@@ -70,13 +70,49 @@ class _SettingsPageState extends State<SettingsPage> {
         dataType: 'full',
         cipher: snap['cipher']!,
         nonce: snap['nonce']!,
+        mac: snap['mac']!,
         clientUpdatedAt: DateTime.now().toIso8601String(),
         version: DateTime.now().millisecondsSinceEpoch,
       );
-      // MAC 可扩展为单独字段；当前服务端仅存 cipher+nonce
-      setState(() => _message = '密文快照已上传');
+      setState(() => _message = '密文快照已上传（含 MAC）');
     } catch (e) {
       setState(() => _message = '上传失败：$e');
+    } finally {
+      setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _restoreFromCloud() async {
+    final identity = context.read<LocalIdentity>();
+    final pass = await _backup.loadPassphrase();
+    if (pass == null) {
+      setState(() => _message = '请先设置备份口令');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      final session = await SyncApi(ApiConfig.dev()).syncSession(identity.uuid);
+      final list = await SyncApi(ApiConfig.dev()).listCipher(
+        token: session['accessToken'] as String,
+        appUserId: identity.uuid,
+      );
+      if (list.isEmpty) {
+        setState(() => _message = '云端暂无快照');
+        return;
+      }
+      final snap = Map<String, dynamic>.from(list.first as Map);
+      final n = await _backup.restoreFromCloud(
+        passphrase: pass,
+        cipher: snap['cipher'] as String,
+        nonce: snap['nonce'] as String,
+        mac: (snap['mac'] as String?) ?? '',
+      );
+      setState(() => _message = '已从云端恢复 $n 条记录');
+    } catch (e) {
+      setState(() => _message = '恢复失败：$e');
     } finally {
       setState(() => _busy = false);
     }
@@ -164,6 +200,11 @@ class _SettingsPageState extends State<SettingsPage> {
           FilledButton(
             onPressed: _busy ? null : _pushCipher,
             child: Text(_busy ? '处理中…' : '上传加密快照'),
+          ),
+          const SizedBox(height: 8),
+          FilledButton.tonal(
+            onPressed: _busy ? null : _restoreFromCloud,
+            child: const Text('从云端恢复（换机）'),
           ),
           const SizedBox(height: 8),
           OutlinedButton(

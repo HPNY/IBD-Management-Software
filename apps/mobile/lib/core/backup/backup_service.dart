@@ -117,4 +117,46 @@ class BackupService {
       appUserId: appUserId,
     );
   }
+
+  /// 换机：从云端密文解密并导入本地库。
+  Future<int> restoreFromCloud({
+    required String passphrase,
+    required String cipher,
+    required String nonce,
+    required String mac,
+  }) async {
+    final data = await BackupCrypto.decryptJson(
+      cipherB64: cipher,
+      nonceB64: nonce,
+      macB64: mac,
+      passphrase: passphrase,
+      appUserId: appUserId,
+    );
+    await importFromJsonString(jsonEncode(data));
+    return ((data['labs'] as List?)?.length ?? 0) +
+        ((data['medications'] as List?)?.length ?? 0) +
+        ((data['injections'] as List?)?.length ?? 0);
+  }
+
+  /// 本地敏感文本字段加密（手术描述等）：返回 base64 密文。
+  Future<String> encryptField(String plain, String passphrase) async {
+    final box = await BackupCrypto.encryptJson(
+      {'v': plain},
+      passphrase: passphrase,
+      appUserId: appUserId,
+    );
+    return jsonEncode(box);
+  }
+
+  Future<String> decryptField(String packed, String passphrase) async {
+    final map = jsonDecode(packed) as Map<String, dynamic>;
+    final data = await BackupCrypto.decryptJson(
+      cipherB64: map['cipher'] as String,
+      nonceB64: map['nonce'] as String,
+      macB64: map['mac'] as String,
+      passphrase: passphrase,
+      appUserId: appUserId,
+    );
+    return data['v'] as String;
+  }
 }
