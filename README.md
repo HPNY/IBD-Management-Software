@@ -10,6 +10,7 @@ IBD（克罗恩病 / 溃疡性结肠炎）患者全病程自我管理应用。
 | [架构分析](docs/compose/spec/architecture-techstack.md) | 技术栈与系统设计 |
 | [本地优先改造](docs/compose/spec/local-first.md) | 隐私架构与分期 |
 | [真机联调清单](docs/device-test-checklist.md) | 设备验证步骤 |
+| [配置加固清单](docs/config-hardening-checklist.md) | 环境变量 / 密钥 / 依赖 / 生产校验 |
 
 ---
 
