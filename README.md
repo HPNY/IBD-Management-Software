@@ -1,188 +1,157 @@
-# IBDers · IBD 病程管理 monorepo
+# IBDers
 
-基于 [PRD](docs/IBD病程管理程序PRD.md) 与 [架构分析](docs/compose/spec/architecture-techstack.md) 的 MVP 骨架。
+IBD（克罗恩病 / 溃疡性结肠炎）患者全病程自我管理应用。
 
-## 结构
+**设计原则：医疗数据默认只存在你自己的手机上；未明确授权前不上传服务器。**
 
-| 路径 | 说明 | MVP |
-|------|------|-----|
-| `services/api` | NestJS 模块化单体 + TypeORM(Postgres) + Object Storage | 是 |
-| `services/parse-worker` | Python PDF 双引擎 Worker（Skill + AI/LLM） | 是 |
-| `apps/mobile` | Flutter（直传解析页已实现） | 是 |
-| `apps/miniapp` | Taro 小程序（占位） | 是 |
-| `packages/domain-types` | 共享领域类型 | 是 |
-| `apps/web` / `apps/doctor-web` | V1 / V2 | 否 |
-
-## 登录（JWT）
-
-- `POST /api/v1/auth/login` `{ phone, code }` — 开发验证码默认 `123456`（`DEV_SMS_CODE`）
-- 返回 `accessToken`（15m）+ `refreshToken`（30 天，轮转）
-- `POST /auth/refresh` / `POST /auth/logout` / `GET /auth/me`
-- 业务 API 全局 `JwtAuthGuard`；`@Public()` 仅 health、login/refresh/logout、`PUT /files/upload`（HMAC）
-
-```bash
-curl -X POST :3000/api/v1/auth/login \
-  -H 'content-type: application/json' \
-  -d '{"phone":"13800000000","code":"123456"}'
-```
-
-## 用药管理
-
-| 接口 | 说明 |
+| 文档 | 说明 |
 |------|------|
-| `GET/POST /medications` | 列表 / 新增 |
-| `GET /medications/current` | 在用+暂停 |
-| `GET /medications/timeline` | 切换链 + 副作用 |
-| `POST /medications/:id/adjust` | 调剂量：关旧开新 |
-| `POST /medications/:id/pause\|resume\|stop` | 状态与停药原因 |
-| `POST /medications/switch` | 换药 |
-| `POST /medications/:id/adverse-events` | 副作用 |
+| [PRD](docs/IBD病程管理程序PRD.md) | 产品需求 |
+| [架构分析](docs/compose/spec/architecture-techstack.md) | 技术栈与系统设计 |
+| [本地优先改造](docs/compose/spec/local-first.md) | 隐私架构与分期 |
+| [真机联调清单](docs/device-test-checklist.md) | 设备验证步骤 |
 
-```bash
-pnpm --filter @ibd/api e2e:medication
+---
+
+## 架构一览
+
+```text
+┌─────────────────────────────────────────────┐
+│  Flutter App（个人终端）                      │
+│  · app_user_uuid（本机生成，无强制登录）       │
+│  · SQLCipher 加密本地库（Keystore 密钥）       │
+│  · 检验 / 用药 / 注射 / 症状 全部本机读写      │
+│  · 注射提醒：本地通知                        │
+└───────────────┬─────────────────────────────┘
+                │ 仅在用户明确同意时
+                ▼
+     ┌──────────────────────────────┐
+     │  可选云端能力                   │
+     │  ① 单次 PDF 解析（parse-session）│
+     │  ② 端到端密文备份/同步           │
+     │  ③ Skill 模板（无病历明文）      │
+     └──────────────────────────────┘
 ```
 
-## 注射排期与提醒
-
-| 接口 | 说明 |
+| 模式 | 行为 |
 |------|------|
-| `GET /injections/protocols` | 内置协议：skyrizi / humira / stelara / entyvio |
-| `POST /injections/schedule` | `{ drugKey, startDate }` 生成诱导+维持排期 |
-| `GET /injections/upcoming` | 含逾期的未完成计划 |
-| `POST /injections/:id/complete` | 记录实际日期，延迟自动顺延后续 |
-| `POST /reminders` | `{ kind:"injection", leadDays:3 }` |
-| `GET /reminders/due` | 窗口内/逾期提醒文案，客户端本地通知 |
+| 默认 | 病程只在本机；无账号、无上传 |
+| 解析 | 弹窗同意 → 短时 `parse-session`（30 分钟）→ 上传本次文件 → 结果写回本机 |
+| 同步 | 设置里开启 + 备份口令 → AES-GCM 密文快照 → 服务端不可解密 |
+| 换机 | 同 `appUserId` + 口令 → 从云端恢复；或导出/导入 JSON |
+| 删云 | 一键删除云端密文副本 |
+
+---
+
+## 仓库结构
+
+| 路径 | 说明 |
+|------|------|
+| `apps/mobile` | Flutter 主应用（本地优先） |
+| `services/api` | NestJS：解析队列、密文同步、可选账号 |
+| `services/parse-worker` | Python：Skill 模板 + LLM 解析 Worker |
+| `packages/domain-types` | 共享领域类型 |
+| `apps/miniapp` / `apps/web` / `apps/doctor-web` | 后续端（占位） |
+
+---
+
+## App 功能（本地）
+
+| 功能 | 说明 |
+|------|------|
+| 检验 | 手动录入；或「同意上传」后云端解析再写回本机 |
+| 用药 | 当前方案、停药原因、历史；服务端另有切换链/副作用 API |
+| 注射 | 本地协议生成排期（Skyrizi 等），本地通知提醒，可记「今天已打」 |
+| 症状 | 每日打卡（腹痛/腹泻/Bristol 等） |
+| 隐私 | 应用 UUID、同步开关、SQLCipher 状态、导出/导入、删云端 |
+
+### 运行 App
 
 ```bash
-pnpm --filter @ibd/api e2e:injection
+cd apps/mobile
+pwsh ./bootstrap.ps1   # 需要 Flutter SDK；生成 android/ios 工程
+flutter run --dart-define=IBD_API_BASE=http://<电脑局域网IP>:3000
 ```
 
-## Skill 自动入库
+断网可完成：录入检验、用药、注射排期、症状打卡。
 
-1. 解析完成 → `POST /api/v1/parse/jobs/:id/confirm` `{ items, date }`
-2. 写入 `labs`，并按 `hospitalHint + reportType` **新建/升版** `parse_skills` / `parse_skill_versions`
-3. 下次同院同类型入队时，API 把库内 Skill JSON 下发给 worker（优先于本地样例）
+---
 
-```bash
-# 列表
-GET /api/v1/skills?hospital=某三甲医院A
-GET /api/v1/skills/:id/versions
-```
-
-## AI 解析（LLM 兜底）
-
-Skill 未命中时走 OpenAI 兼容接口：
-
-| 环境变量 | 说明 |
-|----------|------|
-| `LLM_API_BASE` | 如 `https://api.openai.com/v1` 或兼容网关 |
-| `LLM_API_KEY` | API Key |
-| `LLM_MODEL` | 默认 `gpt-4o-mini` |
-| `LLM_TIMEOUT_SEC` | 默认 60 |
-
-无配置时降级为空结果（客户端手动录入）。单测：
+## 可选后端（解析 / 同步）
 
 ```bash
-cd services/parse-worker && python -m app.tests.test_ai_engine
-```
-
-## 直传（Object Storage）
-
-1. `POST /api/v1/files/presign` `{ filename, contentType }` → `{ objectKey, uploadUrl, method:"PUT" }`
-2. 客户端对 `uploadUrl` 发 PUT 上传文件
-3. `POST /api/v1/parse/jobs` `{ objectKey, hospitalHint, reportType }` 入队解析
-
-驱动：
-
-- `STORAGE_DRIVER=local`（默认）：HMAC 签名后 PUT 到 API；文件在 `STORAGE_LOCAL_DIR`
-- `STORAGE_DRIVER=s3`：MinIO / OSS（S3 兼容）预签名；需 `S3_ENDPOINT` / `S3_BUCKET` / 密钥
-
-compose 已带 MinIO（`9000/9001`）；`STORAGE_DRIVER=s3 docker compose up` 可切到对象存储。
-
-Flutter 端直传入口见 `apps/mobile/README.md`（`ParseUploadPage`）。
-
-## 本地启动
-
-```bash
-# 需要 Node 20+、pnpm、Python 3.11+、Docker
+# 需要 Node 20+、pnpm、Python 3.11+、Postgres、Redis
 pnpm install
 pnpm --filter @ibd/api build
-docker compose up --build
-```
 
-服务：
-
-- API: `http://localhost:3000` 健康检查 `GET /health`（含 db 探活）
-- Swagger: `http://localhost:3000/docs`
-- Parse Worker: BullMQ 队列 `parse`，job 名 `parsePdf`；完成后由 API `QueueEvents` 回写 `parse_jobs`
-- Postgres: `5432` / Redis: `6379`（BullMQ 需 Redis ≥5，建议 ≥6.2）
-- 数据库：`DATABASE_URL`；**默认 migrations**（启动 `RUN_MIGRATIONS=true` 自动执行）；仅调试可用 `DB_SYNC=true`（勿用于生产）
-- 队列：`REDIS_URL`；`PARSE_QUEUE` 默认 `parse`
-
-### Migrations
-
-```bash
-pnpm --filter @ibd/api migration:show
-pnpm --filter @ibd/api migration:run
-pnpm --filter @ibd/api migration:revert
-# 改实体后生成增量迁移
-pnpm --filter @ibd/api migration:generate src/database/migrations/AlterXxx
-```
-
-初始迁移：`src/database/migrations/1726200000000-InitSchema.ts`
-
-无 Docker / 无 Postgres 时的实体层验收：
-
-```bash
-pnpm --filter @ibd/api smoke:entities   # pg-mem 内存库跑通 Lab/症状级联写入
-pnpm --filter @ibd/api smoke:migration  # InitSchema raw SQL 建表 + 关联插入
-```
-
-BullMQ 契约冒烟（需本机 Redis）：
-
-```bash
-# 起 worker 后另开终端
-REDIS_URL=redis://127.0.0.1:6379 node services/api/scripts/queue-smoke.mjs
-# 直传 objectKey + worker 取件
-REDIS_URL=redis://127.0.0.1:6379 node services/api/scripts/storage-queue-smoke.mjs
-```
-
-本地 storage 单元冒烟：
-
-```bash
-pnpm --filter @ibd/api smoke:storage
-```
-
-### 全栈联调（无 Docker 时）
-
-依赖：Postgres + Redis（端口示例 `5433` / `6380`）。
-
-```bash
 export DATABASE_URL=postgres://ibd:ibd@127.0.0.1:5433/ibd
 export REDIS_URL=redis://127.0.0.1:6380
 export STORAGE_DRIVER=local
 export STORAGE_LOCAL_DIR=var/uploads
-export PUBLIC_BASE_URL=http://127.0.0.1:3000
+export PUBLIC_BASE_URL=http://<电脑IP>:3000
 export RUN_MIGRATIONS=true
 
 pnpm --filter @ibd/api migration:run
-pnpm --filter @ibd/api build
-# 终端 A
 node services/api/dist/main.js
-# 终端 B（勿继承 PORT=3000）
-cd services/parse-worker && PORT=8081 python -m app.main
-# 终端 C
-pnpm --filter @ibd/api e2e:fullstack
+
+# 另开终端
+cd services/parse-worker
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+PORT=8081 python -m app.main
 ```
 
-E2E 会走通：health → presign → PUT → parse/jobs → worker Skill 解析 → 确认写入 labs。
+Docker：`docker compose up --build`（Postgres / Redis / MinIO / API / Worker）。
 
-无 Docker 时可分别运行：
+| 服务 | 地址 |
+|------|------|
+| API | `http://localhost:3000` · Swagger `/docs` |
+| Worker | `:8081` |
+| 队列 | BullMQ `parse` |
+
+### 关键 API（摘要）
+
+| 能力 | 接口 |
+|------|------|
+| 短时解析会话 | `POST /api/v1/auth/parse-session` `{ appUserId }` |
+| 短时同步会话 | `POST /api/v1/auth/sync-session` `{ appUserId }` |
+| 密文同步 | `POST/GET/DELETE /api/v1/sync/ciphertext*` |
+| 解析任务 | `POST /api/v1/parse/jobs` · `POST /:id/confirm` |
+| 文件直传 | `POST /api/v1/files/presign` → `PUT uploadUrl` |
+| 可选账号登录 | `POST /api/v1/auth/login`（开发验证码 `123456`） |
+| 用药/注射 | 见 Swagger：切换链、协议排期、到期提醒 |
+
+### 验证脚本
 
 ```bash
-pnpm --filter @ibd/api start:dev
-# 另开终端
-cd services/parse-worker && python -m venv .venv && . .venv/bin/activate
-pip install -r requirements.txt
-python -m app.main
+pnpm --filter @ibd/api smoke:entities
+pnpm --filter @ibd/api smoke:migration
+pnpm --filter @ibd/api smoke:storage
+pnpm --filter @ibd/api e2e:fullstack
+pnpm --filter @ibd/api e2e:injection
+pnpm --filter @ibd/api e2e:medication
+cd services/parse-worker && python -m app.tests.test_ai_engine
 ```
+
+### LLM（Skill 未命中时）
+
+| 环境变量 | 说明 |
+|----------|------|
+| `LLM_API_BASE` | OpenAI 兼容网关 |
+| `LLM_API_KEY` | API Key |
+| `LLM_MODEL` | 默认 `gpt-4o-mini` |
+
+---
+
+## 安全说明
+
+- 本地库：**SQLCipher**，密钥在 Android Keystore / iOS Keychain  
+- 云备份：AES-GCM + PBKDF2（备份口令 + appUserId），服务端只存 cipher/nonce/mac  
+- 解析上传：必须用户点击「同意」；会话 30 分钟过期  
+- 卸载重装会丢本机密钥 → 请事先导出 JSON 或上传加密快照  
+
+---
+
+## 许可与贡献
+
+个人医疗数据项目；默认本地、最小上传。欢迎 Issue / PR。
