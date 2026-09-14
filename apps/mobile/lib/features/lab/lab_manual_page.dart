@@ -1,29 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import '../../core/api/ibd_api_client.dart';
+import '../../core/db/repositories.dart';
 
 class LabManualPage extends StatefulWidget {
-  const LabManualPage({super.key, required this.api});
-
-  final IbdApiClient api;
+  const LabManualPage({super.key});
 
   @override
   State<LabManualPage> createState() => _LabManualPageState();
 }
 
-class _LabManualEntry {
-  _LabManualEntry({this.name = '', this.value = '', this.unit = ''});
-
+class _Row {
+  _Row({this.name = '', this.value = '', this.unit = ''});
   String name;
   String value;
   String unit;
 }
 
 class _LabManualPageState extends State<LabManualPage> {
+  final _repo = LabRepository();
   final _dateCtrl = TextEditingController(text: _today());
   final _hospitalCtrl = TextEditingController();
-  final List<_LabManualEntry> _rows = [_LabManualEntry()];
+  final List<_Row> _rows = [_Row()];
   bool _busy = false;
   String? _error;
   String? _ok;
@@ -59,7 +56,7 @@ class _LabManualPageState extends State<LabManualPage> {
       });
     }
     if (items.isEmpty) {
-      setState(() => _error = '请至少填写一项检验结果');
+      setState(() => _error = '请至少填写一项');
       return;
     }
     setState(() {
@@ -68,14 +65,16 @@ class _LabManualPageState extends State<LabManualPage> {
       _ok = null;
     });
     try {
-      final lab = await widget.api.createLab(
+      final id = await _repo.insert(
         date: _dateCtrl.text.trim(),
-        hospital: _hospitalCtrl.text.trim(),
-        items: items,
+        hospital: _hospitalCtrl.text.trim().isEmpty
+            ? null
+            : _hospitalCtrl.text.trim(),
         source: 'manual',
+        items: items,
       );
       if (!mounted) return;
-      setState(() => _ok = '已保存 ${lab['id']}（${items.length} 项）');
+      setState(() => _ok = '已保存到本机（$id）');
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     } finally {
@@ -86,7 +85,7 @@ class _LabManualPageState extends State<LabManualPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('手动录入检验')),
+      appBar: AppBar(title: const Text('手动录入检验（本地）')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -105,9 +104,7 @@ class _LabManualPageState extends State<LabManualPage> {
               border: OutlineInputBorder(),
             ),
           ),
-          const SizedBox(height: 16),
-          Text('检验项目', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           ..._rows.asMap().entries.map((e) {
             final i = e.key;
             final row = e.value;
@@ -165,31 +162,29 @@ class _LabManualPageState extends State<LabManualPage> {
               ),
             );
           }),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => setState(() => _rows.add(_LabManualEntry())),
-              icon: const Icon(Icons.add),
-              label: const Text('添加一项'),
-            ),
+          TextButton.icon(
+            onPressed: () => setState(() => _rows.add(_Row())),
+            icon: const Icon(Icons.add),
+            label: const Text('添加一项'),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           FilledButton(
             onPressed: _busy ? null : _save,
-            child: Text(_busy ? '保存中…' : '保存'),
+            child: Text(_busy ? '保存中…' : '保存到本机'),
           ),
           if (_ok != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: Text(_ok!, style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+              child: Text(_ok!,
+                  style:
+                      TextStyle(color: Theme.of(context).colorScheme.primary)),
             ),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
+              child: Text(_error!,
+                  style:
+                      TextStyle(color: Theme.of(context).colorScheme.error)),
             ),
         ],
       ),

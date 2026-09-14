@@ -1,24 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import '../../core/api/ibd_api_client.dart';
+import '../../core/db/repositories.dart';
+import '../../core/injection/protocols.dart';
+import '../../core/notify/local_notify.dart';
 
 class InjectionPage extends StatefulWidget {
-  const InjectionPage({super.key, required this.api});
-
-  final IbdApiClient api;
+  const InjectionPage({super.key});
 
   @override
   State<InjectionPage> createState() => _InjectionPageState();
 }
 
 class _InjectionPageState extends State<InjectionPage> {
+  final _repo = InjectionRepository();
   bool _busy = false;
   String? _error;
-  List<dynamic> _due = [];
-  List<dynamic> _injections = [];
-  List<dynamic> _protocols = [];
-  String? _selectedProtocol;
+  List<Map<String, dynamic>> _rows = [];
+  String? _protocolKey;
   final _startCtrl = TextEditingController();
 
   @override
@@ -27,6 +25,7 @@ class _InjectionPageState extends State<InjectionPage> {
     final n = DateTime.now();
     _startCtrl.text =
         '${n.year.toString().padLeft(4, '0')}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
+    _protocolKey = kProtocols.first.drugKey;
     _load();
   }
 
@@ -42,20 +41,10 @@ class _InjectionPageState extends State<InjectionPage> {
       _error = null;
     });
     try {
-      await widget.api.ensureInjectionReminderRule();
-      final due = await widget.api.listDueReminders();
-      final list = await widget.api.listInjections();
-      final protocols = await widget.api.listProtocols();
-      if (!mounted) return;
-      setState(() {
-        _due = due;
-        _injections = list;
-        _protocols = protocols;
-        if (_selectedProtocol == null && protocols.isNotEmpty) {
-          _selectedProtocol =
-              (protocols.first as Map)['drugKey'] as String?;
-        }
-      });
+      final rows = await _repo.listAll();
+      final pending = await _repo.listPending();
+      await LocalNotifyService.instance.scheduleInjectionReminders(pending);
+      if (mounted) setState(() => _rows = rows);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     } finally {
@@ -64,22 +53,27 @@ class _InjectionPageState extends State<InjectionPage> {
   }
 
   Future<void> _generate() async {
-    final key = _selectedProtocol;
+    final key = _protocolKey;
     if (key == null) return;
+    final protocol = kProtocols.firstWhere((p) => p.drugKey == key);
+    final start = DateTime.tryParse(_startCtrl.text.trim());
+    if (start == null) {
+      setState(() => _error = '起始日期无效');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final r = await widget.api.generateSchedule(
-        drugKey: key,
-        startDate: _startCtrl.text.trim(),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已生成 ${r['count']} 针：${r['drug']}')),
-      );
+      await _repo.clearPendingForDrug(protocol.drugName);
+      await _repo.insertMany(buildSchedule(protocol: protocol, start: start));
       await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('已在本机生成 ${protocol.drugName} 排期')),
+        );
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     } finally {
@@ -87,46 +81,18 @@ class _InjectionPageState extends State<InjectionPage> {
     }
   }
 
-  Future<void> _complete(Map inj) async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      final r = await widget.api.completeInjection(inj['id'] as String);
-      if (!mounted) return;
-      final shifted = r['shifted'];
-      final delay = r['delayDays'];
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            delay == 0
-                ? '已记录今天注射'
-                : '延迟 $delay 天，已顺延 $shifted 针',
-          ),
-        ),
-      );
-      await _load();
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  Future<void> _complete(Map<String, dynamic> row) async {
+    await _repo.complete(row['id'] as String);
+    await _load();
   }
-
-  String _phaseLabel(String? phase) =>
-      phase == 'induction' ? '诱导期' : phase == 'maintenance' ? '维持期' : '';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('注射排期'),
+        title: const Text('注射排期（本地）'),
         actions: [
-          IconButton(
-            onPressed: _busy ? null : _load,
-            icon: const Icon(Icons.refresh),
-          ),
+          IconButton(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh)),
         ],
       ),
       body: RefreshIndicator(
@@ -134,40 +100,20 @@ class _InjectionPageState extends State<InjectionPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            if (_due.isNotEmpty) ...[
-              Text('到期提醒', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              ..._due.map((d) {
-                final m = Map<String, dynamic>.from(d as Map);
-                return Card(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  child: ListTile(
-                    leading: const Icon(Icons.notifications_active),
-                    title: Text('${m['message']}'),
-                    subtitle: Text(
-                      '计划 ${m['plannedDate']} · ${_phaseLabel(m['phase'] as String?)}',
-                    ),
-                  ),
-                );
-              }),
-              const SizedBox(height: 16),
-            ],
             Text('生成排期', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: _selectedProtocol,
+              value: _protocolKey,
               decoration: const InputDecoration(
                 labelText: '药物协议',
                 border: OutlineInputBorder(),
               ),
-              items: _protocols.map((p) {
-                final m = Map<String, dynamic>.from(p as Map);
-                return DropdownMenuItem(
-                  value: m['drugKey'] as String,
-                  child: Text('${m['drugName']}'),
-                );
-              }).toList(),
-              onChanged: (v) => setState(() => _selectedProtocol = v),
+              items: kProtocols
+                  .map((p) => DropdownMenuItem(
+                        value: p.drugKey,
+                        child: Text(p.drugName),
+                      ))
+                  .toList(),
+              onChanged: (v) => setState(() => _protocolKey = v),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -180,19 +126,16 @@ class _InjectionPageState extends State<InjectionPage> {
             const SizedBox(height: 12),
             FilledButton(
               onPressed: _busy ? null : _generate,
-              child: Text(_busy ? '处理中…' : '按协议生成'),
+              child: Text(_busy ? '处理中…' : '本地生成并设提醒'),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             Text('全部计划', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            if (_injections.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(12),
-                child: Text('暂无排期，先选择协议生成'),
-              ),
-            ..._injections.map((raw) {
-              final inj = Map<String, dynamic>.from(raw as Map);
-              final done = inj['actualDate'] != null;
+            if (_rows.isEmpty) const Padding(
+              padding: EdgeInsets.all(12),
+              child: Text('暂无排期'),
+            ),
+            ..._rows.map((row) {
+              final done = row['actual_date'] != null;
               return ListTile(
                 leading: Icon(
                   done ? Icons.check_circle : Icons.schedule,
@@ -200,19 +143,16 @@ class _InjectionPageState extends State<InjectionPage> {
                       ? Theme.of(context).colorScheme.primary
                       : Theme.of(context).colorScheme.outline,
                 ),
-                title: Text(
-                  '${inj['drug']} · ${inj['dose']}',
-                ),
+                title: Text('${row['drug']} · ${row['dose']}'),
                 subtitle: Text(
-                  '计划 ${inj['plannedDate']}'
-                  '${done ? ' · 实际 ${inj['actualDate']}' : ''}'
-                  ' · W${inj['weekNumber']} ${_phaseLabel(inj['phase'] as String?)}'
-                  ' · ${inj['route'] == 'sc' ? '皮下' : '静脉'}',
+                  '计划 ${row['planned_date']}'
+                  '${done ? ' · 实际 ${row['actual_date']}' : ''}'
+                  ' · ${row['phase']} · W${row['week_number']}',
                 ),
                 trailing: done
                     ? null
                     : TextButton(
-                        onPressed: _busy ? null : () => _complete(inj),
+                        onPressed: _busy ? null : () => _complete(row),
                         child: const Text('今天已打'),
                       ),
               );
@@ -220,10 +160,9 @@ class _InjectionPageState extends State<InjectionPage> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
+                child: Text(_error!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error)),
               ),
           ],
         ),

@@ -1,39 +1,29 @@
-# Flutter App（MVP）
+# IBDers Flutter App（本地优先）
 
-## 已实现
+## 原则
 
-| 页面 | 路径 |
+1. **本地权威**：病程写 `ibders_local.db`（sqflite），默认不上传  
+2. **无强制登录**：首启生成 `app_user_uuid`  
+3. **云端解析需单次同意**：弹窗确认后才上传该文件  
+
+## 结构
+
+| 路径 | 职责 |
 |------|------|
-| 登录（手机号+验证码） | `lib/features/auth/login_page.dart` |
-| 检验直传解析 | `lib/features/parse/parse_upload_page.dart` |
-| 检验手动录入 | `lib/features/lab/lab_manual_page.dart` |
-| 注射排期/提醒 | `lib/features/injection/injection_page.dart` |
+| `lib/core/identity/local_identity.dart` | 应用 UUID + 同步开关 |
+| `lib/core/db/local_db.dart` | SQLite schema |
+| `lib/core/db/repositories.dart` | lab/med/injection/symptom 本地仓储 |
+| `lib/core/injection/protocols.dart` | 本地生成注射排期 |
+| `lib/core/notify/local_notify.dart` | 本地注射提醒 |
+| `lib/features/*` | 本地页面（无登录门禁） |
 
-- Token 持久化：`shared_preferences`（`TokenStore`）
-- 会话：`AuthSession`（login / refresh / logout）
-- API：`IbdApiClient` 自动 Bearer，401 自动 refresh 一次
-
-## 首次工程化（需本机 Flutter SDK）
+## 运行
 
 ```bash
 cd apps/mobile
-# 在现有 lib/ 旁生成 android/ios 等平台工程
-flutter create --org com.ibd --project-name ibd_mobile .
-# 若 create 覆盖 pubspec，以仓库版本为准恢复 dependencies
-flutter pub get
+pwsh ./bootstrap.ps1   # 需要 Flutter SDK
 flutter run --dart-define=IBD_API_BASE=http://10.0.2.2:3000
 ```
 
-或运行：
-
-```powershell
-pwsh ./bootstrap.ps1
-```
-
-后端：`DATABASE_URL` + `REDIS_URL` + API；登录验证码开发默认 `123456`。
-
-## 环境变量
-
-| 变量 | 默认 |
-|------|------|
-| `IBD_API_BASE` | `http://10.0.2.2:3000` |
+断网可完成：手动检验、用药、注射排期、症状打卡。  
+「上传解析」需显式同意；未登录时会提示（Phase 2 接可选账号）。
