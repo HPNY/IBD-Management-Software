@@ -17,9 +17,9 @@
 ## P1 — 中（工程化 / 上手）
 
 - [x] **6 compose 依赖解耦** — `parse-worker` 仅 `depends_on: redis`
-- [ ] **7 `STORAGE_LOCAL_DIR` 双场景说明** — Docker `/data/uploads` vs 本机 `var/uploads`
-- [ ] **8 集中配置文档** — `docs/configuration.md`
-- [ ] **9 一键启动** — `Makefile` 或 `scripts/dev.ps1`
+- [x] **7 `STORAGE_LOCAL_DIR` 双场景说明** — [configuration.md](configuration.md)
+- [x] **8 集中配置文档** — `docs/configuration.md`
+- [x] **9 一键启动** — `Makefile` + `scripts/dev.ps1`
 - [x] **10 `PUBLIC_BASE_URL` 生产校验** — env-guard 禁止 localhost/127.0.0.1
 
 ## P2 — 低（一致性）
@@ -27,7 +27,7 @@
 - [x] **11 Node 精确版本** — 根目录 `.nvmrc` = `20.18.0`
 - [x] **12 `RUN_MIGRATIONS` 生产策略** — production 默认不自动跑，需显式 `true`
 - [x] **13 `STORAGE_SECRET` 默认值防护** — env-guard
-- [ ] **14 README 去掉可复制的危险默认值** — 验证码等改由 `.env.example` 承载
+- [x] **14 README 去掉可复制的危险默认值** — 指向 `.env.example` / configuration.md
 
 ---
 
