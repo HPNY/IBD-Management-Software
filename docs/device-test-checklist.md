@@ -56,15 +56,24 @@ flutter run --dart-define=IBD_API_BASE=http://<电脑IP>:3000
 | 14 | 删除云端副本 | 表行删除，开关关闭 |
 | 15 | 导出/导入 JSON | 换机可手动迁移 |
 
-## 4. 已知边界（本轮）
+## 4. SQLCipher 全库加密（P3）
 
-- SQLCipher 全库加密未做（用备份口令 + 敏感字段 API `encryptField` 半成品）  
-- 云端恢复 MAC 为空时会失败，需 P3 后上传过含 mac 的快照  
+| # | 步骤 | 期望 |
+|---|------|------|
+| 16 | 设置页「本地库 SQLCipher」 | cipher_provider 非空；key=已生成 |
+| 17 | adb pull / 文件导出 `ibders_local.db` | 非明文 SQLite（乱码或 header 非 `SQLite format 3`） |
+| 18 | 从明文旧版升级 | 自动 ATTACH rekey；旧库备份为 `.plain.bak` |
+
+## 5. 已知边界（本轮）
+
+- 云端恢复需先上传过含 mac 的快照  
 - iOS 需在 Xcode 里配本地通知权限描述  
+- 密钥在 Keystore/Keychain，卸载重装会丢密钥（本地库不可读；需导出/云恢复）  
 
-## 5. 签字
+## 6. 签字
 
 - [ ] 安卓真机  
 - [ ] iOS 真机  
 - [ ] 飞行模式全绿  
 - [ ] 抓包确认默认零上传  
+- [ ] SQLCipher 密文库验证  
