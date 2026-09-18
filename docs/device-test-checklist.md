@@ -5,9 +5,11 @@
 | 项 | 要求 |
 |----|------|
 | 本机服务 | Postgres `5433` · Redis `6380` · API `3000` · parse-worker `8081` |
-| Flutter SDK | 3.x，`flutter doctor` 通过 |
+| Flutter SDK | 3.x，`flutter doctor` 通过（本机：`C:\dev\flutter`） |
+| Android SDK | `C:\dev\android-sdk`（API 36 + build-tools 36 + platform-tools） |
+| JDK | Microsoft OpenJDK 17（`JAVA_HOME`） |
 | 网络 | 手机与电脑同一局域网；`IBD_API_BASE=http://<电脑IP>:3000` |
-| Android | 模拟器用 `10.0.2.2`；真机用局域网 IP |
+| Android | 模拟器用 `10.0.2.2`；真机用局域网 IP；`adb devices` 可见设备 |
 
 ```bash
 # 后端
