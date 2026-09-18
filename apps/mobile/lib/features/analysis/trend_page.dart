@@ -68,89 +68,92 @@ class _TrendPageState extends State<TrendPage> {
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          SizedBox(
-            height: 44,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: metrics.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, i) {
-                final m = metrics[i];
-                final sel = m == _metric;
-                return ChoiceChip(
-                  label: Text(m, style: const TextStyle(fontSize: 12)),
-                  selected: sel,
-                  onSelected: (_) {
-                    setState(() => _metric = m);
-                    _load();
-                  },
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            height: 240,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: IbdColors.card,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: _series.isEmpty
-                ? Center(
-                    child: Text(
-                      '暂无「$_metric」数据\n可到首页手动录入检验',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: IbdColors.textSecondary),
-                    ),
-                  )
-                : CustomPaint(
-                    painter: _LineChartPainter(
-                      values: values,
-                      minV: minV,
-                      maxV: maxV,
-                      dates: _series.map((e) => '${e['date']}').toList(),
-                    ),
-                    size: const Size(double.infinity, 240),
+      body: _busy
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                SizedBox(
+                  height: 44,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: metrics.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, i) {
+                      final m = metrics[i];
+                      final sel = m == _metric;
+                      return ChoiceChip(
+                        label: Text(m, style: const TextStyle(fontSize: 12)),
+                        selected: sel,
+                        onSelected: (_) {
+                          setState(() => _metric = m);
+                          _load();
+                        },
+                      );
+                    },
                   ),
-          ),
-          const SizedBox(height: 8),
-          if (_series.isNotEmpty)
-            Text(
-              '$_metric：min ${minV.toStringAsFixed(2)} · max ${maxV.toStringAsFixed(2)} · '
-              '${_series.length} 个点',
-              style: const TextStyle(
-                fontSize: 12,
-                color: IbdColors.textSecondary,
-              ),
-            ),
-          const SizedBox(height: 20),
-          const Text(
-            '最近一次核心指标',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-          ),
-          const SizedBox(height: 8),
-          if (_latest.isEmpty)
-            const Text('暂无数据', style: TextStyle(color: IbdColors.textSecondary)),
-          ..._latest.entries.map((e) {
-            final v = e.value['value'];
-            return Card(
-              child: ListTile(
-                dense: true,
-                title: Text(e.key),
-                trailing: Text(
-                  '$v ${e.value['unit'] ?? ''}',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
-                subtitle: Text('${e.value['date']}'),
-              ),
-            );
-          }),
-        ],
-      ),
+                const SizedBox(height: 16),
+                Container(
+                  height: 240,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: IbdColors.card,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: _series.isEmpty
+                      ? Center(
+                          child: Text(
+                            '暂无「$_metric」数据\n可到首页手动录入检验',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: IbdColors.textSecondary),
+                          ),
+                        )
+                      : CustomPaint(
+                          painter: _LineChartPainter(
+                            values: values,
+                            minV: minV,
+                            maxV: maxV,
+                            dates: _series.map((e) => '${e['date']}').toList(),
+                          ),
+                          size: const Size(double.infinity, 240),
+                        ),
+                ),
+                const SizedBox(height: 8),
+                if (_series.isNotEmpty)
+                  Text(
+                    '$_metric：min ${minV.toStringAsFixed(2)} · max ${maxV.toStringAsFixed(2)} · '
+                    '${_series.length} 个点',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: IbdColors.textSecondary,
+                    ),
+                  ),
+                const SizedBox(height: 20),
+                const Text(
+                  '最近一次核心指标',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                if (_latest.isEmpty)
+                  const Text('暂无数据',
+                      style: TextStyle(color: IbdColors.textSecondary)),
+                ..._latest.entries.map((e) {
+                  final v = e.value['value'];
+                  return Card(
+                    child: ListTile(
+                      dense: true,
+                      title: Text(e.key),
+                      trailing: Text(
+                        '$v ${e.value['unit'] ?? ''}',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text('${e.value['date']}'),
+                    ),
+                  );
+                }),
+              ],
+            ),
     );
   }
 }

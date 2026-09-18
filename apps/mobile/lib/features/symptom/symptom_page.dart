@@ -232,7 +232,7 @@ class _SymptomPageState extends State<SymptomPage> {
                 _SwitchRow(
                   label: '便血',
                   value: _blood,
-                  activeColor: IbdColors.danger,
+                  thumbColor: IbdColors.danger,
                   onChanged: (v) => setState(() {
                     _blood = v;
                     _saved = false;
@@ -396,13 +396,13 @@ class _SwitchRow extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onChanged,
-    this.activeColor,
+    this.thumbColor,
   });
 
   final String label;
   final bool value;
   final ValueChanged<bool> onChanged;
-  final Color? activeColor;
+  final Color? thumbColor;
 
   @override
   Widget build(BuildContext context) {
@@ -410,7 +410,7 @@ class _SwitchRow extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
       value: value,
-      activeColor: activeColor ?? IbdColors.primary,
+      activeThumbColor: thumbColor ?? IbdColors.primary,
       onChanged: onChanged,
     );
   }

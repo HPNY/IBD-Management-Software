@@ -7,7 +7,7 @@ class LocalSkillStore {
   static const _kPrefix = 'ibd_skill_v1_';
 
   static String key(String hospital, String reportType) =>
-      '$_kPrefix${hospital}__${reportType}';
+      '$_kPrefix${hospital}__$reportType';
 
   static Future<void> saveFromConfirmed({
     required String hospital,
@@ -37,7 +37,7 @@ class LocalSkillStore {
       'date': date,
       'items': rules,
     };
-    final existing = await sp.getString(key(hospital, reportType));
+    final existing = sp.getString(key(hospital, reportType));
     var version = 1;
     if (existing != null) {
       try {

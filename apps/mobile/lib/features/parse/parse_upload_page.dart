@@ -160,7 +160,7 @@ class _ParseUploadPageState extends State<ParseUploadPage> {
                 .toList(),
           );
           if (mounted) {
-            setState(() => _stage = '${_stage} · 已缓存本地 Skill');
+            setState(() => _stage = '$_stage · 已缓存本地 Skill');
           }
         }
       }

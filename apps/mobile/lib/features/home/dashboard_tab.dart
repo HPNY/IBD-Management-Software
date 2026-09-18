@@ -7,9 +7,6 @@ import '../../core/ui/theme.dart';
 import '../lab/lab_manual_page.dart';
 import '../medication/medication_page.dart';
 import '../parse/parse_upload_page.dart';
-import '../settings/settings_page.dart';
-import '../symptom/symptom_page.dart';
-import '../injection/injection_page.dart';
 
 /// 首页 Tab：仪表盘 + 快捷入口（不负责底部导航壳）
 class DashboardTab extends StatefulWidget {
