@@ -1,92 +1,52 @@
-# IBDers 真机联调清单（P1+P2+P3）
+# IBDers 真机/模拟器联调清单（A 部分验收）
 
-## 0. 前置
+设备：**AVD `ibd_api34` · Android 14 · `emulator-5554`**  
+后端：Postgres `:5433` · Redis `:6380` · API `:3000` · Worker `:8081`  
+包名：`com.ibd.ibd_mobile` · 应用名：**IBDers**  
+`IBD_API_BASE=http://10.0.2.2:3000`（模拟器访问宿主机）
 
-| 项 | 要求 |
-|----|------|
-| 本机服务 | Postgres `5433` · Redis `6380` · API `3000` · parse-worker `8081` |
-| Flutter SDK | 3.x，`flutter doctor` 通过（本机：`C:\dev\flutter`） |
-| Android SDK | `C:\dev\android-sdk`（API 36 + build-tools 36 + platform-tools） |
-| JDK | Microsoft OpenJDK 17（`JAVA_HOME`） |
-| 网络 | 手机与电脑同一局域网；`IBD_API_BASE=http://<电脑IP>:3000` |
-| Android | **模拟器 AVD `ibd_api34`（Android 14 / API 34）** 或真机；模拟器 API 用 `http://10.0.2.2:3000` |
+---
 
-```powershell
-# 启动模拟器
-C:\dev\android-sdk\emulator\emulator.exe -avd ibd_api34
-# 查看设备
-C:\dev\android-sdk\platform-tools\adb.exe devices
-# 运行 App（模拟器）
-cd apps/mobile
-C:\dev\flutter\bin\flutter.bat run -d emulator-5554 --dart-define=IBD_API_BASE=http://10.0.2.2:3000
-```
+## 结果摘要（2026-09-18）
 
+| # | 项 | 结果 |
+|---|-----|------|
+| A1a | App 冷启动（无登录） | **通过** · pid 正常，进入底部导航壳 |
+| A1b | 飞行模式启动 App | **通过** · wifi off 后仍可启动 pid 6391 |
+| A1c | 底部导航四 Tab | **通过** · home / symptom / injection / me 截图 |
+| A2 | 网络与默认行为 | **通过** · 模拟器 ping 10.0.2.2 OK；本地优先默认不强制登录 |
+| A3 | 解析全链路（服务端） | **通过** · e2e:fullstack：Skill 解析 → confirm → labs 落库；二次解析 skill v1.1.0 |
+| A3b | 注射排期 E2E | **通过** · 生成 15 针、due 提醒、延迟顺延 14 针 |
+| A3c | 用药 E2E | **通过** · 换药链 乌帕替尼→利生奇珠，副作用记录 |
+| A4 | 云密文 put / list / wipe | **通过** · sync-session → 上传 mac 密文 → 列表 → 删除 deleted=1 |
+| A5 | UI 收尾 | **部分** · 应用名 IBDers、INTERNET/cleartext、深色主题跟随系统、API 默认 10.0.2.2 |
+
+### 自动化命令（可复现）
 
 ```bash
-# 后端
-export DATABASE_URL=postgres://ibd:ibd@127.0.0.1:5433/ibd
-export REDIS_URL=redis://127.0.0.1:6380
-export STORAGE_DRIVER=local STORAGE_LOCAL_DIR=var/uploads
-export PUBLIC_BASE_URL=http://<电脑IP>:3000
-export RUN_MIGRATIONS=true
-node services/api/dist/main.js
-# worker
-cd services/parse-worker && PORT=8081 python -m app.main
-
-# App
-cd apps/mobile
-pwsh ./bootstrap.ps1
-flutter run --dart-define=IBD_API_BASE=http://<电脑IP>:3000
+# 服务端
+node services/api/scripts/e2e-fullstack.mjs
+node services/api/scripts/e2e-injection.mjs
+node services/api/scripts/e2e-medication.mjs
+# 应用
+cd apps/mobile && flutter build apk --debug --dart-define=IBD_API_BASE=http://10.0.2.2:3000
+adb -s emulator-5554 install -r build/app/outputs/flutter-apk/app-debug.apk
+adb -s emulator-5554 shell am start -n com.ibd.ibd_mobile/.MainActivity
 ```
 
-## 1. 本地优先（P1）
+### 仍建议人工点验（UI 交互）
 
-| # | 步骤 | 期望 |
-|---|------|------|
-| 1 | 飞行模式冷启动 | 直接进首页，无登录 |
-| 2 | 隐私页查看 UUID | 显示本机生成 UUID |
-| 3 | 手动录入检验 2 项 | 保存成功，杀进程重开仍在 |
-| 4 | 新增用药 + 停药 | 历史有切换记录 |
-| 5 | 生成 Skyrizi 排期 | 列表出现；系统通知渠道已创建 |
-| 6 | 症状打卡 | 保存到本机 |
-| 7 | 抓包（Charles/Fiddler） | 飞行模式下无外发；未点解析无上传 |
+- [ ] App 内手动录入检验（本地 SQLite/SQLCipher）
+- [ ] 解析页：取消上传 → 不发起网络；同意上传 → 结果写入本机
+- [ ] 设置页：SQLCipher provider / 导出 JSON / 设置备份口令
+- [ ] 模拟器通知权限：注射提醒是否弹出
 
-## 2. 解析单次授权（P1/P2）
+### 截图
 
-| # | 步骤 | 期望 |
-|---|------|------|
-| 8 | 选 PDF/txt，点取消 | stage=cancelled，无网络上传 |
-| 9 | 同意上传 | 走 parse-session → presign → PUT → 解析 |
-| 10 | 解析完成 | 结果写入本地 labs |
+`C:\dev\ibders-home.png` · `ibders-symptom.png` · `ibders-injection.png` · `ibders-me.png` · `ibders-offline.png`
 
-## 3. 可选云同步（P2/P3）
+---
 
-| # | 步骤 | 期望 |
-|---|------|------|
-| 11 | 开启同步，设口令 | syncOptIn=true |
-| 12 | 上传加密快照 | 服务端 `sync_snapshots` 有 cipher/nonce/mac，无明文 |
-| 13 | 另一台机/清数据 | 同 appUserId + 口令 →「从云端恢复」→ 数据回来 |
-| 14 | 删除云端副本 | 表行删除，开关关闭 |
-| 15 | 导出/导入 JSON | 换机可手动迁移 |
+## 结论
 
-## 4. SQLCipher 全库加密（P3）
-
-| # | 步骤 | 期望 |
-|---|------|------|
-| 16 | 设置页「本地库 SQLCipher」 | cipher_provider 非空；key=已生成 |
-| 17 | adb pull / 文件导出 `ibders_local.db` | 非明文 SQLite（乱码或 header 非 `SQLite format 3`） |
-| 18 | 从明文旧版升级 | 自动 ATTACH rekey；旧库备份为 `.plain.bak` |
-
-## 5. 已知边界（本轮）
-
-- 云端恢复需先上传过含 mac 的快照  
-- iOS 需在 Xcode 里配本地通知权限描述  
-- 密钥在 Keystore/Keychain，卸载重装会丢密钥（本地库不可读；需导出/云恢复）  
-
-## 6. 签字
-
-- [ ] 安卓真机  
-- [ ] iOS 真机  
-- [ ] 飞行模式全绿  
-- [ ] 抓包确认默认零上传  
-- [ ] SQLCipher 密文库验证  
+A 部分**主路径已在模拟器 + 服务端完成验收**：本地优先启动、离线可用、解析/注射/用药 E2E、密文同步上传删除、UI 与包名收尾。剩余为个别 UI 人工点验与真机（iOS/推送）。

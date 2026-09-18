@@ -26,6 +26,8 @@ class IbdApp extends StatelessWidget {
       title: 'IBDers',
       debugShowCheckedModeBanner: false,
       theme: buildIbdTheme(),
+      darkTheme: buildIbdDarkTheme(),
+      themeMode: ThemeMode.system,
       home: const ShellPage(),
     );
   }

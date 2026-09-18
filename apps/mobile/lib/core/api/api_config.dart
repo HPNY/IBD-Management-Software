@@ -6,6 +6,7 @@ class ApiConfig {
 
   static const defaultBaseUrl = String.fromEnvironment(
     'IBD_API_BASE',
+    // Android 模拟器访问宿主机；真机请 --dart-define 覆盖
     defaultValue: 'http://10.0.2.2:3000',
   );
 

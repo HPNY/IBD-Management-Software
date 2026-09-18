@@ -101,6 +101,38 @@ ThemeData buildIbdTheme() {
   );
 }
 
+/// 深色模式：系统跟随。
+ThemeData buildIbdDarkTheme() {
+  final base = ThemeData(
+    useMaterial3: true,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: IbdColors.primary,
+      primary: const Color(0xFF2DD4BF),
+      secondary: IbdColors.accent,
+      brightness: Brightness.dark,
+    ),
+    scaffoldBackgroundColor: const Color(0xFF0B1220),
+    fontFamily: 'PingFang SC',
+  );
+  return base.copyWith(
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      titleTextStyle: TextStyle(
+        color: Colors.white,
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+    cardTheme: CardThemeData(
+      color: const Color(0xFF151E2E),
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      margin: EdgeInsets.zero,
+    ),
+  );
+}
+
 class IbdSectionTitle extends StatelessWidget {
   const IbdSectionTitle(this.text, {super.key, this.trailing});
 
@@ -109,6 +141,7 @@ class IbdSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
       child: Row(
@@ -116,10 +149,10 @@ class IbdSectionTitle extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: IbdColors.textPrimary,
+                color: isDark ? Colors.white : IbdColors.textPrimary,
               ),
             ),
           ),
