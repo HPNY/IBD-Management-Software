@@ -134,14 +134,13 @@ export class AuthService {
   /**
    * 解析短时会话：仅用于「同意上传」后的 PDF 解析链路，
    * 不要求长期账号；scope=parse_session。
+   * 会在 users 表登记一条 session 用户，保证 patient.userId 外键可用。
    */
-  issueParseSession(input: { appUserId: string; deviceId?: string }) {
-    if (!input.appUserId || input.appUserId.length < 8) {
-      throw new BadRequestException("appUserId required");
-    }
+  async issueParseSession(input: { appUserId: string; deviceId?: string }) {
+    const user = await this.ensureSessionUser(input.appUserId);
     const accessToken = this.jwt.sign(
       {
-        userId: input.appUserId,
+        userId: user.id,
         phone: null,
         deviceId: input.deviceId,
         scope: "parse_session",
@@ -159,13 +158,11 @@ export class AuthService {
   }
 
   /** 密文同步短时会话（scope=sync_ciphertext） */
-  issueSyncSession(input: { appUserId: string; deviceId?: string }) {
-    if (!input.appUserId || input.appUserId.length < 8) {
-      throw new BadRequestException("appUserId required");
-    }
+  async issueSyncSession(input: { appUserId: string; deviceId?: string }) {
+    const user = await this.ensureSessionUser(input.appUserId);
     const accessToken = this.jwt.sign(
       {
-        userId: input.appUserId,
+        userId: user.id,
         phone: null,
         deviceId: input.deviceId,
         scope: "sync_ciphertext",
@@ -180,6 +177,20 @@ export class AuthService {
       scope: "sync_ciphertext",
       appUserId: input.appUserId,
     };
+  }
+
+  /** 将 app_user_uuid 映射为 users 行（openid 存 uuid，非真实微信）。 */
+  private async ensureSessionUser(appUserId: string): Promise<UserEntity> {
+    if (!appUserId || appUserId.length < 8) {
+      throw new BadRequestException("appUserId required");
+    }
+    const existing = await this.users.findOne({
+      where: { wechatOpenId: appUserId },
+    });
+    if (existing) return existing;
+    return this.users.save(
+      this.users.create({ wechatOpenId: appUserId, status: "active" }),
+    );
   }
 
   private hash(token: string): string {

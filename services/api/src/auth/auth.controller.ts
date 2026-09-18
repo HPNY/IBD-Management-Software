@@ -40,14 +40,14 @@ export class AuthController {
   @Public()
   @Post("parse-session")
   parseSession(@Body() body: { appUserId: string; deviceId?: string }) {
-    return this.auth.issueParseSession(body);
+    return this.auth.issueParseSession(body) as Promise<unknown>;
   }
 
   /** 密文同步短时会话 */
   @Public()
   @Post("sync-session")
   syncSession(@Body() body: { appUserId: string; deviceId?: string }) {
-    return this.auth.issueSyncSession(body);
+    return this.auth.issueSyncSession(body) as Promise<unknown>;
   }
 
   @ApiBearerAuth()

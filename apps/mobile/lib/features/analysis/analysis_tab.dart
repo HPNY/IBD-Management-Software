@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/ui/theme.dart';
 import 'clinical_pages.dart';
+import 'flare_page.dart';
 import 'timeline_page.dart';
 import 'trend_page.dart';
 
@@ -65,6 +66,16 @@ class AnalysisTab extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const VisitSummaryPage()),
+            ),
+          ),
+          _NavCard(
+            icon: Icons.warning_amber_rounded,
+            title: '发作预警',
+            subtitle: '便血/剧痛/连续恶化 · 三级评估',
+            color: const Color(0xFFEF4444),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FlarePage()),
             ),
           ),
         ],
