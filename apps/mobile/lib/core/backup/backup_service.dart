@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../db/repositories.dart';
+import '../skill/local_skill_store.dart';
 import 'backup_crypto.dart';
 
 /// 本地导出/导入 + 可选云密文快照。
@@ -30,19 +31,19 @@ class BackupService {
   }
 
   Future<Map<String, dynamic>> exportAll() async {
+    final skillCount = await LocalSkillStore.count();
     return {
       'format': 'ibders.backup.v1',
       'appUserId': appUserId,
       'exportedAt': DateTime.now().toIso8601String(),
       'labs': await labs.listAll(),
       'medications': await meds.listAll(),
-      'adverseEvents': <Map<String, dynamic>>[],
       'injections': await injections.listAll(),
       'symptoms': await symptoms.listAll(),
+      'localSkillCount': skillCount,
     };
   }
 
-  /// 导出到应用文档目录，返回文件路径。
   Future<String> exportToFile() async {
     final data = await exportAll();
     final dir = await getApplicationDocumentsDirectory();
@@ -56,7 +57,6 @@ class BackupService {
     return file.path;
   }
 
-  /// 从本地备份 JSON 导入（用户自选文件内容）。
   Future<void> importFromJsonString(String raw) async {
     final data = jsonDecode(raw) as Map<String, dynamic>;
     if (data['format'] != 'ibders.backup.v1') {
@@ -66,7 +66,8 @@ class BackupService {
     for (final lab in labList) {
       final m = Map<String, dynamic>.from(lab as Map);
       await labs.insert(
-        date: m['date'] as String? ?? DateTime.now().toIso8601String().substring(0, 10),
+        date: m['date'] as String? ??
+            DateTime.now().toIso8601String().substring(0, 10),
         hospital: m['hospital'] as String?,
         source: (m['source'] as String?) ?? 'import',
         items: ((m['items'] as List?) ?? [])
@@ -84,7 +85,9 @@ class BackupService {
         'dosage': m['dosage'] ?? '',
         'frequency': m['frequency'] ?? '',
         'route': m['route'] ?? 'oral',
-        'startDate': m['start_date'] ?? m['startDate'] ?? DateTime.now().toIso8601String().substring(0, 10),
+        'startDate': m['start_date'] ??
+            m['startDate'] ??
+            DateTime.now().toIso8601String().substring(0, 10),
         'status': m['status'] ?? 'active',
         'reason': m['reason'],
       });
@@ -118,7 +121,6 @@ class BackupService {
     );
   }
 
-  /// 换机：从云端密文解密并导入本地库。
   Future<int> restoreFromCloud({
     required String passphrase,
     required String cipher,
@@ -137,26 +139,36 @@ class BackupService {
         ((data['medications'] as List?)?.length ?? 0) +
         ((data['injections'] as List?)?.length ?? 0);
   }
+}
 
-  /// 本地敏感文本字段加密（手术描述等）：返回 base64 密文。
-  Future<String> encryptField(String plain, String passphrase) async {
-    final box = await BackupCrypto.encryptJson(
-      {'v': plain},
-      passphrase: passphrase,
-      appUserId: appUserId,
-    );
-    return jsonEncode(box);
-  }
+/// 本地敏感文本字段加密（停药原因等）：返回 JSON 包 {cipher,nonce,mac}
+Future<String> encryptSensitiveField(
+  String plain,
+  String passphrase,
+  String appUserId,
+) async {
+  if (plain.isEmpty) return '';
+  final box = await BackupCrypto.encryptJson(
+    {'v': plain},
+    passphrase: passphrase,
+    appUserId: appUserId,
+  );
+  return jsonEncode(box);
+}
 
-  Future<String> decryptField(String packed, String passphrase) async {
-    final map = jsonDecode(packed) as Map<String, dynamic>;
-    final data = await BackupCrypto.decryptJson(
-      cipherB64: map['cipher'] as String,
-      nonceB64: map['nonce'] as String,
-      macB64: map['mac'] as String,
-      passphrase: passphrase,
-      appUserId: appUserId,
-    );
-    return data['v'] as String;
-  }
+Future<String> decryptSensitiveField(
+  String packed,
+  String passphrase,
+  String appUserId,
+) async {
+  if (packed.isEmpty) return '';
+  final map = jsonDecode(packed) as Map<String, dynamic>;
+  final data = await BackupCrypto.decryptJson(
+    cipherB64: map['cipher'] as String,
+    nonceB64: map['nonce'] as String,
+    macB64: map['mac'] as String,
+    passphrase: passphrase,
+    appUserId: appUserId,
+  );
+  return data['v'] as String? ?? '';
 }

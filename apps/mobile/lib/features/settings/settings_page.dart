@@ -8,6 +8,7 @@ import '../../core/api/sync_api.dart';
 import '../../core/backup/backup_service.dart';
 import '../../core/db/local_db.dart';
 import '../../core/identity/local_identity.dart';
+import '../../core/skill/local_skill_store.dart';
 import '../../core/ui/theme.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -257,6 +258,33 @@ class _SettingsPageState extends State<SettingsPage> {
                 ],
               ),
             ),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.psychology_alt_rounded),
+              title: const Text('AI 解析（可选）'),
+              subtitle: const Text(
+                '未配置 LLM_API_KEY 时走 Skill；否则 Skill 未命中走 LLM',
+              ),
+              trailing: FutureBuilder<int>(
+                future: LocalSkillStore.count(),
+                builder: (c, snap) => Text(
+                  'Skill ${snap.data ?? 0}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.notifications_active_rounded),
+              title: const Text('注射提醒'),
+              subtitle: const Text(
+                '本地通知（提前 3 天）；厂商推送 FCM 后续接入',
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           Text('应用标识（本机）', style: Theme.of(context).textTheme.titleSmall),
           SelectableText(identity.uuid),
           const SizedBox(height: 12),

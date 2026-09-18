@@ -10,6 +10,7 @@ import '../../core/api/sync_api.dart';
 import '../../core/auth/auth_session.dart';
 import '../../core/db/repositories.dart';
 import '../../core/identity/local_identity.dart';
+import '../../core/skill/local_skill_store.dart';
 import '../../core/storage/direct_upload_service.dart';
 
 /// 解析上传：默认不上传；用户明确同意后才调用云端（短时 parse_session）。
@@ -131,16 +132,37 @@ class _ParseUploadPageState extends State<ParseUploadPage> {
       });
 
       if (done.items.isNotEmpty) {
+        final hospital = _hospitalCtrl.text.trim();
+        final reportType = _reportTypeCtrl.text.trim();
+        final mapped = done.items
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
         await _labRepo.insert(
           date: DateTime.now().toIso8601String().substring(0, 10),
-          hospital: _hospitalCtrl.text.trim().isEmpty
-              ? null
-              : _hospitalCtrl.text.trim(),
+          hospital: hospital.isEmpty ? null : hospital,
           source: 'ai',
-          items: done.items
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList(),
+          items: mapped,
         );
+        // C2：确认结果写回端上 Skill 缓存
+        if (hospital.isNotEmpty && reportType.isNotEmpty) {
+          await LocalSkillStore.saveFromConfirmed(
+            hospital: hospital,
+            reportType: reportType,
+            items: mapped
+                .map((e) => {
+                      'nameNorm': e['name'] ?? e['nameNorm'],
+                      'nameRaw': e['name_raw'] ?? e['nameRaw'],
+                      'value': e['value'],
+                      'unit': e['unit'],
+                      'refMin': e['ref_min'] ?? e['refMin'],
+                      'refMax': e['ref_max'] ?? e['refMax'],
+                    })
+                .toList(),
+          );
+          if (mounted) {
+            setState(() => _stage = '${_stage} · 已缓存本地 Skill');
+          }
+        }
       }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
