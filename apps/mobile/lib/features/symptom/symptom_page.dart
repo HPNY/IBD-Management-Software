@@ -49,6 +49,14 @@ class _SymptomPageState extends State<SymptomPage> {
     return IbdColors.danger;
   }
 
+  String _painHint(double v) {
+    if (v <= 1) return '几乎没有腹痛';
+    if (v <= 3) return '轻微，可正常活动';
+    if (v <= 6) return '中等，有点难受但能忍';
+    if (v <= 8) return '较重，影响活动或食欲';
+    return '剧烈，建议尽快就医评估';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -87,6 +95,14 @@ class _SymptomPageState extends State<SymptomPage> {
             ),
             child: Column(
               children: [
+                Text(
+                  _painHint(_pain),
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: IbdColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     activeTrackColor: _painColor(_pain),
@@ -109,9 +125,9 @@ class _SymptomPageState extends State<SymptomPage> {
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('无痛', style: _hintStyle),
-                    Text('可忍受', style: _hintStyle),
-                    Text('剧痛', style: _hintStyle),
+                    Text('0 不痛', style: _hintStyle),
+                    Text('5 中等', style: _hintStyle),
+                    Text('10 最痛', style: _hintStyle),
                   ],
                 ),
               ],
@@ -128,22 +144,32 @@ class _SymptomPageState extends State<SymptomPage> {
                 color: IbdColors.primary,
               ),
             ),
-            child: SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                activeTrackColor: IbdColors.primary,
-                thumbColor: IbdColors.primary,
-                inactiveTrackColor: const Color(0xFFE2E8F0),
-                trackHeight: 6,
-              ),
-              child: Slider(
-                value: _diarrhea.toDouble(),
-                max: 15,
-                divisions: 15,
-                onChanged: (v) => setState(() {
-                  _diarrhea = v.round();
-                  _saved = false;
-                }),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '今天一共拉了几次肚子？（指稀便/水样便次数）',
+                  style: _hintStyle,
+                ),
+                const SizedBox(height: 6),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: IbdColors.primary,
+                    thumbColor: IbdColors.primary,
+                    inactiveTrackColor: const Color(0xFFE2E8F0),
+                    trackHeight: 6,
+                  ),
+                  child: Slider(
+                    value: _diarrhea.toDouble(),
+                    max: 15,
+                    divisions: 15,
+                    onChanged: (v) => setState(() {
+                      _diarrhea = v.round();
+                      _saved = false;
+                    }),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 14),
@@ -218,8 +244,13 @@ class _SymptomPageState extends State<SymptomPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '4 型为理想便型（深绿提示）',
+                  '选最像今天大便外观的类型。4 型（深绿）为较理想状态。',
                   style: _hintStyle.copyWith(color: IbdColors.primaryDark),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  '1 坚果样 · 2 硬块 · 3 有裂纹 · 4 光滑条 · 5 软团 · 6 糊状 · 7 水样',
+                  style: _hintStyle,
                 ),
               ],
             ),
@@ -231,6 +262,7 @@ class _SymptomPageState extends State<SymptomPage> {
               children: [
                 _SwitchRow(
                   label: '便血',
+                  hint: '纸上有血、滴血或大便带血',
                   value: _blood,
                   thumbColor: IbdColors.danger,
                   onChanged: (v) => setState(() {
@@ -241,6 +273,7 @@ class _SymptomPageState extends State<SymptomPage> {
                 const Divider(height: 1),
                 _SwitchRow(
                   label: '恶心',
+                  hint: '想吐或胃里翻腾',
                   value: _nausea,
                   onChanged: (v) => setState(() {
                     _nausea = v;
@@ -250,6 +283,7 @@ class _SymptomPageState extends State<SymptomPage> {
                 const Divider(height: 1),
                 _SwitchRow(
                   label: '疲劳感明显',
+                  hint: '比平时更没劲、容易累',
                   value: _fatigueFlag,
                   onChanged: (v) => setState(() {
                     _fatigueFlag = v;
@@ -275,36 +309,46 @@ class _SymptomPageState extends State<SymptomPage> {
           const SizedBox(height: 14),
           _SectionCard(
             title: '整体感受',
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _FeelingChip(
-                  label: '比昨天差',
-                  selected: _feeling == 'worse',
-                  color: IbdColors.danger,
-                  onTap: () => setState(() {
-                    _feeling = 'worse';
-                    _saved = false;
-                  }),
+                const Text(
+                  '和昨天比，今天整体怎么样？选一个最接近的。',
+                  style: _hintStyle,
                 ),
-                const SizedBox(width: 8),
-                _FeelingChip(
-                  label: '差不多',
-                  selected: _feeling == 'same',
-                  color: IbdColors.warning,
-                  onTap: () => setState(() {
-                    _feeling = 'same';
-                    _saved = false;
-                  }),
-                ),
-                const SizedBox(width: 8),
-                _FeelingChip(
-                  label: '比昨天好',
-                  selected: _feeling == 'better',
-                  color: IbdColors.success,
-                  onTap: () => setState(() {
-                    _feeling = 'better';
-                    _saved = false;
-                  }),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _FeelingChip(
+                      label: '比昨天差',
+                      selected: _feeling == 'worse',
+                      color: IbdColors.danger,
+                      onTap: () => setState(() {
+                        _feeling = 'worse';
+                        _saved = false;
+                      }),
+                    ),
+                    const SizedBox(width: 8),
+                    _FeelingChip(
+                      label: '差不多',
+                      selected: _feeling == 'same',
+                      color: IbdColors.warning,
+                      onTap: () => setState(() {
+                        _feeling = 'same';
+                        _saved = false;
+                      }),
+                    ),
+                    const SizedBox(width: 8),
+                    _FeelingChip(
+                      label: '比昨天好',
+                      selected: _feeling == 'better',
+                      color: IbdColors.success,
+                      onTap: () => setState(() {
+                        _feeling = 'better';
+                        _saved = false;
+                      }),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -397,18 +441,21 @@ class _SwitchRow extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.thumbColor,
+    this.hint,
   });
 
   final String label;
   final bool value;
   final ValueChanged<bool> onChanged;
   final Color? thumbColor;
+  final String? hint;
 
   @override
   Widget build(BuildContext context) {
     return SwitchListTile(
       contentPadding: EdgeInsets.zero,
       title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: hint == null ? null : Text(hint!, style: const TextStyle(fontSize: 12)),
       value: value,
       activeThumbColor: thumbColor ?? IbdColors.primary,
       onChanged: onChanged,
