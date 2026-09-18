@@ -22,7 +22,6 @@ class ParseUploadPage extends StatefulWidget {
 
 class _ParseUploadPageState extends State<ParseUploadPage> {
   IbdApiClient? _api;
-  AuthSession? _session;
   final _labRepo = LabRepository();
   final _hospitalCtrl = TextEditingController();
   final _reportTypeCtrl = TextEditingController(text: '血常规');
@@ -108,7 +107,6 @@ class _ParseUploadPageState extends State<ParseUploadPage> {
       final token = sessionJson['accessToken'] as String;
       // 注入短时 token 到会话
       final session = AuthSession.parseSession(token, identity.uuid);
-      _session = session;
       _api = IbdApiClient(config, session);
 
       final upload = DirectUploadService(_api!);

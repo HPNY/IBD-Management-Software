@@ -40,6 +40,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _setPassphraseAndSync() async {
     final ctrl = TextEditingController();
+    final identity = context.read<LocalIdentity>();
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -59,7 +60,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
     if (ok != true || ctrl.text.trim().isEmpty) return;
     await _backup.savePassphrase(ctrl.text.trim());
-    await context.read<LocalIdentity>().setSyncOptIn(true);
+    await identity.setSyncOptIn(true);
     if (mounted) setState(() => _message = '已开启云同步（密文）');
   }
 

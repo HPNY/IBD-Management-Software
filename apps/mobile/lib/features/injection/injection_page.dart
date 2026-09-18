@@ -102,7 +102,7 @@ class _InjectionPageState extends State<InjectionPage> {
           children: [
             Text('生成排期', style: Theme.of(context).textTheme.titleMedium),
             DropdownButtonFormField<String>(
-              value: _protocolKey,
+              initialValue: _protocolKey,
               decoration: const InputDecoration(
                 labelText: '药物协议',
                 border: OutlineInputBorder(),

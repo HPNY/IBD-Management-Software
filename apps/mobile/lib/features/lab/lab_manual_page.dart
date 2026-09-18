@@ -10,10 +10,10 @@ class LabManualPage extends StatefulWidget {
 }
 
 class _Row {
-  _Row({this.name = '', this.value = '', this.unit = ''});
-  String name;
-  String value;
-  String unit;
+  _Row();
+  String name = '';
+  String value = '';
+  String unit = '';
 }
 
 class _LabManualPageState extends State<LabManualPage> {

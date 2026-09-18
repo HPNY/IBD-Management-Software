@@ -143,7 +143,6 @@ class InjectionRepository {
   }
 
   Future<List<Map<String, dynamic>>> listPending({int withinDays = 60}) async {
-    final db = await _db;
     final all = await listAll();
     final now = DateTime.now();
     return all.where((r) {

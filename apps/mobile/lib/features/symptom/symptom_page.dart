@@ -16,7 +16,7 @@ class _SymptomPageState extends State<SymptomPage> {
   int _stoolType = 4;
   bool _blood = false;
   bool _nausea = false;
-  String _feeling = 'same';
+  String _feeling = 'same'; // ignore: prefer_final_fields
   bool _saved = false;
 
   Future<void> _save() async {

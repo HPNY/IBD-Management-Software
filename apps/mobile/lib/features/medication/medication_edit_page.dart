@@ -13,27 +13,35 @@ class MedicationEditPage extends StatefulWidget {
 }
 
 class _MedicationEditPageState extends State<MedicationEditPage> {
-  late final _drugCtrl =
-      TextEditingController(text: widget.initial?['drugName'] as String? ?? '');
-  late final _brandCtrl =
-      TextEditingController(text: widget.initial?['brandName'] as String? ?? '');
-  late final _categoryCtrl =
-      TextEditingController(text: widget.initial?['category'] as String? ?? '');
-  late final _dosageCtrl =
-      TextEditingController(text: widget.initial?['dosage'] as String? ?? '');
-  late final _freqCtrl =
-      TextEditingController(text: widget.initial?['frequency'] as String? ?? '');
-  late final _reasonCtrl =
-      TextEditingController(text: widget.initial?['reason'] as String? ?? '');
-  late final _startCtrl = TextEditingController(
-    text: (widget.initial?['startDate'] as String?) ??
-        DateTime.now().toIso8601String().slice(0, 10),
-  );
-  String _route = (widget.initial?['route'] as String?) ?? 'oral';
+  late final TextEditingController _drugCtrl;
+  late final TextEditingController _brandCtrl;
+  late final TextEditingController _categoryCtrl;
+  late final TextEditingController _dosageCtrl;
+  late final TextEditingController _freqCtrl;
+  late final TextEditingController _reasonCtrl;
+  late final TextEditingController _startCtrl;
+  late String _route;
   bool _busy = false;
   String? _error;
 
   bool get _isEdit => widget.initial != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final init = widget.initial;
+    _drugCtrl = TextEditingController(text: init?['drugName'] as String? ?? '');
+    _brandCtrl = TextEditingController(text: init?['brandName'] as String? ?? '');
+    _categoryCtrl = TextEditingController(text: init?['category'] as String? ?? '');
+    _dosageCtrl = TextEditingController(text: init?['dosage'] as String? ?? '');
+    _freqCtrl = TextEditingController(text: init?['frequency'] as String? ?? '');
+    _reasonCtrl = TextEditingController(text: init?['reason'] as String? ?? '');
+    _startCtrl = TextEditingController(
+      text: (init?['startDate'] as String?) ??
+          DateTime.now().toIso8601String().substring(0, 10),
+    );
+    _route = (init?['route'] as String?) ?? 'oral';
+  }
 
   @override
   void dispose() {
@@ -143,7 +151,7 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _route,
+            initialValue: _route,
             decoration: const InputDecoration(
               labelText: '给药方式',
               border: OutlineInputBorder(),

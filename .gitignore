@@ -17,3 +17,6 @@ coverage/
 .worktrees/
 .tools/
 var/
+apps/mobile/.dart_tool/
+apps/mobile/build/
+apps/mobile/.flutter-plugins*

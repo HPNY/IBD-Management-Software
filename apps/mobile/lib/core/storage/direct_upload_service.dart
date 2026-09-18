@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import '../../api/ibd_api_client.dart';
+import '../api/ibd_api_client.dart';
 
 class UploadProgress {
   UploadProgress(this.stage, {this.job});
