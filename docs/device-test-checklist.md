@@ -9,7 +9,18 @@
 | Android SDK | `C:\dev\android-sdk`（API 36 + build-tools 36 + platform-tools） |
 | JDK | Microsoft OpenJDK 17（`JAVA_HOME`） |
 | 网络 | 手机与电脑同一局域网；`IBD_API_BASE=http://<电脑IP>:3000` |
-| Android | 模拟器用 `10.0.2.2`；真机用局域网 IP；`adb devices` 可见设备 |
+| Android | **模拟器 AVD `ibd_api34`（Android 14 / API 34）** 或真机；模拟器 API 用 `http://10.0.2.2:3000` |
+
+```powershell
+# 启动模拟器
+C:\dev\android-sdk\emulator\emulator.exe -avd ibd_api34
+# 查看设备
+C:\dev\android-sdk\platform-tools\adb.exe devices
+# 运行 App（模拟器）
+cd apps/mobile
+C:\dev\flutter\bin\flutter.bat run -d emulator-5554 --dart-define=IBD_API_BASE=http://10.0.2.2:3000
+```
+
 
 ```bash
 # 后端
