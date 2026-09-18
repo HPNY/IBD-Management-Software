@@ -147,6 +147,12 @@ pnpm --filter @ibd/api e2e:medication
 cd services/parse-worker && python -m app.tests.test_ai_engine
 ```
 
+**CI**（GitHub Actions）：
+
+| Workflow | 内容 |
+|----------|------|
+| `ci.yml` | pnpm build + typecheck + smoke；Python AI 单测；`flutter analyze` |
+| `ci-fullstack.yml` | Postgres+Redis 服务容器跑 e2e fullstack/injection/medication（push main 或手动） |
 ### LLM（Skill 未命中时）
 
 | 环境变量 | 说明 |

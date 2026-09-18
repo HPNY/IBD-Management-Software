@@ -1,0 +1,114 @@
+name: CI-fullstack-e2e
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "services/**"
+      - ".github/workflows/ci-fullstack.yml"
+
+jobs:
+  e2e-fullstack:
+    name: Fullstack E2E (Postgres+Redis)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ibd
+          POSTGRES_PASSWORD: ibd
+          POSTGRES_DB: ibd
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ibd -d ibd"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install JS deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API
+        run: pnpm --filter @ibd/api build
+
+      - name: Install parse-worker
+        working-directory: services/parse-worker
+        run: pip install -r requirements.lock
+
+      - name: Migrate
+        env:
+          DATABASE_URL: postgres://ibd:ibd@127.0.0.1:5432/ibd
+          REDIS_URL: redis://127.0.0.1:6379
+        run: pnpm --filter @ibd/api migration:run
+
+      - name: Start API
+        env:
+          DATABASE_URL: postgres://ibd:ibd@127.0.0.1:5432/ibd
+          REDIS_URL: redis://127.0.0.1:6379
+          STORAGE_DRIVER: local
+          STORAGE_LOCAL_DIR: /tmp/ibd-uploads
+          PUBLIC_BASE_URL: http://127.0.0.1:3000
+          STORAGE_SECRET: ci-storage-secret
+          RUN_MIGRATIONS: "true"
+          NODE_ENV: development
+        run: |
+          mkdir -p /tmp/ibd-uploads
+          node services/api/dist/main.js &
+          echo $! > /tmp/api.pid
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:3000/health && break
+            sleep 1
+          done
+
+      - name: Start parse-worker
+        env:
+          REDIS_URL: redis://127.0.0.1:6379
+          STORAGE_DRIVER: local
+          STORAGE_LOCAL_DIR: /tmp/ibd-uploads
+          PORT: "8081"
+        working-directory: services/parse-worker
+        run: |
+          python -m app.main &
+          echo $! > /tmp/worker.pid
+
+      - name: E2E fullstack
+        env:
+          IBD_API_BASE: http://127.0.0.1:3000
+        run: node services/api/scripts/e2e-fullstack.mjs
+
+      - name: E2E injection
+        env:
+          IBD_API_BASE: http://127.0.0.1:3000
+        run: node services/api/scripts/e2e-injection.mjs
+
+      - name: E2E medication
+        env:
+          IBD_API_BASE: http://127.0.0.1:3000
+        run: node services/api/scripts/e2e-medication.mjs

@@ -21,6 +21,7 @@
 - [x] **8 集中配置文档** — `docs/configuration.md`
 - [x] **9 一键启动** — `Makefile` + `scripts/dev.ps1`
 - [x] **10 `PUBLIC_BASE_URL` 生产校验** — env-guard 禁止 localhost/127.0.0.1
+- [x] **CI** — `.github/workflows/ci.yml`（API smoke + Python + Flutter analyze）+ `ci-fullstack.yml`（Postgres/Redis E2E）
 
 ## P2 — 低（一致性）
 
