@@ -31,12 +31,15 @@ class LocalDb {
     final db = await openDatabase(
       path,
       password: password,
-      version: 1,
+      version: 2,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
-        // 确认加密生效：非加密库读 cipher_provider 会失败或返回空
       },
-      onCreate: _onCreate,
+      onCreate: (db, v) async {
+        await _onCreate(db, v);
+        await _onUpgrade(db, 1, v);
+      },
+      onUpgrade: _onUpgrade,
     );
     _db = db;
     return db;
@@ -181,6 +184,57 @@ class LocalDb {
         created_at TEXT NOT NULL
       )
     ''');
+  }
+
+  /// v2：排便细表、检查/手术
+  Future<void> _onUpgrade(Database db, int from, int to) async {
+    if (from < 2) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS bathroom_records (
+          id TEXT PRIMARY KEY,
+          date TEXT NOT NULL,
+          time TEXT,
+          stool_type INTEGER,
+          urgency INTEGER,
+          blood INTEGER,
+          mucus INTEGER,
+          notes TEXT
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS exams (
+          id TEXT PRIMARY KEY,
+          date TEXT NOT NULL,
+          type TEXT NOT NULL,
+          body_part TEXT,
+          findings TEXT,
+          diagnosis TEXT,
+          score TEXT,
+          comparison TEXT,
+          created_at TEXT NOT NULL
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS surgeries (
+          id TEXT PRIMARY KEY,
+          date TEXT NOT NULL,
+          type TEXT,
+          body_part TEXT,
+          findings TEXT,
+          procedure TEXT,
+          resected_length_cm REAL,
+          anastomosis TEXT,
+          surgeon TEXT,
+          notes TEXT
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_bath_date ON bathroom_records (date)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_exam_date ON exams (date)',
+      );
+    }
   }
 
   /// 校验加密库可被当前密钥打开（健康检查用）。

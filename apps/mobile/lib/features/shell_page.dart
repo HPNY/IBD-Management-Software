@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/identity/local_identity.dart';
+import 'analysis/analysis_tab.dart';
 import 'home/dashboard_tab.dart';
 import 'injection/injection_page.dart';
 import 'settings/settings_page.dart';
 import 'symptom/symptom_page.dart';
 
-/// 底部导航：首页 · 打卡 · 注射 · 我的
+/// 底部导航：首页 · 打卡 · 注射 · 分析 · 我的
 class ShellPage extends StatefulWidget {
   const ShellPage({super.key});
 
@@ -25,6 +26,7 @@ class _ShellPageState extends State<ShellPage> {
       DashboardTab(onOpen: _goTab),
       const SymptomPage(embedded: true),
       const InjectionPage(embedded: true),
+      const AnalysisTab(),
       SettingsPage(embedded: true, syncOn: identity.syncOptIn),
     ];
 
@@ -48,6 +50,11 @@ class _ShellPageState extends State<ShellPage> {
             icon: Icon(Icons.vaccines_outlined),
             selectedIcon: Icon(Icons.vaccines_rounded),
             label: '注射',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.insights_rounded),
+            selectedIcon: Icon(Icons.insights_rounded),
+            label: '分析',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),

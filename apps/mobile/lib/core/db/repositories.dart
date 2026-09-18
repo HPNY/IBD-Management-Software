@@ -230,3 +230,220 @@ class SymptomRepository {
     return db.query('symptom_diaries', orderBy: 'date DESC');
   }
 }
+
+class BathroomRepository {
+  Future<Database> get _db => LocalDb.instance.database;
+
+  Future<void> insert({
+    required String date,
+    String? time,
+    int? stoolType,
+    bool? urgency,
+    bool? blood,
+    bool? mucus,
+    String? notes,
+  }) async {
+    final db = await _db;
+    await db.insert('bathroom_records', {
+      'id': const Uuid().v4(),
+      'date': date,
+      'time': time,
+      'stool_type': stoolType,
+      'urgency': urgency == null ? null : (urgency ? 1 : 0),
+      'blood': blood == null ? null : (blood ? 1 : 0),
+      'mucus': mucus == null ? null : (mucus ? 1 : 0),
+      'notes': notes,
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> listAll() async {
+    final db = await _db;
+    return db.query('bathroom_records', orderBy: 'date DESC, time DESC');
+  }
+}
+
+class ExamRepository {
+  Future<Database> get _db => LocalDb.instance.database;
+
+  Future<String> insert({
+    required String date,
+    required String type,
+    String? bodyPart,
+    String? findings,
+    String? diagnosis,
+    String? score,
+    String? comparison,
+  }) async {
+    final db = await _db;
+    final id = const Uuid().v4();
+    await db.insert('exams', {
+      'id': id,
+      'date': date,
+      'type': type,
+      'body_part': bodyPart,
+      'findings': findings,
+      'diagnosis': diagnosis,
+      'score': score,
+      'comparison': comparison,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    return id;
+  }
+
+  Future<List<Map<String, dynamic>>> listAll() async {
+    final db = await _db;
+    return db.query('exams', orderBy: 'date DESC');
+  }
+}
+
+class SurgeryRepository {
+  Future<Database> get _db => LocalDb.instance.database;
+
+  Future<String> insert({
+    required String date,
+    String? type,
+    String? bodyPart,
+    String? findings,
+    String? procedure,
+    double? resectedLengthCm,
+    String? anastomosis,
+    String? surgeon,
+    String? notes,
+  }) async {
+    final db = await _db;
+    final id = const Uuid().v4();
+    await db.insert('surgeries', {
+      'id': id,
+      'date': date,
+      'type': type,
+      'body_part': bodyPart,
+      'findings': findings,
+      'procedure': procedure,
+      'resected_length_cm': resectedLengthCm,
+      'anastomosis': anastomosis,
+      'surgeon': surgeon,
+      'notes': notes,
+    });
+    return id;
+  }
+
+  Future<List<Map<String, dynamic>>> listAll() async {
+    final db = await _db;
+    return db.query('surgeries', orderBy: 'date DESC');
+  }
+}
+
+/// 本地检验指标序列（趋势图）
+class LabSeriesRepository {
+  Future<Database> get _db => LocalDb.instance.database;
+
+  /// 按规范名提取时间序列，如 CRP / 钙卫蛋白
+  Future<List<Map<String, dynamic>>> seriesByName(String nameNorm) async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      '''
+      SELECT labs.date AS date, lab_items.value AS value, lab_items.unit AS unit
+      FROM lab_items
+      INNER JOIN labs ON labs.id = lab_items.lab_id
+      WHERE lab_items.name_norm LIKE ?
+      ORDER BY labs.date ASC
+      ''',
+      ['%$nameNorm%'],
+    );
+    return rows;
+  }
+
+  /// 汇总：最近一次各核心指标
+  Future<Map<String, Map<String, dynamic>>> latestCore() async {
+    const names = [
+      '超敏C反应蛋白',
+      '血沉',
+      '粪便钙卫蛋白',
+      '淋巴细胞',
+      '白蛋白',
+      '血红蛋白',
+      '尿酸',
+    ];
+    final out = <String, Map<String, dynamic>>{};
+    for (final n in names) {
+      final s = await seriesByName(n);
+      if (s.isNotEmpty) out[n] = s.last;
+    }
+    return out;
+  }
+}
+
+/// 病程时间线：聚合本机事件
+class TimelineRepository {
+  Future<Database> get _db => LocalDb.instance.database;
+
+  Future<List<Map<String, dynamic>>> events({int limit = 200}) async {
+    final db = await _db;
+    final out = <Map<String, dynamic>>[];
+
+    final labs = await db.rawQuery(
+      'SELECT date, hospital, source FROM labs ORDER BY date DESC LIMIT ?',
+      [limit],
+    );
+    for (final r in labs) {
+      out.add({
+        'date': r['date'],
+        'type': 'lab',
+        'title': '检验 · ${r['hospital'] ?? ''}',
+        'subtitle': '来源 ${r['source']}',
+      });
+    }
+
+    final meds = await db.query('medications', orderBy: 'start_date DESC');
+    for (final r in meds) {
+      out.add({
+        'date': r['start_date'],
+        'type': 'med',
+        'title': '用药 · ${r['drug_name']}',
+        'subtitle': '${r['dosage']} ${r['frequency']}',
+      });
+      if (r['end_date'] != null) {
+        out.add({
+          'date': r['end_date'],
+          'type': 'med_end',
+          'title': '停药 · ${r['drug_name']}',
+          'subtitle': '${r['reason'] ?? ''}',
+        });
+      }
+    }
+
+    final inj = await db.query('injections');
+    for (final r in inj) {
+      final d = r['actual_date'] ?? r['planned_date'];
+      out.add({
+        'date': d,
+        'type': r['actual_date'] != null ? 'inj_done' : 'inj_plan',
+        'title': '注射 · ${r['drug']}',
+        'subtitle': '${r['dose']} W${r['week_number']}',
+      });
+    }
+
+    final ex = await db.query('exams', orderBy: 'date DESC');
+    for (final r in ex) {
+      out.add({
+        'date': r['date'],
+        'type': 'exam',
+        'title': '检查 · ${r['type']}',
+        'subtitle': '${r['body_part'] ?? ''} ${r['score'] ?? ''}',
+      });
+    }
+
+    final sg = await db.query('surgeries', orderBy: 'date DESC');
+    for (final r in sg) {
+      out.add({
+        'date': r['date'],
+        'type': 'surgery',
+        'title': '手术 · ${r['type'] ?? ''}',
+        'subtitle': '${r['body_part'] ?? ''} ${r['procedure'] ?? ''}',
+      });
+    }
+
+    out.sort((a, b) => ('${b['date']}').compareTo('${a['date']}'));
+    return out.take(limit).toList();
+  }
+}
