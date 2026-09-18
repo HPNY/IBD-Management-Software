@@ -15,7 +15,11 @@ class LocalNotifyService {
     if (_ready) return;
     tzdata.initializeTimeZones();
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const ios = DarwinInitializationSettings();
+    const ios = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
     await _plugin.initialize(
       const InitializationSettings(android: android, iOS: ios),
     );
@@ -24,6 +28,26 @@ class LocalNotifyService {
             AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
     _ready = true;
+  }
+
+  /// 测试系统通知（验证权限与渠道）
+  Future<void> showTestNotification() async {
+    if (!_ready) await init();
+    await _plugin.show(
+      1,
+      'IBDers',
+      '系统通知已启用（本地；FCM 可后续接入）',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'ibd_system',
+          '系统通知',
+          channelDescription: 'IBDers 系统级通知测试',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+    );
   }
 
   Future<void> scheduleInjectionReminders(

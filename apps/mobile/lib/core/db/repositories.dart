@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
@@ -443,7 +445,51 @@ class TimelineRepository {
       });
     }
 
+    final qol = await db.query('quality_surveys', orderBy: 'date DESC');
+    for (final r in qol) {
+      out.add({
+        'date': r['date'],
+        'type': 'qol',
+        'title': '量表 · ${r['kind']}',
+        'subtitle': '${r['total']} 分',
+      });
+    }
+
     out.sort((a, b) => ('${b['date']}').compareTo('${a['date']}'));
     return out.take(limit).toList();
+  }
+}
+
+/// 生活质量/心理量表（本地，v3）
+class QualitySurveyRepository {
+  Future<Database> get _db => LocalDb.instance.database;
+
+  Future<String> save({
+    required String date,
+    required String kind,
+    required int total,
+    Map<String, dynamic>? detail,
+  }) async {
+    final db = await _db;
+    final id = const Uuid().v4();
+    await db.insert('quality_surveys', {
+      'id': id,
+      'date': date,
+      'kind': kind,
+      'total': total,
+      'detail_json': detail == null ? null : jsonEncode(detail),
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    return id;
+  }
+
+  Future<List<Map<String, dynamic>>> listAll({String? kind}) async {
+    final db = await _db;
+    return db.query(
+      'quality_surveys',
+      where: kind == null ? null : 'kind = ?',
+      whereArgs: kind == null ? null : [kind],
+      orderBy: 'date DESC, created_at DESC',
+    );
   }
 }

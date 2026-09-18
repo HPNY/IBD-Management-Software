@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../core/ui/theme.dart';
 import 'clinical_pages.dart';
+import 'export_page.dart';
 import 'flare_page.dart';
+import 'survey_page.dart';
 import 'timeline_page.dart';
 import 'trend_page.dart';
 
@@ -76,6 +78,26 @@ class AnalysisTab extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const FlarePage()),
+            ),
+          ),
+          _NavCard(
+            icon: Icons.psychology_alt_rounded,
+            title: '生活质量量表',
+            subtitle: 'PHQ-9 / 简版 IBDQ / MiniQoL',
+            color: const Color(0xFF0EA5E9),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SurveyPage()),
+            ),
+          ),
+          _NavCard(
+            icon: Icons.download_rounded,
+            title: '数据导出',
+            subtitle: '检验/用药/症状/量表 CSV · 本机分享',
+            color: const Color(0xFF64748B),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ExportPage()),
             ),
           ),
         ],

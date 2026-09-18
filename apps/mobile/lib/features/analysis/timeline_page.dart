@@ -26,6 +26,7 @@ class _TimelinePageState extends State<TimelinePage> {
     'inj': '注射',
     'exam': '检查',
     'surgery': '手术',
+    'qol': '量表',
   };
 
   @override
@@ -62,6 +63,8 @@ class _TimelinePageState extends State<TimelinePage> {
         return Icons.monitor_heart_rounded;
       case 'surgery':
         return Icons.local_hospital_rounded;
+      case 'qol':
+        return Icons.psychology_alt_rounded;
       default:
         return Icons.circle;
     }
@@ -71,6 +74,7 @@ class _TimelinePageState extends State<TimelinePage> {
     if (type.startsWith('inj')) return const Color(0xFF8B5CF6);
     if (type.startsWith('med')) return const Color(0xFFF59E0B);
     if (type == 'lab') return IbdColors.primary;
+    if (type == 'qol') return const Color(0xFF0EA5E9);
     return const Color(0xFF6366F1);
   }
 

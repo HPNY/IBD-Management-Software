@@ -31,7 +31,7 @@ class LocalDb {
     final db = await openDatabase(
       path,
       password: password,
-      version: 2,
+      version: 3,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -233,6 +233,21 @@ class LocalDb {
       );
       await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_exam_date ON exams (date)',
+      );
+    }
+    if (from < 3) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS quality_surveys (
+          id TEXT PRIMARY KEY,
+          date TEXT NOT NULL,
+          kind TEXT NOT NULL,
+          total INTEGER NOT NULL,
+          detail_json TEXT,
+          created_at TEXT NOT NULL
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_qol_date ON quality_surveys (date)',
       );
     }
   }
