@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/db/repositories.dart';
 import '../../core/ui/theme.dart';
 import '../injection/injection_page.dart';
+import 'medication_checkin_page.dart';
 import 'medication_edit_page.dart';
 
 /// 用药管理：注射药品 + 日常用药 + 历史时间轴
@@ -149,6 +150,16 @@ class _MedicationPageState extends State<MedicationPage> {
             _SectionHeader(
               title: '当前用药',
               subtitle: '${_currentMeds.length} 项（口服/其他）',
+              trailing: TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MedicationCheckinPage(),
+                    ),
+                  );
+                },
+                child: const Text('服药打卡'),
+              ),
             ),
             if (_currentMeds.isEmpty)
               const _EmptyHint(text: '可点右下角添加日常用药'),

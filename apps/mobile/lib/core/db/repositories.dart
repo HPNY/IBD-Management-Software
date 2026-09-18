@@ -493,3 +493,75 @@ class QualitySurveyRepository {
     );
   }
 }
+
+/// 服药打卡：按药 + 日期 + 时间点（早/午/晚）
+class MedicationCheckinRepository {
+  Future<Database> get _db => LocalDb.instance.database;
+
+  Future<void> markTaken({
+    required String medicationId,
+    required String date,
+    required String slot,
+  }) async {
+    final db = await _db;
+    await db.insert(
+      'medication_checkins',
+      {
+        'id': const Uuid().v4(),
+        'medication_id': medicationId,
+        'date': date,
+        'slot': slot,
+        'taken_at': DateTime.now().toIso8601String(),
+        'created_at': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> unmark({
+    required String medicationId,
+    required String date,
+    required String slot,
+  }) async {
+    final db = await _db;
+    await db.delete(
+      'medication_checkins',
+      where: 'medication_id = ? AND date = ? AND slot = ?',
+      whereArgs: [medicationId, date, slot],
+    );
+  }
+
+  /// 某日所有打卡（slot 集合）
+  Future<Set<String>> slotsForDate(String medicationId, String date) async {
+    final db = await _db;
+    final rows = await db.query(
+      'medication_checkins',
+      where: 'medication_id = ? AND date = ?',
+      whereArgs: [medicationId, date],
+    );
+    return rows.map((r) => '${r['slot']}').toSet();
+  }
+
+  /// 日历着色：该月每日打卡次数
+  Future<Map<String, int>> takenCountByDate({int days = 60}) async {
+    final db = await _db;
+    final rows = await db.rawQuery('''
+      SELECT date, COUNT(*) AS c FROM medication_checkins
+      GROUP BY date ORDER BY date DESC LIMIT ?
+    ''', [days]);
+    final out = <String, int>{};
+    for (final r in rows) {
+      out['${r['date']}'] = (r['c'] as num).toInt();
+    }
+    return out;
+  }
+
+  Future<List<Map<String, dynamic>>> listForDate(String date) async {
+    final db = await _db;
+    return db.query(
+      'medication_checkins',
+      where: 'date = ?',
+      whereArgs: [date],
+    );
+  }
+}

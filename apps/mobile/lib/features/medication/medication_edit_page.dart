@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/db/repositories.dart';
 import '../../core/ui/theme.dart';
 
-/// iOS 健康 App 风格：新增/编辑用药
+/// iOS 健康 App 风格：新增/编辑用药（频次 ↔ 时间点联动）
 class MedicationEditPage extends StatefulWidget {
   const MedicationEditPage({super.key, this.initial});
 
@@ -21,33 +21,41 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
   final _startCtrl = TextEditingController();
 
   static const _forms = ['片剂', '胶囊', '口服液', '注射', '外用', '其他'];
-  static const _freqs = [
-    '每日一次',
-    '每日两次',
-    '每日三次',
-    '隔日一次',
-    '每周一次',
-    '按需',
-  ];
-  static const _colors = [
-    Color(0xFF0D9488),
-    Color(0xFF6366F1),
-    Color(0xFFF59E0B),
-    Color(0xFFEF4444),
-    Color(0xFF8B5CF6),
-    Color(0xFF0EA5E9),
-  ];
+
+  /// 频次 → 每日应选时间点数量；null = 自选（按需）
+  static const _freqRules = <String, int?>{
+    '每日一次': 1,
+    '每日两次': 2,
+    '每日三次': 3,
+    '隔日一次': 1,
+    '每周一次': 1,
+    '按需': null,
+  };
+
+  static const _slotMeta = <String, (String label, String defaultTime)>{
+    'morning': ('早', '08:00'),
+    'noon': ('午', '12:00'),
+    'evening': ('晚', '20:00'),
+    'night': ('夜', '22:00'),
+  };
 
   String _form = '片剂';
   String _freq = '每日一次';
-  Color _color = _colors.first;
-  bool _morning = true;
-  bool _noon = false;
-  bool _evening = false;
+  /// 已选时间点 key
+  final Set<String> _slots = {'morning'};
+  /// 自定义钟点（可覆盖默认）
+  final Map<String, TimeOfDay> _times = {
+    'morning': const TimeOfDay(hour: 8, minute: 0),
+    'noon': const TimeOfDay(hour: 12, minute: 0),
+    'evening': const TimeOfDay(hour: 20, minute: 0),
+    'night': const TimeOfDay(hour: 22, minute: 0),
+  };
   bool _busy = false;
   String? _error;
 
   bool get _isEdit => widget.initial != null;
+
+  int? get _requiredSlots => _freqRules[_freq];
 
   @override
   void initState() {
@@ -58,8 +66,25 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
     _noteCtrl.text = init?['reason'] as String? ?? '';
     _startCtrl.text = init?['start_date'] as String? ??
         DateTime.now().toIso8601String().substring(0, 10);
-    final freq = init?['frequency'] as String?;
-    if (freq != null && _freqs.contains(freq)) _freq = freq;
+
+    final freqRaw = init?['frequency'] as String?;
+    if (freqRaw != null) {
+      for (final k in _freqRules.keys) {
+        if (freqRaw.startsWith(k)) {
+          _freq = k;
+          break;
+        }
+      }
+      // 从旧摘要里尝试解析已选槽位
+      _slots.clear();
+      if (freqRaw.contains('早')) _slots.add('morning');
+      if (freqRaw.contains('午')) _slots.add('noon');
+      if (freqRaw.contains('晚')) _slots.add('evening');
+      if (freqRaw.contains('夜')) _slots.add('night');
+      if (_slots.isEmpty) _applyFreqDefaults(_freq);
+    } else {
+      _applyFreqDefaults(_freq);
+    }
   }
 
   @override
@@ -71,14 +96,85 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
     super.dispose();
   }
 
+  void _applyFreqDefaults(String freq) {
+    final n = _freqRules[freq];
+    _slots.clear();
+    if (n == null) {
+      // 按需：默认不强制时间
+      return;
+    }
+    const order = ['morning', 'noon', 'evening', 'night'];
+    for (var i = 0; i < n && i < order.length; i++) {
+      _slots.add(order[i]);
+    }
+  }
+
+  void _onFreqChanged(String freq) {
+    setState(() {
+      _freq = freq;
+      _applyFreqDefaults(freq);
+    });
+  }
+
+  Future<void> _toggleSlot(String slot) async {
+    final need = _requiredSlots;
+    final has = _slots.contains(slot);
+    if (need == null) {
+      // 按需：任意开关
+      setState(() {
+        has ? _slots.remove(slot) : _slots.add(slot);
+      });
+      return;
+    }
+    if (has) {
+      // 不允许低于频次要求
+      if (_slots.length <= need) {
+        setState(() => _error = '「$_freq」需要选择 $need 个时间点，不能取消');
+        return;
+      }
+      setState(() {
+        _slots.remove(slot);
+        _error = null;
+      });
+    } else {
+      if (_slots.length >= need) {
+        // 超出：替换——先移除最早的
+        setState(() {
+          _slots.remove(_slots.first);
+          _slots.add(slot);
+          _error = '「$_freq」仅可选 $need 个时间点，已替换为新选择';
+        });
+        return;
+      }
+      setState(() {
+        _slots.add(slot);
+        _error = null;
+      });
+    }
+  }
+
+  Future<void> _pickTime(String slot) async {
+    final t = await showTimePicker(
+      context: context,
+      initialTime: _times[slot] ?? const TimeOfDay(hour: 8, minute: 0),
+    );
+    if (t == null) return;
+    setState(() => _times[slot] = t);
+  }
+
+  String _fmtTime(TimeOfDay t) {
+    final h = t.hour.toString().padLeft(2, '0');
+    final m = t.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
   String get _scheduleLabel {
-    final slots = <String>[
-      if (_morning) '早',
-      if (_noon) '午',
-      if (_evening) '晚',
-    ];
-    if (slots.isEmpty) return _freq;
-    return '$_freq · ${slots.join('/')}';
+    final parts = _slots.map((s) {
+      final meta = _slotMeta[s]!;
+      return '${meta.$1}${_fmtTime(_times[s]!)}';
+    }).toList();
+    if (parts.isEmpty) return _freq;
+    return '$_freq · ${parts.join(' / ')}';
   }
 
   Future<void> _pickDate() async {
@@ -99,24 +195,32 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
       setState(() => _error = '请填写药品名称');
       return;
     }
+    final need = _requiredSlots;
+    if (need != null && _slots.length != need) {
+      setState(() => _error = '「$_freq」请选择 $need 个服药时间点');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final payload = {
-        'drugName': _nameCtrl.text.trim(),
-        'dosage': _strengthCtrl.text.trim().isEmpty ? '—' : _strengthCtrl.text.trim(),
-        'frequency': _scheduleLabel,
-        'route': _form == '注射' ? 'sc' : (_form == '口服液' || _form == '片剂' || _form == '胶囊' ? 'oral' : 'oral'),
-        'startDate': _startCtrl.text.trim(),
-        'status': 'active',
-        'reason': _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
-      };
+      final route = _form == '注射'
+          ? 'sc'
+          : (_form == '外用' ? 'oral' : 'oral');
       if (_isEdit) {
         await _repo.stop(widget.initial!['id'] as String, reason: '编辑');
       }
-      await _repo.insert(payload);
+      await _repo.insert({
+        'drugName': _nameCtrl.text.trim(),
+        'dosage':
+            _strengthCtrl.text.trim().isEmpty ? '—' : _strengthCtrl.text.trim(),
+        'frequency': _scheduleLabel,
+        'route': route,
+        'startDate': _startCtrl.text.trim(),
+        'status': 'active',
+        'reason': _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+      });
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
@@ -127,6 +231,8 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
 
   @override
   Widget build(BuildContext context) {
+    final need = _requiredSlots;
+
     return Scaffold(
       backgroundColor: IbdColors.bg,
       appBar: AppBar(
@@ -190,100 +296,110 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
                       )
                       .toList(),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
                 const _FieldLabel('频次'),
+                const SizedBox(height: 4),
+                const Text(
+                  '选定频次后，下方时间点数量会与之对应；可点时间改钟点。',
+                  style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+                ),
+                const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: _freqs
+                  children: _freqRules.keys
                       .map(
                         (f) => ChoiceChip(
                           label: Text(f),
                           selected: _freq == f,
-                          onSelected: (_) => setState(() => _freq = f),
+                          onSelected: (_) => _onFreqChanged(f),
                         ),
                       )
                       .toList(),
                 ),
-                const SizedBox(height: 16),
-                const _FieldLabel('服药时间'),
-                const SizedBox(height: 8),
+                const SizedBox(height: 18),
                 Row(
                   children: [
-                    _SlotChip(
-                      label: '早',
-                      selected: _morning,
-                      onTap: () => setState(() => _morning = !_morning),
-                    ),
-                    const SizedBox(width: 8),
-                    _SlotChip(
-                      label: '午',
-                      selected: _noon,
-                      onTap: () => setState(() => _noon = !_noon),
-                    ),
-                    const SizedBox(width: 8),
-                    _SlotChip(
-                      label: '晚',
-                      selected: _evening,
-                      onTap: () => setState(() => _evening = !_evening),
+                    const Expanded(child: _FieldLabel('服药时间点')),
+                    Text(
+                      need == null
+                          ? '可选 ${_slots.length} 个'
+                          : '已选 ${_slots.length} / $need',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: IbdColors.primaryDark,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
+                ..._slotMeta.entries.map((e) {
+                  final key = e.key;
+                  final label = e.value.$1;
+                  final selected = _slots.contains(key);
+                  final time = _fmtTime(_times[key]!);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      onTap: () => _toggleSlot(key),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: selected
+                              ? IbdColors.primary.withOpacity(0.10)
+                              : const Color(0xFFF8FAFC),
+                          border: Border.all(
+                            color: selected
+                                ? IbdColors.primary
+                                : const Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              selected
+                                  ? Icons.check_circle_rounded
+                                  : Icons.circle_outlined,
+                              color: selected
+                                  ? IbdColors.primary
+                                  : IbdColors.textSecondary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                '$label  $time',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: selected
+                                      ? IbdColors.primaryDark
+                                      : IbdColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => _pickTime(key),
+                              child: const Text('改时间'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+                const SizedBox(height: 6),
                 Text(
                   '当前：$_scheduleLabel',
                   style: const TextStyle(
                     fontSize: 13,
                     color: IbdColors.textSecondary,
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          _IosCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _FieldLabel('标识颜色'),
-                const SizedBox(height: 10),
-                Row(
-                  children: _colors
-                      .map(
-                        (c) => Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: GestureDetector(
-                            onTap: () => setState(() => _color = c),
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: c,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: _color == c
-                                      ? Colors.white
-                                      : Colors.transparent,
-                                  width: 3,
-                                ),
-                                boxShadow: _color == c
-                                    ? [
-                                        BoxShadow(
-                                          color: c.withOpacity(0.45),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: _color == c
-                                  ? const Icon(Icons.check, color: Colors.white, size: 18)
-                                  : null,
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
                 ),
               ],
             ),
@@ -370,40 +486,6 @@ class _FieldLabel extends StatelessWidget {
           fontSize: 13,
           fontWeight: FontWeight.w600,
           color: IbdColors.textSecondary,
-        ),
-      ),
-    );
-  }
-}
-
-class _SlotChip extends StatelessWidget {
-  const _SlotChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? IbdColors.primary : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: selected ? Colors.white : IbdColors.textSecondary,
-          ),
         ),
       ),
     );
