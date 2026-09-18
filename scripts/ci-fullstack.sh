@@ -19,16 +19,7 @@ export IBD_API_BASE="${IBD_API_BASE:-http://127.0.0.1:3000}"
 
 mkdir -p "$STORAGE_LOCAL_DIR"
 
-echo "==> migrations via TypeORM (compiled)"
-node -e "
-require('reflect-metadata');
-const ds = require('./services/api/dist/database/data-source.js').default;
-ds.initialize().then(() => ds.runMigrations({ transaction: 'each' })).then((ms) => {
-  console.log('migrations applied', ms.map((m) => m.name).join(', ') || '(none)');
-  return ds.destroy();
-}).then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });
-"
-
+echo "==> migrations: API boot runs them when RUN_MIGRATIONS=true"
 echo "==> start API :$PORT"
 node services/api/dist/main.js > /tmp/ibd-api.log 2>&1 &
 API_PID=$!
@@ -63,6 +54,9 @@ if [ "$ok" != "1" ]; then
   echo "API health check failed"
   exit 1
 fi
+
+# 确认迁移表存在（API 已带 RUN_MIGRATIONS=true）
+grep -q '"db":"ok"' /tmp/ibd-health.json
 
 echo "==> e2e fullstack"
 node services/api/scripts/e2e-fullstack.mjs
