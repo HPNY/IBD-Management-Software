@@ -4,7 +4,10 @@ import '../../core/db/repositories.dart';
 import '../../core/ui/theme.dart';
 
 class SymptomPage extends StatefulWidget {
-  const SymptomPage({super.key});
+  const SymptomPage({super.key, this.embedded = false});
+
+  /// true：作为底部导航 Tab，隐藏返回键
+  final bool embedded;
 
   @override
   State<SymptomPage> createState() => _SymptomPageState();
@@ -51,6 +54,7 @@ class _SymptomPageState extends State<SymptomPage> {
     return Scaffold(
       backgroundColor: IbdColors.bg,
       appBar: AppBar(
+        automaticallyImplyLeading: !widget.embedded,
         title: const Text('今日打卡'),
         actions: [
           if (_saved)

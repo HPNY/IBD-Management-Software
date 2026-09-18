@@ -6,7 +6,9 @@ import '../../core/notify/local_notify.dart';
 import '../../core/ui/theme.dart';
 
 class InjectionPage extends StatefulWidget {
-  const InjectionPage({super.key});
+  const InjectionPage({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<InjectionPage> createState() => _InjectionPageState();
@@ -105,6 +107,7 @@ class _InjectionPageState extends State<InjectionPage> {
     return Scaffold(
       backgroundColor: IbdColors.bg,
       appBar: AppBar(
+        automaticallyImplyLeading: !widget.embedded,
         title: const Text('注射排期'),
         actions: [
           IconButton(

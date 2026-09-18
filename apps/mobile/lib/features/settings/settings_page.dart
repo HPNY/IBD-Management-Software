@@ -8,9 +8,17 @@ import '../../core/api/sync_api.dart';
 import '../../core/backup/backup_service.dart';
 import '../../core/db/local_db.dart';
 import '../../core/identity/local_identity.dart';
+import '../../core/ui/theme.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({
+    super.key,
+    this.embedded = false,
+    this.syncOn = false,
+  });
+
+  final bool embedded;
+  final bool syncOn;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -195,10 +203,60 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final identity = context.watch<LocalIdentity>();
     return Scaffold(
-      appBar: AppBar(title: const Text('隐私与备份')),
+      backgroundColor: IbdColors.bg,
+      appBar: AppBar(
+        automaticallyImplyLeading: !widget.embedded,
+        title: Text(widget.embedded ? '我的' : '隐私与备份'),
+      ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
+          if (widget.embedded)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0D9488), Color(0xFF14B8A6)],
+                ),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 28,
+                    backgroundColor: Colors.white24,
+                    child: Icon(Icons.person_rounded, color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '本机身份',
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          identity.uuid.substring(0, 8),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        Text(
+                          identity.syncOptIn ? '云同步已开启' : '仅本机 · 未同步',
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Text('应用标识（本机）', style: Theme.of(context).textTheme.titleSmall),
           SelectableText(identity.uuid),
           const SizedBox(height: 12),

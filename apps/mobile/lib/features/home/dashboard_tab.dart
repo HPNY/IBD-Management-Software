@@ -4,21 +4,25 @@ import 'package:provider/provider.dart';
 import '../../core/db/repositories.dart';
 import '../../core/identity/local_identity.dart';
 import '../../core/ui/theme.dart';
-import '../injection/injection_page.dart';
 import '../lab/lab_manual_page.dart';
 import '../medication/medication_page.dart';
 import '../parse/parse_upload_page.dart';
 import '../settings/settings_page.dart';
 import '../symptom/symptom_page.dart';
+import '../injection/injection_page.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+/// 首页 Tab：仪表盘 + 快捷入口（不负责底部导航壳）
+class DashboardTab extends StatefulWidget {
+  const DashboardTab({super.key, required this.onOpen});
+
+  /// 0 打卡 2 注射 —— 用于底部切 Tab
+  final void Function(int index) onOpen;
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<DashboardTab> createState() => _DashboardTabState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _DashboardTabState extends State<DashboardTab> {
   final _inj = InjectionRepository();
   final _labs = LabRepository();
   final _meds = MedicationRepository();
@@ -58,103 +62,100 @@ class _HomePageState extends State<HomePage> {
     return '晚上好';
   }
 
-  void _open(Widget page) {
-    Navigator.of(context)
-        .push(MaterialPageRoute<void>(builder: (_) => page))
-        .then((_) => _loadStats());
+  Future<void> _push(Widget page) async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
+    if (mounted) _loadStats();
   }
 
   @override
   Widget build(BuildContext context) {
     final identity = context.watch<LocalIdentity>();
-    return Scaffold(
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _loadStats,
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 24),
-            children: [
-              _Header(
-                greeting: _greeting,
-                syncOn: identity.syncOptIn,
-                onSettings: () => _open(const SettingsPage()),
+    return SafeArea(
+      bottom: false,
+      child: RefreshIndicator(
+        onRefresh: _loadStats,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
+          children: [
+            _Header(
+              greeting: _greeting,
+              syncOn: identity.syncOptIn,
+              onSettings: () => widget.onOpen(3),
+            ),
+            _PrivacyBanner(syncOn: identity.syncOptIn),
+            _TodayCard(
+              symptomDone: _symptomToday,
+              dueInjections: _dueInj.length,
+              onSymptom: () => widget.onOpen(1),
+              onInjection: () => widget.onOpen(2),
+            ),
+            const IbdSectionTitle('快捷入口'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.35,
+                children: [
+                  _ModuleCard(
+                    icon: Icons.edit_note_rounded,
+                    title: '手动录入检验',
+                    subtitle: '写入本机数据库',
+                    color: const Color(0xFF0D9488),
+                    onTap: () => _push(const LabManualPage()),
+                  ),
+                  _ModuleCard(
+                    icon: Icons.document_scanner_rounded,
+                    title: '报告解析',
+                    subtitle: '上传需单独确认',
+                    color: const Color(0xFF6366F1),
+                    onTap: () => _push(const ParseUploadPage()),
+                  ),
+                  _ModuleCard(
+                    icon: Icons.medication_liquid_rounded,
+                    title: '用药管理',
+                    subtitle: '$_medCount 项在用/暂停',
+                    color: const Color(0xFFF59E0B),
+                    onTap: () => _push(const MedicationPage()),
+                  ),
+                  _ModuleCard(
+                    icon: Icons.vaccines_rounded,
+                    title: '注射排期',
+                    subtitle:
+                        _dueInj.isEmpty ? '本地提醒' : '${_dueInj.length} 针待处理',
+                    color: const Color(0xFF8B5CF6),
+                    onTap: () => widget.onOpen(2),
+                  ),
+                ],
               ),
-              _PrivacyBanner(syncOn: identity.syncOptIn),
-              _TodayCard(
-                symptomDone: _symptomToday,
-                dueInjections: _dueInj.length,
-                onSymptom: () => _open(const SymptomPage()),
-                onInjection: () => _open(const InjectionPage()),
+            ),
+            const IbdSectionTitle('本机数据'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _StatChip(
+                      label: '检验记录',
+                      value: '$_labCount',
+                      icon: Icons.biotech_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _StatChip(
+                      label: '应用标识',
+                      value: identity.uuid.substring(0, 8),
+                      icon: Icons.fingerprint_rounded,
+                    ),
+                  ),
+                ],
               ),
-              const IbdSectionTitle('快捷入口'),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.35,
-                  children: [
-                    _ModuleCard(
-                      icon: Icons.edit_note_rounded,
-                      title: '手动录入检验',
-                      subtitle: '写入本机数据库',
-                      color: const Color(0xFF0D9488),
-                      onTap: () => _open(const LabManualPage()),
-                    ),
-                    _ModuleCard(
-                      icon: Icons.document_scanner_rounded,
-                      title: '报告解析',
-                      subtitle: '上传需单独确认',
-                      color: const Color(0xFF6366F1),
-                      onTap: () => _open(const ParseUploadPage()),
-                    ),
-                    _ModuleCard(
-                      icon: Icons.medication_liquid_rounded,
-                      title: '用药管理',
-                      subtitle: '$_medCount 项在用/暂停',
-                      color: const Color(0xFFF59E0B),
-                      onTap: () => _open(const MedicationPage()),
-                    ),
-                    _ModuleCard(
-                      icon: Icons.vaccines_rounded,
-                      title: '注射排期',
-                      subtitle: _dueInj.isEmpty
-                          ? '本地提醒'
-                          : '${_dueInj.length} 针待处理',
-                      color: const Color(0xFF8B5CF6),
-                      onTap: () => _open(const InjectionPage()),
-                    ),
-                  ],
-                ),
-              ),
-              const IbdSectionTitle('本机数据'),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _StatChip(
-                        label: '检验记录',
-                        value: '$_labCount',
-                        icon: Icons.biotech_rounded,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatChip(
-                        label: '应用标识',
-                        value: identity.uuid.substring(0, 8),
-                        icon: Icons.fingerprint_rounded,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -281,24 +282,13 @@ class _TodayCard extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: IbdColors.primary.withOpacity(0.25),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             '今日管理',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: 8),
           Text(
@@ -432,7 +422,6 @@ class _ModuleCard extends StatelessWidget {
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 15,
-                  color: IbdColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -486,7 +475,6 @@ class _StatChip extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: IbdColors.textPrimary,
                   ),
                 ),
                 Text(

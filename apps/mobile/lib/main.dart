@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'core/identity/local_identity.dart';
 import 'core/ui/theme.dart';
-import 'features/home/home_page.dart';
+import 'features/shell_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +26,7 @@ class IbdApp extends StatelessWidget {
       title: 'IBDers',
       debugShowCheckedModeBanner: false,
       theme: buildIbdTheme(),
-      home: const HomePage(),
+      home: const ShellPage(),
     );
   }
 }
