@@ -184,74 +184,86 @@ class _SymptomPageState extends State<SymptomPage> {
               ),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
-                    mainAxisSpacing: 8,
-                    crossAxisSpacing: 8,
-                    childAspectRatio: 0.95,
-                  ),
-                  itemCount: 7,
-                  itemBuilder: (context, i) {
-                    final type = i + 1;
-                    final selected = type == _stoolType;
-                    final ideal = type == 4;
-                    return InkWell(
+                const Text(
+                  '选最像今天大便外观的一项。4 型为较理想状态。',
+                  style: TextStyle(fontSize: 12.5, color: IbdColors.textSecondary),
+                ),
+                const SizedBox(height: 10),
+                ..._bristolOptions.map((o) {
+                  final selected = o.type == _stoolType;
+                  final ideal = o.type == 4;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
                       onTap: () => setState(() {
-                        _stoolType = type;
+                        _stoolType = o.type;
                         _saved = false;
                       }),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                       child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: selected
                               ? IbdColors.primary
                               : (ideal
                                   ? const Color(0xFFCCFBF1)
                                   : Colors.white),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: selected
                                 ? IbdColors.primary
                                 : const Color(0xFFE2E8F0),
+                            width: selected ? 1.5 : 1,
                           ),
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        child: Row(
                           children: [
                             Text(
-                              _bristolEmoji(type),
-                              style: const TextStyle(fontSize: 20),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '$type',
+                              '${o.type}',
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
+                                fontSize: 16,
                                 color: selected
                                     ? Colors.white
                                     : IbdColors.textPrimary,
                               ),
                             ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                o.label,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  height: 1.3,
+                                  fontWeight:
+                                      selected ? FontWeight.w600 : FontWeight.w500,
+                                  color: selected
+                                      ? Colors.white
+                                      : IbdColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            if (ideal && !selected)
+                              const Text(
+                                '理想',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: IbdColors.primaryDark,
+                                ),
+                              ),
                           ],
                         ),
                       ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '选最像今天大便外观的类型。4 型（深绿）为较理想状态。',
-                  style: _hintStyle.copyWith(color: IbdColors.primaryDark),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  '1 坚果样 · 2 硬块 · 3 有裂纹 · 4 光滑条 · 5 软团 · 6 糊状 · 7 水样',
-                  style: _hintStyle,
-                ),
+                    ),
+                  );
+                }),
               ],
             ),
           ),
@@ -363,31 +375,28 @@ class _SymptomPageState extends State<SymptomPage> {
       ),
     );
   }
-
-  static String _bristolEmoji(int t) {
-    switch (t) {
-      case 1:
-        return '🫘';
-      case 2:
-        return '🌰';
-      case 3:
-        return '🌽';
-      case 4:
-        return '🌭';
-      case 5:
-        return '☁️';
-      case 6:
-        return '🌫';
-      default:
-        return '💧';
-    }
-  }
 }
 
 const _hintStyle = TextStyle(
   fontSize: 12,
   color: IbdColors.textSecondary,
 );
+
+class _BristolOption {
+  const _BristolOption(this.type, this.label);
+  final int type;
+  final String label;
+}
+
+const _bristolOptions = <_BristolOption>[
+  _BristolOption(1, '分离的硬球，像坚果，很难排出'),
+  _BristolOption(2, '香肠状但表面凹凸、有硬块'),
+  _BristolOption(3, '香肠状，表面有裂纹'),
+  _BristolOption(4, '香肠状或蛇状，光滑柔软（较理想）'),
+  _BristolOption(5, '软团状，边缘清楚，容易排出'),
+  _BristolOption(6, '糊状或水样，边缘糊化'),
+  _BristolOption(7, '完全水样，无固体'),
+];
 
 class _SectionCard extends StatelessWidget {
   const _SectionCard({
