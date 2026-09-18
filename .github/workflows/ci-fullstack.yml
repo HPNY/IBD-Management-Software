@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "services/**"
+      - "scripts/ci-fullstack.sh"
       - ".github/workflows/ci-fullstack.yml"
 
 jobs:
@@ -40,7 +41,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        # 版本以 package.json packageManager 字段为准
 
       - uses: actions/setup-node@v4
         with:
@@ -61,13 +61,7 @@ jobs:
         working-directory: services/parse-worker
         run: pip install -r requirements.lock
 
-      - name: Migrate
-        env:
-          DATABASE_URL: postgres://ibd:ibd@127.0.0.1:5432/ibd
-          REDIS_URL: redis://127.0.0.1:6379
-        run: pnpm --filter @ibd/api migration:run
-
-      - name: Start API
+      - name: Run fullstack E2E (API + worker + tests in one script)
         env:
           DATABASE_URL: postgres://ibd:ibd@127.0.0.1:5432/ibd
           REDIS_URL: redis://127.0.0.1:6379
@@ -77,37 +71,4 @@ jobs:
           STORAGE_SECRET: ci-storage-secret
           RUN_MIGRATIONS: "true"
           NODE_ENV: development
-        run: |
-          mkdir -p /tmp/ibd-uploads
-          node services/api/dist/main.js &
-          echo $! > /tmp/api.pid
-          for i in $(seq 1 30); do
-            curl -sf http://127.0.0.1:3000/health && break
-            sleep 1
-          done
-
-      - name: Start parse-worker
-        env:
-          REDIS_URL: redis://127.0.0.1:6379
-          STORAGE_DRIVER: local
-          STORAGE_LOCAL_DIR: /tmp/ibd-uploads
-          PORT: "8081"
-        working-directory: services/parse-worker
-        run: |
-          python -m app.main &
-          echo $! > /tmp/worker.pid
-
-      - name: E2E fullstack
-        env:
-          IBD_API_BASE: http://127.0.0.1:3000
-        run: node services/api/scripts/e2e-fullstack.mjs
-
-      - name: E2E injection
-        env:
-          IBD_API_BASE: http://127.0.0.1:3000
-        run: node services/api/scripts/e2e-injection.mjs
-
-      - name: E2E medication
-        env:
-          IBD_API_BASE: http://127.0.0.1:3000
-        run: node services/api/scripts/e2e-medication.mjs
+        run: bash scripts/ci-fullstack.sh
