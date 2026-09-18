@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../core/db/repositories.dart';
-import '../../core/injection/protocols.dart';
+import '../../core/injection/drug_catalog.dart';
 import '../../core/notify/local_notify.dart';
 import '../../core/ui/theme.dart';
 
+/// 注射排期：两级药品 + 起始日 + 间隔（天/周）+ 日历标注
 class InjectionPage extends StatefulWidget {
   const InjectionPage({super.key, this.embedded = false});
 
@@ -16,52 +17,88 @@ class InjectionPage extends StatefulWidget {
 
 class _InjectionPageState extends State<InjectionPage> {
   final _repo = InjectionRepository();
+  final _startCtrl = TextEditingController();
+  final _intervalCtrl = TextEditingController(text: '8');
+
+  String _categoryKey = kDrugCatalog.first.key;
+  String _brand = kDrugCatalog.first.brands.first.brand;
+  String _unit = 'weeks';
+  DateTime _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  Set<String> _plannedIso = {};
+  List<Map<String, dynamic>> _rows = [];
   bool _busy = false;
   String? _error;
-  List<Map<String, dynamic>> _rows = [];
-  String? _protocolKey;
-  final _startCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    final cat = kDrugCatalog.first;
+    _unit = cat.defaultUnit;
+    _intervalCtrl.text = '${cat.defaultInterval}';
     final n = DateTime.now();
-    _startCtrl.text =
-        '${n.year.toString().padLeft(4, '0')}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
-    _protocolKey = kProtocols.first.drugKey;
-    _load();
+    _startCtrl.text = isoDate(n);
+    _rebuildPreview();
   }
 
   @override
   void dispose() {
     _startCtrl.dispose();
+    _intervalCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _load() async {
+  DrugCategory get _category =>
+      findDrugCategory(_categoryKey) ?? kDrugCatalog.first;
+
+  void _onCategoryChanged(String? key) {
+    if (key == null) return;
+    final cat = findDrugCategory(key)!;
     setState(() {
-      _busy = true;
-      _error = null;
+      _categoryKey = key;
+      _brand = cat.brands.first.brand;
+      _unit = cat.defaultUnit;
+      _intervalCtrl.text = '${cat.defaultInterval}';
     });
-    try {
-      final rows = await _repo.listAll();
-      final pending = await _repo.listPending(withinDays: 60);
-      await LocalNotifyService.instance.scheduleInjectionReminders(pending);
-      if (mounted) setState(() => _rows = rows);
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _busy = false);
+    _rebuildPreview();
+  }
+
+  void _rebuildPreview() {
+    final start = DateTime.tryParse(_startCtrl.text.trim());
+    final interval = int.tryParse(_intervalCtrl.text.trim()) ?? 0;
+    if (start == null || interval <= 0) {
+      setState(() => _plannedIso = {});
+      return;
     }
+    final dates = buildIntervalDates(
+      start: start,
+      interval: interval,
+      unit: _unit,
+      maxCount: 36,
+    );
+    setState(() {
+      _plannedIso = dates.map(isoDate).toSet();
+      _calendarMonth = DateTime(start.year, start.month, 1);
+    });
+  }
+
+  Future<void> _pickStart() async {
+    final init = DateTime.tryParse(_startCtrl.text.trim()) ?? DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: init,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+    if (picked == null) return;
+    _startCtrl.text = isoDate(picked);
+    _rebuildPreview();
   }
 
   Future<void> _generate() async {
-    final key = _protocolKey;
-    if (key == null) return;
-    final protocol = kProtocols.firstWhere((p) => p.drugKey == key);
     final start = DateTime.tryParse(_startCtrl.text.trim());
-    if (start == null) {
-      setState(() => _error = '起始日期无效');
+    final interval = int.tryParse(_intervalCtrl.text.trim()) ?? 0;
+    if (start == null || interval <= 0) {
+      setState(() => _error = '请填写合法的起始日期与间隔');
       return;
     }
     setState(() {
@@ -69,40 +106,65 @@ class _InjectionPageState extends State<InjectionPage> {
       _error = null;
     });
     try {
-      await _repo.clearPendingForDrug(protocol.drugName);
-      await _repo.insertMany(buildSchedule(protocol: protocol, start: start));
-      await _load();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('已在本机生成 ${protocol.drugName} 排期'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+      final dates = buildIntervalDates(
+        start: start,
+        interval: interval,
+        unit: _unit,
+        maxCount: 24,
+      );
+      final cat = _category;
+      final drugLabel = '${cat.genericName}（$_brand）';
+      // 旧计划先清空同药名未完成针次
+      await _repo.clearPendingForDrug(drugLabel);
+      await _repo.insertMany([
+        for (var i = 0; i < dates.length; i++)
+          {
+            'drug': drugLabel,
+            'plannedDate': isoDate(dates[i]),
+            'phase': i == 0 && dates.length > 1 ? 'induction' : 'maintenance',
+            'dose': _unit == 'weeks' && interval >= 6 ? '维持' : '按方案',
+            'route': cat.key == 'upadacitinib' ? 'oral' : 'sc',
+            'weekNumber': i,
+            'notes': '${cat.mechanism} · 每 $interval $_unit',
+          },
+      ]);
+      final pending = await _repo.listPending(withinDays: 120);
+      final rows = await _repo.listAll();
+      await LocalNotifyService.instance.scheduleInjectionReminders(pending);
+      if (!mounted) return;
+      setState(() => _rows = rows);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '已生成 $drugLabel：每 $interval ${_unit == 'weeks' ? '周' : '天'}，共 ${dates.length} 次',
           ),
-        );
-      }
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _complete(Map<String, dynamic> row) async {
-    await _repo.complete(row['id'] as String);
-    await _load();
+  Future<void> _loadRows() async {
+    final rows = await _repo.listAll();
+    if (mounted) setState(() => _rows = rows);
   }
 
-  Color _phaseColor(String? phase) => phase == 'induction'
-      ? const Color(0xFF6366F1)
-      : IbdColors.primary;
+  Future<void> _complete(Map<String, dynamic> row) async {
+    await _repo.complete(row['id'] as String);
+    await _loadRows();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final pending = _rows.where((r) => r['actual_date'] == null).length;
-    final doneCount = _rows.length - pending;
+    final cat = _category;
+    final brands = cat.brands;
 
     return Scaffold(
       backgroundColor: IbdColors.bg,
@@ -110,53 +172,16 @@ class _InjectionPageState extends State<InjectionPage> {
         automaticallyImplyLeading: !widget.embedded,
         title: const Text('注射排期'),
         actions: [
-          IconButton(
-            onPressed: _busy ? null : _load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
+          IconButton(onPressed: _busy ? null : _loadRows, icon: const Icon(Icons.refresh_rounded)),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _load,
+        onRefresh: () async => _loadRows(),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           children: [
-            if (_rows.isNotEmpty)
-              Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF8B5CF6), Color(0xFF6366F1)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: Row(
-                  children: [
-                    _Stat(
-                      value: '$pending',
-                      label: '待注射',
-                      color: Colors.white,
-                    ),
-                    Container(width: 1, height: 36, color: Colors.white24),
-                    _Stat(
-                      value: '$doneCount',
-                      label: '已完成',
-                      color: Colors.white70,
-                    ),
-                    Container(width: 1, height: 36, color: Colors.white24),
-                    _Stat(
-                      value: '${_rows.length}',
-                      label: '总针次',
-                      color: Colors.white70,
-                    ),
-                  ],
-                ),
-              ),
             Container(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: IbdColors.card,
                 borderRadius: BorderRadius.circular(20),
@@ -167,182 +192,186 @@ class _InjectionPageState extends State<InjectionPage> {
                 children: [
                   const Text(
                     '生成排期',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    cat.mechanism,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: IbdColors.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
+                  const Text('药品大类（通用名）', style: _label),
+                  const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
-                    initialValue: _protocolKey,
-                    decoration: const InputDecoration(labelText: '药物协议'),
-                    items: kProtocols
-                        .map((p) => DropdownMenuItem(
-                              value: p.drugKey,
-                              child: Text(p.drugName),
-                            ))
+                    initialValue: _categoryKey,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      hintText: '选择通用名',
+                    ),
+                    items: kDrugCatalog
+                        .map(
+                          (c) => DropdownMenuItem(
+                            value: c.key,
+                            child: Text(
+                              '${c.genericName}（${c.mechanism}）',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
                         .toList(),
-                    onChanged: (v) => setState(() => _protocolKey = v),
+                    onChanged: _onCategoryChanged,
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: _startCtrl,
+                  const Text('商品名', style: _label),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    initialValue: _brand,
+                    isExpanded: true,
                     decoration: const InputDecoration(
-                      labelText: '起始日期 YYYY-MM-DD',
+                      hintText: '选择商品名',
+                    ),
+                    items: brands
+                        .map(
+                          (b) => DropdownMenuItem(
+                            value: b.brand,
+                            child: Text(
+                              b.note == null ? b.brand : '${b.brand}（${b.note}）',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => _brand = v ?? _brand),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _startCtrl,
+                          readOnly: true,
+                          decoration: InputDecoration(
+                            labelText: '起始日期',
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.calendar_today_outlined),
+                              onPressed: _pickStart,
+                            ),
+                          ),
+                          onTap: _pickStart,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('给药间隔', style: _label),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: TextField(
+                          controller: _intervalCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: '每隔'),
+                          onChanged: (_) => _rebuildPreview(),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 4,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _unit,
+                          decoration: const InputDecoration(labelText: '单位'),
+                          items: const [
+                            DropdownMenuItem(value: 'days', child: Text('天')),
+                            DropdownMenuItem(value: 'weeks', child: Text('周')),
+                          ],
+                          onChanged: (v) {
+                            setState(() => _unit = v ?? 'weeks');
+                            _rebuildPreview();
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '例：每隔 8 周打一次；或每隔 14 天。默认值来自所选药品。',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: IbdColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 14),
                   FilledButton.icon(
                     onPressed: _busy ? null : _generate,
-                    icon: const Icon(Icons.calendar_month_rounded),
-                    label: Text(_busy ? '处理中…' : '本地生成并设提醒'),
+                    icon: const Icon(Icons.event_available_rounded),
+                    label: Text(_busy ? '生成中…' : '生成排期并写入本机'),
                   ),
                 ],
               ),
+            ),
+            const SizedBox(height: 16),
+            _MonthCalendar(
+              month: _calendarMonth,
+              plannedIso: _plannedIso,
+              onPrev: () => setState(() {
+                _calendarMonth = DateTime(
+                  _calendarMonth.year,
+                  _calendarMonth.month - 1,
+                  1,
+                );
+              }),
+              onNext: () => setState(() {
+                _calendarMonth = DateTime(
+                  _calendarMonth.year,
+                  _calendarMonth.month + 1,
+                  1,
+                );
+              }),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '圆点为按当前间隔预览的注射日（生成前仅为预览）。',
+              style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
             ),
             if (_error != null)
               Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: IbdColors.danger),
-                ),
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(_error!, style: TextStyle(color: IbdColors.danger)),
               ),
-            const SizedBox(height: 20),
-            const Text(
-              '注射时间线',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: IbdColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              '本地排期 · 系统通知提醒 · 延迟可顺延',
-              style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            const Text('已生成计划',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 8),
             if (_rows.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(28),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: IbdColors.card,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  '暂无排期，先选择协议生成',
-                  style: TextStyle(color: IbdColors.textSecondary),
-                ),
-              ),
-            ..._rows.asMap().entries.map((entry) {
-              final i = entry.key;
-              final row = entry.value;
+              const Text('暂无数据，生成后在此列出', style: TextStyle(color: IbdColors.textSecondary)),
+            ..._rows.map((row) {
               final done = row['actual_date'] != null;
-              final color = _phaseColor(row['phase'] as String?);
-              final isLast = i == _rows.length - 1;
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Column(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: done ? IbdColors.success : color.withOpacity(0.15),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: done ? IbdColors.success : color,
-                            width: 2,
-                          ),
-                        ),
-                        child: Icon(
-                          done ? Icons.check_rounded : Icons.vaccines_rounded,
-                          size: 18,
-                          color: done ? Colors.white : color,
-                        ),
-                      ),
-                      if (!isLast)
-                        Container(
-                          width: 2,
-                          height: 52,
-                          color: const Color(0xFFE2E8F0),
-                        ),
-                    ],
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(
+                    done ? Icons.check_circle_rounded : Icons.vaccines_rounded,
+                    color: done ? IbdColors.success : IbdColors.primary,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Container(
-                      margin: EdgeInsets.only(bottom: isLast ? 0 : 12),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: IbdColors.card,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.black.withOpacity(0.04)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '${row['drug']} · ${row['dose']}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: color.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  row['phase'] == 'induction'
-                                      ? '诱导'
-                                      : '维持',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: color,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '计划 ${row['planned_date']}'
-                            '${done ? '\n实际 ${row['actual_date']}' : ''}'
-                            ' · W${row['week_number']} · ${row['route'] == 'sc' ? '皮下' : '静脉'}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: IbdColors.textSecondary,
-                              height: 1.4,
-                            ),
-                          ),
-                          if (!done)
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed:
-                                    _busy ? null : () => _complete(row),
-                                child: const Text('今天已打'),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
+                  title: Text('${row['drug']}'),
+                  subtitle: Text(
+                    '计划 ${row['planned_date']}'
+                    '${done ? ' · 实际 ${row['actual_date']}' : ''}'
+                    ' · ${row['notes'] ?? ''}',
                   ),
-                ],
+                  trailing: done
+                      ? null
+                      : TextButton(
+                          onPressed: _busy ? null : () => _complete(row),
+                          child: const Text('今天已打'),
+                        ),
+                ),
               );
             }),
           ],
@@ -352,39 +381,152 @@ class _InjectionPageState extends State<InjectionPage> {
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({
-    required this.value,
-    required this.label,
-    required this.color,
+const _label = TextStyle(
+  fontWeight: FontWeight.w600,
+  fontSize: 13,
+  color: IbdColors.textPrimary,
+);
+
+class _MonthCalendar extends StatelessWidget {
+  const _MonthCalendar({
+    required this.month,
+    required this.plannedIso,
+    required this.onPrev,
+    required this.onNext,
   });
 
-  final String value;
-  final String label;
-  final Color color;
+  final DateTime month;
+  final Set<String> plannedIso;
+  final VoidCallback onPrev;
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = DateTime(month.year, month.month, 1);
+    final startWeekday = first.weekday % 7; // 日=0
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+    final today = DateTime.now();
+    final cells = <Widget>[];
+
+    for (var i = 0; i < startWeekday; i++) {
+      cells.add(const SizedBox());
+    }
+    for (var d = 1; d <= daysInMonth; d++) {
+      final date = DateTime(month.year, month.month, d);
+      final iso = isoDate(date);
+      final marked = plannedIso.contains(iso);
+      final isToday = date.year == today.year &&
+          date.month == today.month &&
+          date.day == today.day;
+      cells.add(
+        Container(
+          margin: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            color: marked ? IbdColors.primary.withOpacity(0.12) : null,
+            border: Border.all(
+              color: isToday ? IbdColors.primary : Colors.transparent,
+              width: 1.2,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '$d',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: marked || isToday ? FontWeight.w800 : FontWeight.w500,
+                  color: marked ? IbdColors.primaryDark : IbdColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: marked ? IbdColors.primary : Colors.transparent,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: IbdColors.card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.black.withOpacity(0.04)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              IconButton(
+                onPressed: onPrev,
+                icon: const Icon(Icons.chevron_left_rounded),
+              ),
+              Expanded(
+                child: Text(
+                  '${month.year} 年 ${month.month} 月',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: onNext,
+                icon: const Icon(Icons.chevron_right_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Row(
+            children: [
+              _Dow('日'),
+              _Dow('一'),
+              _Dow('二'),
+              _Dow('三'),
+              _Dow('四'),
+              _Dow('五'),
+              _Dow('六'),
+            ],
+          ),
+          const SizedBox(height: 6),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 7,
+            childAspectRatio: 0.95,
+            children: cells,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Dow extends StatelessWidget {
+  const _Dow(this.t);
+  final String t;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: color == Colors.white ? Colors.white70 : color,
-            ),
-          ),
-        ],
+      child: Text(
+        t,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 12,
+          color: IbdColors.textSecondary,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
