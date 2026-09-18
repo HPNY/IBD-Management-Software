@@ -98,6 +98,7 @@ class _MedicationCheckinPageState extends State<MedicationCheckinPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
+          if (_busy) const LinearProgressIndicator(minHeight: 2),
           if (_currentMeds.isEmpty)
             const Card(
               child: ListTile(
