@@ -7,12 +7,13 @@ import '../../core/ui/theme.dart';
 import '../analysis/trend_page.dart';
 import '../lab/lab_entry_page.dart';
 import '../medication/medication_page.dart';
+import '../shell_page.dart';
 
 /// 首页 Tab：仪表盘 + 快捷入口（不负责底部导航壳）
 class DashboardTab extends StatefulWidget {
   const DashboardTab({super.key, required this.onOpen});
 
-  /// 0 打卡 2 注射 —— 用于底部切 Tab
+  /// 跳转到 Shell 底部 Tab，索引见 [ShellTabs]。
   final void Function(int index) onOpen;
 
   @override
@@ -76,14 +77,14 @@ class _DashboardTabState extends State<DashboardTab> {
           children: [
             _Header(
               greeting: _greeting,
-              onSettings: () => widget.onOpen(3),
+              onSettings: () => widget.onOpen(ShellTabs.me),
             ),
             _PrivacyBanner(syncOn: identity.syncOptIn),
             _TodayCard(
               symptomDone: _symptomToday,
               dueInjections: _dueInj.length,
-              onSymptom: () => widget.onOpen(1),
-              onInjection: () => widget.onOpen(2),
+              onSymptom: () => widget.onOpen(ShellTabs.checkIn),
+              onInjection: () => widget.onOpen(ShellTabs.injection),
             ),
             const IbdSectionTitle('快捷入口'),
             Padding(
@@ -123,7 +124,7 @@ class _DashboardTabState extends State<DashboardTab> {
                     subtitle:
                         _dueInj.isEmpty ? '本地提醒' : '${_dueInj.length} 针待处理',
                     color: const Color(0xFF8B5CF6),
-                    onTap: () => widget.onOpen(2),
+                    onTap: () => widget.onOpen(ShellTabs.injection),
                   ),
                 ],
               ),

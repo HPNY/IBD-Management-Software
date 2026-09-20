@@ -9,6 +9,16 @@ import 'settings/settings_page.dart';
 import 'symptom/symptom_page.dart';
 
 /// 底部导航：首页 · 打卡 · 注射 · 分析 · 我的
+class ShellTabs {
+  ShellTabs._();
+
+  static const home = 0;
+  static const checkIn = 1;
+  static const injection = 2;
+  static const analysis = 3;
+  static const me = 4;
+}
+
 class ShellPage extends StatefulWidget {
   const ShellPage({super.key});
 
