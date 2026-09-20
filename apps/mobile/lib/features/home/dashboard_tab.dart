@@ -4,9 +4,9 @@ import 'package:provider/provider.dart';
 import '../../core/db/repositories.dart';
 import '../../core/identity/local_identity.dart';
 import '../../core/ui/theme.dart';
-import '../lab/lab_manual_page.dart';
+import '../analysis/trend_page.dart';
+import '../lab/lab_entry_page.dart';
 import '../medication/medication_page.dart';
-import '../parse/parse_upload_page.dart';
 
 /// 首页 Tab：仪表盘 + 快捷入口（不负责底部导航壳）
 class DashboardTab extends StatefulWidget {
@@ -98,18 +98,18 @@ class _DashboardTabState extends State<DashboardTab> {
                 childAspectRatio: 1.35,
                 children: [
                   _ModuleCard(
-                    icon: Icons.edit_note_rounded,
-                    title: '手动录入检验',
-                    subtitle: '写入本机数据库',
+                    icon: Icons.biotech_rounded,
+                    title: '录入检验',
+                    subtitle: '套餐手填 · 报告解析入库',
                     color: const Color(0xFF0D9488),
-                    onTap: () => _push(const LabManualPage()),
+                    onTap: () => _push(const LabEntryPage()),
                   ),
                   _ModuleCard(
-                    icon: Icons.document_scanner_rounded,
-                    title: '报告解析',
-                    subtitle: '上传需单独确认',
+                    icon: Icons.show_chart_rounded,
+                    title: '指标趋势',
+                    subtitle: 'CRP / 钙卫蛋白等',
                     color: const Color(0xFF6366F1),
-                    onTap: () => _push(const ParseUploadPage()),
+                    onTap: () => _push(const TrendPage(embedded: false)),
                   ),
                   _ModuleCard(
                     icon: Icons.medication_liquid_rounded,
