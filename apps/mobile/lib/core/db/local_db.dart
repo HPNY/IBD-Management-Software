@@ -15,34 +15,45 @@ class LocalDb {
   static const dbFileName = 'ibders_local.db';
 
   Database? _db;
+  Future<Database>? _opening;
 
-  Future<Database> get database async {
+  /// 单飞：首页/打卡/注射等 Tab 并发读库时只打开一次，避免首启迁移竞态。
+  Future<Database> get database {
     final existing = _db;
-    if (existing != null && existing.isOpen) return existing;
+    if (existing != null && existing.isOpen) {
+      return Future<Database>.value(existing);
+    }
+    return _opening ??= _open();
+  }
 
-    final dir = await getApplicationDocumentsDirectory();
-    final path = p.join(dir.path, dbFileName);
-    final key = await DbKeyService.instance.getOrCreateKey();
-    // SQLCipher 口令：二进制密钥用 x'hex'
-    final password = 'x${_toHex(key)}';
+  Future<Database> _open() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final path = p.join(dir.path, dbFileName);
+      final key = await DbKeyService.instance.getOrCreateKey();
+      final password = 'x${_toHex(key)}';
 
-    await _migratePlainToCipherIfNeeded(path, password);
+      await _migratePlainToCipherIfNeeded(path, password);
 
-    final db = await openDatabase(
-      path,
-      password: password,
-      version: 5,
-      onConfigure: (db) async {
-        await db.execute('PRAGMA foreign_keys = ON');
-      },
-      onCreate: (db, v) async {
-        await _onCreate(db, v);
-        await _onUpgrade(db, 1, v);
-      },
-      onUpgrade: _onUpgrade,
-    );
-    _db = db;
-    return db;
+      final db = await openDatabase(
+        path,
+        password: password,
+        version: 5,
+        onConfigure: (db) async {
+          await db.execute('PRAGMA foreign_keys = ON');
+        },
+        onCreate: (db, v) async {
+          await _onCreate(db, v);
+          await _onUpgrade(db, 1, v);
+        },
+        onUpgrade: _onUpgrade,
+      );
+      _db = db;
+      return db;
+    } catch (e) {
+      _opening = null;
+      rethrow;
+    }
   }
 
   static String _toHex(List<int> bytes) {
@@ -61,8 +72,16 @@ class LocalDb {
     final file = File(path);
     if (!await file.exists()) return;
 
-    // 若已是加密库，用密码打开会成功；明文库用密码打开通常失败或 cipher 校验失败。
-    // 策略：先尝试空密码打开看是否 SQLITE_NOTADB / 非加密；成功则迁移。
+    // 空文件：上次中断的残留，删掉让加密打开走 onCreate。
+    final len = await file.length();
+    if (len == 0) {
+      await file.delete();
+      return;
+    }
+
+    final tmp = '$path.cipher_mig';
+    if (await File(tmp).exists()) await File(tmp).delete();
+
     Database? plain;
     try {
       plain = await openDatabase(path);
@@ -73,7 +92,6 @@ class LocalDb {
 
     try {
       // 能无密码打开说明是明文库 → ATTACH 加密库并复制
-      final tmp = '$path.cipher_mig';
       if (await File(tmp).exists()) await File(tmp).delete();
       await plain.execute("ATTACH DATABASE '$tmp' AS enc KEY '$password'");
       await plain.execute(
@@ -83,13 +101,14 @@ class LocalDb {
       await plain.close();
       plain = null;
 
-      // 备份旧库，换成加密库
       final bak = '$path.plain.bak';
       if (await File(bak).exists()) await File(bak).delete();
       await file.copy(bak);
       await File(tmp).rename(path);
     } catch (_) {
-      // 迁移失败则保留原库，后续业务层可能报错；不静默删数据
+      if (await File(tmp).exists()) {
+        await File(tmp).delete();
+      }
       rethrow;
     } finally {
       if (plain != null && plain.isOpen) {
@@ -307,6 +326,7 @@ class LocalDb {
   Future<void> close() async {
     await _db?.close();
     _db = null;
+    _opening = null;
   }
 
   /// 诊断用：库文件大小与是否加密（cipher_provider 非空）。
