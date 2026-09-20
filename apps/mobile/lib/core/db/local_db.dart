@@ -31,7 +31,7 @@ class LocalDb {
     final db = await openDatabase(
       path,
       password: password,
-      version: 4,
+      version: 5,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -264,6 +264,31 @@ class LocalDb {
       ''');
       await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_med_ck_date ON medication_checkins (date)',
+      );
+    }
+    if (from < 5) {
+      // 打卡补齐排便细表字段，避免重复填写
+      await db.execute(
+        'ALTER TABLE symptom_diaries ADD COLUMN urgency INTEGER',
+      );
+      await db.execute(
+        'ALTER TABLE symptom_diaries ADD COLUMN mucus INTEGER',
+      );
+      await db.execute(
+        'ALTER TABLE symptom_diaries ADD COLUMN bowel_count INTEGER',
+      );
+      // source: manual=细表手记, checkin=打卡同步；daily_count=当日累计次数
+      await db.execute(
+        "ALTER TABLE bathroom_records ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'",
+      );
+      await db.execute(
+        'ALTER TABLE bathroom_records ADD COLUMN daily_count INTEGER',
+      );
+      await db.execute(
+        'ALTER TABLE bathroom_records ADD COLUMN diarrhea_count INTEGER',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_bath_source ON bathroom_records (source)',
       );
     }
   }

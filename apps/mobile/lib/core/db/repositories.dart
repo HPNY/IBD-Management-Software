@@ -195,8 +195,29 @@ class InjectionRepository {
 }
 
 class SymptomRepository {
-  Future<Database> get _db => LocalDb.instance.database;
+  /// 测试可注入 Database，生产走 LocalDb。
+  SymptomRepository({Database? database}) : _dbOverride = database;
 
+  final Database? _dbOverride;
+  Future<Database> get _db async =>
+      _dbOverride ?? await LocalDb.instance.database;
+
+  /// none/trace/obvious → 排便表 blood 标志（0/1/2）。
+  static int? bloodToBathroomFlag(String? bloodyStool) {
+    switch (bloodyStool) {
+      case 'none':
+        return 0;
+      case 'trace':
+        return 1;
+      case 'obvious':
+        return 2;
+      default:
+        return null;
+    }
+  }
+
+  /// 保存打卡，并把排便相关字段同步写入排便细表历史。
+  /// 同日重复保存时替换 source=checkin 的同步记录，避免细表里堆重复行。
   Future<void> upsert({
     required String date,
     int? painLevel,
@@ -207,24 +228,74 @@ class SymptomRepository {
     int? fatigue,
     bool? nausea,
     String? overallFeeling,
+    bool? urgency,
+    bool? mucus,
+    int? bowelCount,
   }) async {
     final db = await _db;
-    await db.insert(
-      'symptom_diaries',
-      {
+    final now = DateTime.now();
+    final time =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final hasBathroomPayload = stoolType != null ||
+        urgency != null ||
+        mucus != null ||
+        bloodyStool != null ||
+        bowelCount != null ||
+        diarrheaCount != null;
+
+    await db.transaction((txn) async {
+      await txn.insert(
+        'symptom_diaries',
+        {
+          'id': const Uuid().v4(),
+          'date': date,
+          'pain_level': painLevel,
+          'diarrhea_count': diarrheaCount,
+          'stool_type': stoolType,
+          'bloody_stool': bloodyStool,
+          'bloating': bloating,
+          'fatigue': fatigue,
+          'nausea': nausea == null ? null : (nausea ? 1 : 0),
+          'overall_feeling': overallFeeling,
+          'urgency': urgency == null ? null : (urgency ? 1 : 0),
+          'mucus': mucus == null ? null : (mucus ? 1 : 0),
+          'bowel_count': bowelCount,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      if (!hasBathroomPayload) return;
+
+      await txn.delete(
+        'bathroom_records',
+        where: "date = ? AND source = 'checkin'",
+        whereArgs: [date],
+      );
+      await txn.insert('bathroom_records', {
         'id': const Uuid().v4(),
         'date': date,
-        'pain_level': painLevel,
-        'diarrhea_count': diarrheaCount,
+        'time': time,
         'stool_type': stoolType,
-        'bloody_stool': bloodyStool,
-        'bloating': bloating,
-        'fatigue': fatigue,
-        'nausea': nausea == null ? null : (nausea ? 1 : 0),
-        'overall_feeling': overallFeeling,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
+        'urgency': urgency == null ? null : (urgency ? 1 : 0),
+        'blood': bloodToBathroomFlag(bloodyStool),
+        'mucus': mucus == null ? null : (mucus ? 1 : 0),
+        'source': 'checkin',
+        'daily_count': bowelCount,
+        'diarrhea_count': diarrheaCount,
+        'notes': '打卡同步',
+      });
+    });
+  }
+
+  Future<Map<String, dynamic>?> getByDate(String date) async {
+    final db = await _db;
+    final rows = await db.query(
+      'symptom_diaries',
+      where: 'date = ?',
+      whereArgs: [date],
+      limit: 1,
     );
+    return rows.isEmpty ? null : rows.first;
   }
 
   Future<List<Map<String, dynamic>>> listAll() async {
@@ -234,7 +305,11 @@ class SymptomRepository {
 }
 
 class BathroomRepository {
-  Future<Database> get _db => LocalDb.instance.database;
+  BathroomRepository({Database? database}) : _dbOverride = database;
+
+  final Database? _dbOverride;
+  Future<Database> get _db async =>
+      _dbOverride ?? await LocalDb.instance.database;
 
   Future<void> insert({
     required String date,
@@ -244,6 +319,7 @@ class BathroomRepository {
     bool? blood,
     bool? mucus,
     String? notes,
+    int? dailyCount,
   }) async {
     final db = await _db;
     await db.insert('bathroom_records', {
@@ -255,12 +331,24 @@ class BathroomRepository {
       'blood': blood == null ? null : (blood ? 1 : 0),
       'mucus': mucus == null ? null : (mucus ? 1 : 0),
       'notes': notes,
+      'source': 'manual',
+      'daily_count': dailyCount,
     });
   }
 
   Future<List<Map<String, dynamic>>> listAll() async {
     final db = await _db;
     return db.query('bathroom_records', orderBy: 'date DESC, time DESC');
+  }
+
+  Future<List<Map<String, dynamic>>> listByDate(String date) async {
+    final db = await _db;
+    return db.query(
+      'bathroom_records',
+      where: 'date = ?',
+      whereArgs: [date],
+      orderBy: 'time DESC',
+    );
   }
 }
 

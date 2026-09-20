@@ -94,6 +94,26 @@ export interface SymptomDiary {
   fatigue?: number;
   nausea?: boolean;
   overallFeeling?: "better" | "same" | "worse";
+  /** 排便细表字段并入打卡，避免重复填写 */
+  urgency?: boolean;
+  mucus?: boolean;
+  bowelCount?: number;
+}
+
+export interface BathroomRecord {
+  id: string;
+  patientId?: string;
+  dateTime: string;
+  dailyCount?: number;
+  stoolType?: BristolType;
+  urgency?: boolean;
+  /** 0=无 1=擦拭有 2=明显 */
+  blood?: 0 | 1 | 2;
+  mucus?: boolean;
+  diarrheaCount?: number;
+  /** manual=细表手记 checkin=打卡同步 */
+  source?: "manual" | "checkin";
+  notes?: string;
 }
 
 export interface ParseSkillItemRule {

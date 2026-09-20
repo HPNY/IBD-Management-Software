@@ -86,9 +86,12 @@ class DataExporter {
       [
         'date',
         'pain',
+        'bowel_count',
         'diarrhea',
         'bristol',
         'bloody',
+        'urgency',
+        'mucus',
         'fatigue',
         'nausea',
         'feeling',
@@ -98,12 +101,47 @@ class DataExporter {
       rows.add([
         '${s['date']}',
         '${s['pain_level'] ?? ''}',
+        '${s['bowel_count'] ?? ''}',
         '${s['diarrhea_count'] ?? ''}',
         '${s['stool_type'] ?? ''}',
         '${s['bloody_stool'] ?? ''}',
+        '${s['urgency'] ?? ''}',
+        '${s['mucus'] ?? ''}',
         '${s['fatigue'] ?? ''}',
         '${s['nausea'] ?? ''}',
         '${s['overall_feeling'] ?? ''}',
+      ]);
+    }
+    return _csv(rows);
+  }
+
+  Future<String> exportBathroomCsv() async {
+    final rows = <List<String>>[
+      [
+        'date',
+        'time',
+        'stool_type',
+        'daily_count',
+        'diarrhea_count',
+        'urgency',
+        'blood',
+        'mucus',
+        'source',
+        'notes',
+      ],
+    ];
+    for (final r in await _bath.listAll()) {
+      rows.add([
+        '${r['date'] ?? ''}',
+        '${r['time'] ?? ''}',
+        '${r['stool_type'] ?? ''}',
+        '${r['daily_count'] ?? ''}',
+        '${r['diarrhea_count'] ?? ''}',
+        '${r['urgency'] ?? ''}',
+        '${r['blood'] ?? ''}',
+        '${r['mucus'] ?? ''}',
+        '${r['source'] ?? ''}',
+        '${r['notes'] ?? ''}',
       ]);
     }
     return _csv(rows);
@@ -135,6 +173,7 @@ class DataExporter {
       'labs.csv': await exportLabsCsv(),
       'medications.csv': await exportMedicationsCsv(),
       'symptoms.csv': await exportSymptomsCsv(),
+      'bathroom.csv': await exportBathroomCsv(),
       'surveys.csv': await exportSurveysCsv(),
     };
     final paths = <String>[];

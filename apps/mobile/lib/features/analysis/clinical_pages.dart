@@ -179,14 +179,17 @@ class _ExamPageState extends State<ExamPage> {
 
 /// D4：排便细表
 class BathroomPage extends StatefulWidget {
-  const BathroomPage({super.key});
+  const BathroomPage({super.key, this.repo});
+
+  /// 测试可注入仓库；生产默认走本机 LocalDb。
+  final BathroomRepository? repo;
 
   @override
   State<BathroomPage> createState() => _BathroomPageState();
 }
 
 class _BathroomPageState extends State<BathroomPage> {
-  final _repo = BathroomRepository();
+  late final BathroomRepository _repo = widget.repo ?? BathroomRepository();
   List<Map<String, dynamic>> _rows = [];
   int _stoolType = 4;
   bool _urgency = false;
@@ -218,8 +221,26 @@ class _BathroomPageState extends State<BathroomPage> {
       urgency: _urgency,
       blood: _blood,
       mucus: _mucus,
+      notes: '排便细表手记',
     );
     await _load();
+  }
+
+  static String _bloodText(Object? flag) {
+    switch (flag) {
+      case 1:
+        return '擦拭有血';
+      case 2:
+        return '明显便血';
+      case 0:
+        return '';
+      default:
+        return '';
+    }
+  }
+
+  static String _sourceBadge(Object? source) {
+    return '${source ?? 'manual'}' == 'checkin' ? '打卡同步' : '细表手记';
   }
 
   @override
@@ -248,23 +269,30 @@ class _BathroomPageState extends State<BathroomPage> {
                   divisions: 6,
                   onChanged: (v) => setState(() => _stoolType = v.round()),
                 ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('紧迫感'),
-                  value: _urgency,
-                  onChanged: (v) => setState(() => _urgency = v),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('便血'),
-                  value: _blood,
-                  onChanged: (v) => setState(() => _blood = v),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('黏液'),
-                  value: _mucus,
-                  onChanged: (v) => setState(() => _mucus = v),
+                Material(
+                  type: MaterialType.transparency,
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('紧迫感'),
+                        value: _urgency,
+                        onChanged: (v) => setState(() => _urgency = v),
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('便血'),
+                        value: _blood,
+                        onChanged: (v) => setState(() => _blood = v),
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('黏液'),
+                        value: _mucus,
+                        onChanged: (v) => setState(() => _mucus = v),
+                      ),
+                    ],
+                  ),
                 ),
                 FilledButton(onPressed: _add, child: const Text('记一笔')),
               ],
@@ -272,19 +300,63 @@ class _BathroomPageState extends State<BathroomPage> {
           ),
           const SizedBox(height: 16),
           const Text('历史', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          const SizedBox(height: 4),
+          const Text(
+            '完成「今日打卡」会自动写入对应历史，无需在本页重复填写。',
+            style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+          ),
           const SizedBox(height: 8),
-          ..._rows.map((r) => Card(
-                child: ListTile(
-                  dense: true,
-                  title: Text('${r['date']} ${r['time'] ?? ''}'),
-                  subtitle: Text(
-                    'Bristol ${r['stool_type']}'
-                    '${r['urgency'] == 1 ? ' · 紧迫' : ''}'
-                    '${r['blood'] == 1 ? ' · 便血' : ''}'
-                    '${r['mucus'] == 1 ? ' · 黏液' : ''}',
-                  ),
+          if (_rows.isEmpty)
+            const Text('暂无记录', style: TextStyle(color: IbdColors.textSecondary)),
+          ..._rows.map((r) {
+            final fromCheckin = '${r['source'] ?? 'manual'}' == 'checkin';
+            final bloodText = _bloodText(r['blood']);
+            final details = StringBuffer('Bristol ${r['stool_type'] ?? '—'}');
+            if (r['daily_count'] != null) {
+              details.write(' · 当日累计 ${r['daily_count']} 次');
+            }
+            if (r['diarrhea_count'] != null) {
+              details.write(' · 腹泻 ${r['diarrhea_count']} 次');
+            }
+            if (r['urgency'] == 1) details.write(' · 紧迫');
+            if (bloodText.isNotEmpty) details.write(' · $bloodText');
+            if (r['mucus'] == 1) details.write(' · 黏液');
+            return Card(
+              child: ListTile(
+                dense: true,
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text('${r['date']} ${r['time'] ?? ''}'),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: fromCheckin
+                            ? const Color(0xFFCCFBF1)
+                            : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        _sourceBadge(r['source']),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: fromCheckin
+                              ? IbdColors.primaryDark
+                              : IbdColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              )),
+                subtitle: Text(details.toString()),
+              ),
+            );
+          }),
         ],
       ),
     );
@@ -346,9 +418,17 @@ class _VisitSummaryPageState extends State<VisitSummaryPage> {
     if (lastSym == null) {
       sb.writeln('（今日未打卡）');
     } else {
+      final bloodLabel = switch ('${lastSym['bloody_stool'] ?? 'none'}') {
+        'obvious' => '明显',
+        'trace' => '擦拭有',
+        _ => '无',
+      };
+      final urgency = lastSym['urgency'] == 1 ? '紧迫' : '无紧迫';
+      final mucus = lastSym['mucus'] == 1 ? '有黏液' : '无黏液';
+      final bowel = lastSym['bowel_count'] ?? lastSym['diarrhea_count'];
       sb.writeln(
-        '腹痛 ${lastSym['pain_level']}/10 · 腹泻 ${lastSym['diarrhea_count']} 次 · '
-        'Bristol ${lastSym['stool_type']} · 便血 ${lastSym['bloody_stool'] ?? '无'}',
+        '腹痛 ${lastSym['pain_level']}/10 · 排便 $bowel 次 · 腹泻 ${lastSym['diarrhea_count']} 次 · '
+        'Bristol ${lastSym['stool_type']} · 便血 $bloodLabel · $urgency · $mucus',
       );
     }
     sb.writeln();

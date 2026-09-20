@@ -41,7 +41,9 @@ class FlareService {
         '${latestDiary?['bloody_stool'] ?? ''}' == 'obvious' ||
             '${latestDiary?['bloody_stool'] ?? ''}' == 'trace';
     final pain = (latestDiary?['pain_level'] as num?)?.toInt() ?? 0;
-    final bathBlood = bath.isNotEmpty && bath.first['blood'] == 1;
+    // blood: 0=无 1=擦拭有 2=明显
+    final bathBlood = bath.isNotEmpty &&
+        ((bath.first['blood'] as num?)?.toInt() ?? 0) >= 1;
 
     if (bloody || bathBlood) {
       reasons.add('出现便血（日记/排便）');
