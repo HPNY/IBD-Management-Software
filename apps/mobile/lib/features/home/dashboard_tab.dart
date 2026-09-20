@@ -76,7 +76,6 @@ class _DashboardTabState extends State<DashboardTab> {
           children: [
             _Header(
               greeting: _greeting,
-              syncOn: identity.syncOptIn,
               onSettings: () => widget.onOpen(3),
             ),
             _PrivacyBanner(syncOn: identity.syncOptIn),
@@ -162,12 +161,10 @@ class _DashboardTabState extends State<DashboardTab> {
 class _Header extends StatelessWidget {
   const _Header({
     required this.greeting,
-    required this.syncOn,
     required this.onSettings,
   });
 
   final String greeting;
-  final bool syncOn;
   final VoidCallback onSettings;
 
   @override
@@ -202,9 +199,8 @@ class _Header extends StatelessWidget {
           ),
           IconButton.filledTonal(
             onPressed: onSettings,
-            icon: Icon(
-              syncOn ? Icons.cloud_sync_rounded : Icons.lock_rounded,
-            ),
+            tooltip: '我的与设置',
+            icon: const Icon(Icons.settings_rounded),
             style: IconButton.styleFrom(
               backgroundColor: IbdColors.chipBg,
               foregroundColor: IbdColors.primaryDark,
