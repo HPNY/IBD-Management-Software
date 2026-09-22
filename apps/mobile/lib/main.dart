@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'core/api/api_config.dart';
+import 'core/auth/auth_session.dart';
+import 'core/auth/token_store.dart';
 import 'core/identity/local_identity.dart';
 import 'core/ui/theme.dart';
 import 'features/shell_page.dart';
@@ -9,9 +12,14 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final identity = LocalIdentity();
   await identity.load();
+  final auth = AuthSession(ApiConfig.dev(), TokenStore());
+  await auth.restore();
   runApp(
-    Provider<LocalIdentity>.value(
-      value: identity,
+    MultiProvider(
+      providers: [
+        Provider<LocalIdentity>.value(value: identity),
+        ChangeNotifierProvider<AuthSession>.value(value: auth),
+      ],
       child: const IbdApp(),
     ),
   );

@@ -1,0 +1,65 @@
+<!-- AI生成 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IBDers · 检验套餐模板维护</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<p data-aigc-mark="1" style="margin:0 0 8px;font-size:10px;line-height:1.3;color:#6b6560;font-weight:400;">AI生成</p>
+
+  <div class="app">
+    <header class="top">
+      <div class="brand">
+        <h1>检验套餐模板维护</h1>
+        <p>
+          PC Web · 维护检验大项 / 小项（规范名、单位、参考范围、排序）。
+          与 App 手动录入模板（<code>lab_panels.dart</code>）及
+          <code>CORE_LAB_NAMES</code> 对齐；本地编辑，导出 JSON / Dart 片段供导入。
+        </p>
+      </div>
+      <div class="toolbar">
+        <button type="button" class="btn" id="btn-new">新建套餐</button>
+        <button type="button" class="btn" id="btn-dup">复制</button>
+        <button type="button" class="btn danger" id="btn-del">删除套餐</button>
+        <button type="button" class="btn" id="btn-import" onclick="document.getElementById('file-import').click()">导入 JSON</button>
+        <input type="file" id="file-import" accept="application/json,.json" hidden />
+        <button type="button" class="btn" id="btn-export">导出 JSON</button>
+        <button type="button" class="btn" id="btn-export-dart">导出 Dart</button>
+        <button type="button" class="btn" id="btn-reset">重置默认</button>
+        <button type="button" class="btn primary" id="btn-save">保存</button>
+      </div>
+    </header>
+
+    <section class="layout">
+      <aside class="card side">
+        <div class="side-head">
+          <h2>检验大项</h2>
+          <span style="font-size:12px;color:var(--muted)">套餐</span>
+        </div>
+        <div class="panel-list" id="panel-list"></div>
+      </aside>
+
+      <main class="card main">
+        <div class="main-head">
+          <h2 id="active-title">—</h2>
+          <span style="font-size:12px;color:var(--muted)">小项模板</span>
+        </div>
+        <div class="main-body" id="main-body"></div>
+      </main>
+    </section>
+
+    <p class="footer-note">
+      数据默认保存在浏览器 localStorage（不上传）。导出 JSON 可与 App 内置
+      <code>kLabPanels</code> 对齐；核心规范名以
+      <code>packages/domain-types</code> 的 <code>CORE_LAB_NAMES</code>
+      为准（趋势 / 发作预警依赖）。取消上传 / 未授权时，病历仍只在本机。
+    </p>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

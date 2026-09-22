@@ -53,7 +53,8 @@ class _LoginPageState extends State<LoginPage> {
           Text(
             'IBDers 默认完全本地使用，不需要账号。\n'
             '关联手机号仅用于换机恢复、多端密文同步等可选能力。\n'
-            '病历仍保存在本机，未授权不会上传服务器。',
+            '病历仍保存在本机，未授权不会上传服务器。\n'
+            '可随时在设置中注销关联；注销不影响本机数据。',
             style: TextStyle(color: secondary, height: 1.5),
           ),
           const SizedBox(height: 24),
@@ -83,6 +84,28 @@ class _LoginPageState extends State<LoginPage> {
             onPressed: () => Navigator.of(context).maybePop(),
             child: const Text('暂不关联，继续本地使用'),
           ),
+          if (context.watch<AuthSession>().isLoggedIn)
+            TextButton(
+              onPressed: _busy
+                  ? null
+                  : () async {
+                      final nav = Navigator.of(context);
+                      final auth = context.read<AuthSession>();
+                      setState(() => _busy = true);
+                      try {
+                        await auth.logout();
+                        if (!mounted) return;
+                        setState(() => _error = null);
+                        nav.maybePop();
+                      } finally {
+                        if (mounted) setState(() => _busy = false);
+                      }
+                    },
+              child: Text(
+                '注销关联',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 16),

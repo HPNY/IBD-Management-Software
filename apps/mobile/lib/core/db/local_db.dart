@@ -94,9 +94,12 @@ class LocalDb {
       // 能无密码打开说明是明文库 → ATTACH 加密库并复制
       if (await File(tmp).exists()) await File(tmp).delete();
       await plain.execute("ATTACH DATABASE '$tmp' AS enc KEY '$password'");
-      await plain.execute(
-        "SELECT sqlcipher_export('enc')",
-      );
+      // sqflite 的 execute 不接受 SELECT；sqlcipher_export 必须走 rawQuery。
+      await plain.rawQuery("SELECT sqlcipher_export('enc')");
+      // sqlcipher_export 不会带上 user_version；不拷贝会导致 onCreate 重复建表。
+      final verRows = await plain.rawQuery('PRAGMA user_version');
+      final ver = (verRows.isEmpty ? 0 : (verRows.first.values.first as int? ?? 0));
+      await plain.execute('PRAGMA enc.user_version = $ver');
       await plain.execute('DETACH DATABASE enc');
       await plain.close();
       plain = null;
@@ -119,7 +122,7 @@ class LocalDb {
 
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
-      CREATE TABLE labs (
+      CREATE TABLE IF NOT EXISTS labs (
         id TEXT PRIMARY KEY,
         date TEXT NOT NULL,
         hospital TEXT,
@@ -128,7 +131,7 @@ class LocalDb {
       )
     ''');
     await db.execute('''
-      CREATE TABLE lab_items (
+      CREATE TABLE IF NOT EXISTS lab_items (
         id TEXT PRIMARY KEY,
         lab_id TEXT NOT NULL REFERENCES labs(id) ON DELETE CASCADE,
         name_norm TEXT NOT NULL,
@@ -141,7 +144,7 @@ class LocalDb {
       )
     ''');
     await db.execute('''
-      CREATE TABLE medications (
+      CREATE TABLE IF NOT EXISTS medications (
         id TEXT PRIMARY KEY,
         drug_name TEXT NOT NULL,
         brand_name TEXT,
@@ -156,7 +159,7 @@ class LocalDb {
       )
     ''');
     await db.execute('''
-      CREATE TABLE adverse_events (
+      CREATE TABLE IF NOT EXISTS adverse_events (
         id TEXT PRIMARY KEY,
         medication_id TEXT NOT NULL REFERENCES medications(id) ON DELETE CASCADE,
         title TEXT NOT NULL,
@@ -166,7 +169,7 @@ class LocalDb {
       )
     ''');
     await db.execute('''
-      CREATE TABLE injections (
+      CREATE TABLE IF NOT EXISTS injections (
         id TEXT PRIMARY KEY,
         drug TEXT NOT NULL,
         planned_date TEXT NOT NULL,
@@ -179,7 +182,7 @@ class LocalDb {
       )
     ''');
     await db.execute('''
-      CREATE TABLE symptom_diaries (
+      CREATE TABLE IF NOT EXISTS symptom_diaries (
         id TEXT PRIMARY KEY,
         date TEXT NOT NULL UNIQUE,
         pain_level INTEGER,
@@ -193,7 +196,7 @@ class LocalDb {
       )
     ''');
     await db.execute('''
-      CREATE TABLE parse_jobs (
+      CREATE TABLE IF NOT EXISTS parse_jobs (
         id TEXT PRIMARY KEY,
         object_key TEXT,
         hospital_hint TEXT,
@@ -287,28 +290,39 @@ class LocalDb {
     }
     if (from < 5) {
       // 打卡补齐排便细表字段，避免重复填写
-      await db.execute(
-        'ALTER TABLE symptom_diaries ADD COLUMN urgency INTEGER',
-      );
-      await db.execute(
-        'ALTER TABLE symptom_diaries ADD COLUMN mucus INTEGER',
-      );
-      await db.execute(
-        'ALTER TABLE symptom_diaries ADD COLUMN bowel_count INTEGER',
-      );
+      await _addColumnIfMissing(db, 'symptom_diaries', 'urgency', 'INTEGER');
+      await _addColumnIfMissing(db, 'symptom_diaries', 'mucus', 'INTEGER');
+      await _addColumnIfMissing(db, 'symptom_diaries', 'bowel_count', 'INTEGER');
       // source: manual=细表手记, checkin=打卡同步；daily_count=当日累计次数
-      await db.execute(
-        "ALTER TABLE bathroom_records ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'",
+      await _addColumnIfMissing(
+        db,
+        'bathroom_records',
+        'source',
+        "TEXT NOT NULL DEFAULT 'manual'",
       );
-      await db.execute(
-        'ALTER TABLE bathroom_records ADD COLUMN daily_count INTEGER',
-      );
-      await db.execute(
-        'ALTER TABLE bathroom_records ADD COLUMN diarrhea_count INTEGER',
+      await _addColumnIfMissing(db, 'bathroom_records', 'daily_count', 'INTEGER');
+      await _addColumnIfMissing(
+        db,
+        'bathroom_records',
+        'diarrhea_count',
+        'INTEGER',
       );
       await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_bath_source ON bathroom_records (source)',
       );
+    }
+  }
+
+  Future<void> _addColumnIfMissing(
+    Database db,
+    String table,
+    String column,
+    String typeSql,
+  ) async {
+    try {
+      await db.execute('ALTER TABLE $table ADD COLUMN $column $typeSql');
+    } catch (_) {
+      // 列已存在（迁移重入 / 明文库已含新列）
     }
   }
 
