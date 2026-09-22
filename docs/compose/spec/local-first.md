@@ -157,7 +157,7 @@ branch: main
 | JWT 全局守卫，未登录 401 | 默认无账号；JWT 仅同步/云解析 |
 | Nest labs/meds 为权威 | Drift 为权威 |
 | 解析成功即写 parse_jobs/labs | 解析结果回写 App；云 jobs 可短期保留 |
-| FCM/厂商待做 | 注射提醒先本地通知，推送后置 |
+| FCM/厂商 | 本地通知保底；远程推送 opt-in，payload 仅通用文案（见 [push-privacy](../../push-privacy.md)） |
 
 ## [S6] Out of Scope
 

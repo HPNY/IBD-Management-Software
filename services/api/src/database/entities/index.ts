@@ -1,5 +1,6 @@
 export { AdverseEventEntity } from "./adverse-event.entity";
 export { DeviceEntity } from "./device.entity";
+export { DeviceTokenEntity } from "./device-token.entity";
 export { InjectionEntity } from "./injection.entity";
 export { LabItemEntity } from "./lab-item.entity";
 export { LabResultEntity } from "./lab-result.entity";
@@ -18,6 +19,7 @@ export { UserEntity } from "./user.entity";
 
 import { AdverseEventEntity } from "./adverse-event.entity";
 import { DeviceEntity } from "./device.entity";
+import { DeviceTokenEntity } from "./device-token.entity";
 import { InjectionEntity } from "./injection.entity";
 import { LabItemEntity } from "./lab-item.entity";
 import { LabResultEntity } from "./lab-result.entity";
@@ -37,6 +39,7 @@ import { UserEntity } from "./user.entity";
 export const entities = [
   UserEntity,
   DeviceEntity,
+  DeviceTokenEntity,
   PatientEntity,
   LabResultEntity,
   LabItemEntity,

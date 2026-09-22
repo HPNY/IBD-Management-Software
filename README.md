@@ -11,6 +11,7 @@ IBD（克罗恩病 / 溃疡性结肠炎）患者全病程自我管理应用。
 | [PRD](docs/IBD病程管理程序PRD.md) | 产品需求 |
 | [架构分析](docs/compose/spec/architecture-techstack.md) | 技术栈与系统设计 |
 | [本地优先改造](docs/compose/spec/local-first.md) | 隐私架构与分期 |
+| [系统推送隐私边界](docs/push-privacy.md) | 本地通知保底 · 远程 opt-in · payload 白名单 |
 | [设备联调清单](docs/device-test-checklist.md) | AVD / 真机验收 |
 | [配置加固清单](docs/config-hardening-checklist.md) | 环境、密钥、依赖、CI |
 | [配置说明](docs/configuration.md) | 全部环境变量与 `STORAGE_LOCAL_DIR` |
@@ -33,6 +34,7 @@ IBD（克罗恩病 / 溃疡性结肠炎）患者全病程自我管理应用。
      │  ① 单次 PDF 解析 parse-session │
      │  ② 端到端密文备份 / 同步         │
      │  ③ Skill 模板（无病历明文）      │
+     │  ④ 系统推送（opt-in·通用文案）   │
      └──────────────────────────────┘
 ```
 
@@ -41,6 +43,7 @@ IBD（克罗恩病 / 溃疡性结肠炎）患者全病程自我管理应用。
 | 默认 | 病程只在本机；无账号、无上传 |
 | 解析 | 弹窗同意 → 短时 `parse-session` → 上传本次文件 → 结果写回本机 |
 | 同步 | 设置中开启 + 备份口令 → AES-GCM 密文快照 → 服务端不可解密 |
+| 推送 | 设置中开启 → 令牌只绑 `appUserId` → 通用提醒文案；可随时注销 |
 | 换机 | 同 `appUserId` + 口令恢复；或导出/导入 JSON |
 | 删云 | 一键删除云端密文副本 |
 
@@ -67,7 +70,7 @@ IBD（克罗恩病 / 溃疡性结肠炎）患者全病程自我管理应用。
 | **打卡** | 症状日记：腹痛/排便次数/腹泻/Bristol/便血三级/紧迫感/黏液/恶心/疲劳/整体感受；保存后自动同步排便细表历史 |
 | **注射** | 协议排期（Skyrizi 等）、时间轴、本地提醒、「今天已打」 |
 | **分析** | 指标趋势 · 病程时间线 · 检查/手术 · 排便细表（含打卡同步记录）· 就诊摘要 · **发作预警** · **量表**（PHQ-9/IBDQ/MiniQoL） · **数据导出 CSV** · 系统通知测试 |
-| **我的** | 应用 UUID、SQLCipher 状态、云同步/备份/导出、AI 与提醒说明 |
+| **我的** | 应用 UUID、SQLCipher 状态、云同步/备份/导出、系统推送（opt-in）、AI 与提醒说明 |
 | **检验** | 统一「录入检验」：套餐手填大项/小项；或同意上传报告解析，结果填入同一表单确认后写入本机 |
 | **用药** | 当前方案、切换链、停药原因（可加密）、历史 |
 
@@ -131,8 +134,9 @@ pwsh ./scripts/dev.ps1 -Docker   # 需先复制 .env.example → .env
 
 | 能力 | 接口 |
 |------|------|
-| 解析/同步短会话 | `POST /api/v1/auth/parse-session` · `sync-session` `{ appUserId }` |
+| 解析/同步/推送短会话 | `POST /api/v1/auth/parse-session` · `sync-session` · `push-session` `{ appUserId }` |
 | 密文同步 | `POST/GET/DELETE /api/v1/sync/ciphertext*` |
+| 系统推送 | `POST/DELETE/GET /api/v1/push/devices` · `POST /api/v1/push/notify`（通用文案；未配 `FCM_*` 则 dry-run） |
 | 解析 | `POST /api/v1/parse/jobs` · `POST /:id/confirm`（Skill 入库） |
 | 直传 | `POST /api/v1/files/presign` → `PUT uploadUrl` |
 | 可选账号关联（非登录） | `POST /api/v1/auth/login`（为关联手机号预留；开发验证码 `123456`，**勿用于生产**） |
@@ -179,6 +183,7 @@ Actions：https://github.com/HPNY/IBD-Management-Software/actions
 - 本地库 **SQLCipher**，密钥在 Android Keystore / iOS Keychain  
 - 云备份 AES-GCM + PBKDF2（备份口令 + appUserId），服务端仅 cipher / nonce / mac  
 - 解析上传必须用户点「同意」；`parse-session` 约 30 分钟过期  
+- 系统推送 opt-in：令牌只绑 `app_user_uuid`；payload 仅通用文案，无药品/剂量/病历（[边界说明](docs/push-privacy.md)）  
 - 卸载重装会丢本机密钥 → 先导出 JSON 或上传加密快照  
 - 生产环境：`DEV_SMS_CODE` / 默认密钥 / `DB_SYNC=true` / `PUBLIC_BASE_URL` 含 localhost → **拒绝启动**（见 `env-guard`）
 
@@ -190,7 +195,7 @@ Actions：https://github.com/HPNY/IBD-Management-Software/actions
 |------|------|
 | **v0.1.0** | 本地优先 MVP：检验/用药/注射/打卡、SQLCipher、解析+Skill、密文同步、UI 仪表盘与五 Tab、分析页（趋势/时间线/检查手术/排便/摘要/发作预警）、CI 全绿 |
 
-后续：真机验收、系统推送、微信小程序、PC Web、医生端、量表等（见 [配置加固清单](docs/config-hardening-checklist.md) 与会话工作清单）。
+后续：真机验收、微信小程序、PC Web、医生端、量表等（见 [配置加固清单](docs/config-hardening-checklist.md) 与会话工作清单）。系统推送（本地保底 + FCM opt-in）见 [push-privacy](docs/push-privacy.md)。
 
 ---
 

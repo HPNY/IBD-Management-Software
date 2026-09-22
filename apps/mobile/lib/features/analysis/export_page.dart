@@ -110,8 +110,8 @@ class _ExportPageState extends State<ExportPage> {
               leading: const Icon(Icons.notifications_active_rounded),
               title: const Text('本地通知能力'),
               subtitle: const Text(
-                '注射提醒已接入系统通知。\n'
-                'FCM/厂商推送需配置 Firebase；当前以本地通知为系统级路径。',
+                '注射提醒已接入系统通知（本地优先）。\n'
+                '远程推送可选，在「我的 · 系统推送」开启；正文仅通用文案。',
               ),
               trailing: TextButton(
                 onPressed: () async {

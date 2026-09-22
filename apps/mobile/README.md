@@ -14,7 +14,8 @@
 | `lib/core/db/local_db.dart` | SQLite schema |
 | `lib/core/db/repositories.dart` | lab/med/injection/symptom 本地仓储 |
 | `lib/core/injection/protocols.dart` | 本地生成注射排期 |
-| `lib/core/notify/local_notify.dart` | 本地注射提醒 |
+| `lib/core/notify/local_notify.dart` | 本地注射提醒 + 远程落地（通用文案白名单） |
+| `lib/core/push/push_service.dart` | 系统推送 opt-in：注册/注销设备令牌 |
 | `lib/features/*` | 本地页面（无登录门禁） |
 
 ## 运行

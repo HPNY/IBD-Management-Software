@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import type { JwtUser } from "./types";
 
-/** 仅允许特定 token scope 访问（parse_session / sync_ciphertext / full）。 */
+/** 仅允许特定 token scope 访问（parse_session / sync_ciphertext / push_register / full）。 */
 export function RequireScope(...allowed: Array<NonNullable<JwtUser["scope"]>>) {
   @Injectable()
   class ScopeGuard implements CanActivate {

@@ -5,11 +5,14 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/api/api_config.dart';
 import '../../core/api/sync_api.dart';
+import '../../core/auth/auth_session.dart';
 import '../../core/backup/backup_service.dart';
 import '../../core/db/local_db.dart';
 import '../../core/identity/local_identity.dart';
+import '../../core/push/push_service.dart';
 import '../../core/skill/local_skill_store.dart';
 import '../../core/ui/theme.dart';
+import '../auth/login_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({
@@ -28,6 +31,10 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   late final BackupService _backup =
       BackupService(context.read<LocalIdentity>().uuid);
+  late final PushService _push = PushService(
+    identity: context.read<LocalIdentity>(),
+    config: ApiConfig.dev(),
+  );
   bool _busy = false;
   String? _message;
   Map<String, Object?>? _dbProbe;
@@ -36,6 +43,19 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadDbProbe();
+    _push.addListener(_onPushChanged);
+    _push.load();
+  }
+
+  @override
+  void dispose() {
+    _push.removeListener(_onPushChanged);
+    _push.dispose();
+    super.dispose();
+  }
+
+  void _onPushChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadDbProbe() async {
@@ -177,6 +197,72 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _toggleSystemPush(bool v) async {
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    final ok = v ? await _push.enable() : await _push.disable();
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _message = ok
+          ? (v ? '系统推送已开启（远程 opt-in，仅通用提醒）' : '系统推送已关闭并注销设备令牌')
+          : (_push.lastError ?? '操作失败');
+    });
+  }
+
+  Future<void> _unregisterPushToken() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('注销推送设备？'),
+        content: const Text(
+          '将从服务端删除本机推送令牌（只绑 app_user_uuid，与登录无关）。\n'
+          '本地提醒不受影响；可随时重新开启。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('注销'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    final done = await _push.disable();
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _message = done
+          ? '设备令牌已注销'
+          : (_push.lastError ?? '注销失败');
+    });
+  }
+
+  Future<void> _testSystemPush() async {
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      final msg = await _push.testRemotePing();
+      setState(() => _message = msg);
+    } catch (e) {
+      setState(() => _message = '测试失败：$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _wipeCloud() async {
     final identity = context.read<LocalIdentity>();
     final pass = await _backup.loadPassphrase();
@@ -278,11 +364,54 @@ class _SettingsPageState extends State<SettingsPage> {
           const Card(
             child: ListTile(
               leading: Icon(Icons.notifications_active_rounded),
-              title: Text('注射提醒'),
+              title: Text('注射提醒（本地）'),
               subtitle: Text(
-                '本地通知（提前 3 天）；厂商推送 FCM 后续接入',
+                '本地通知（提前 3 天）；关网可用，不依赖推送',
               ),
             ),
+          ),
+          const SizedBox(height: 16),
+          Text('系统推送（可选）', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          Text(
+            '远程推送默认关闭。开启后仅注册设备令牌（只绑本机 app_user_uuid，'
+            '不强制登录），正文只给通用文案（如「您有一条用药提醒」），'
+            '不携带药品/剂量/病历。可随时注销；不把推送做成登录门禁。',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 12,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            title: const Text('开启系统推送'),
+            subtitle: Text(
+              _push.optIn
+                  ? '已开启 · 令牌 ${_push.registeredTokenPrefix ?? '—'}…'
+                  : '关闭时零远程注册；本地注射提醒不受影响',
+            ),
+            value: _push.optIn,
+            onChanged: _busy || _push.busy ? null : _toggleSystemPush,
+          ),
+          Row(
+            children: [
+              TextButton(
+                onPressed: _busy || _push.busy || !_push.optIn
+                    ? null
+                    : _unregisterPushToken,
+                child: Text(
+                  '注销设备令牌',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+              TextButton(
+                onPressed: _busy || _push.busy || !_push.optIn
+                    ? null
+                    : _testSystemPush,
+                child: const Text('测试通用提醒'),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Text('应用标识（本机）', style: Theme.of(context).textTheme.titleSmall),
@@ -307,6 +436,18 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           const SizedBox(height: 16),
+          Text('云同步（可选）', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          Text(
+            '病历默认只存在本机，不上传服务器。开启同步或关联手机号前，'
+            '数据完全留在你的设备上；可随时关闭、注销关联、删除云端副本。',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 12,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 8),
           SwitchListTile(
             title: const Text('启用云同步（端到端密文）'),
             subtitle: const Text('需设置备份口令；服务端无法解密病历'),
@@ -318,6 +459,14 @@ class _SettingsPageState extends State<SettingsPage> {
                 await identity.setSyncOptIn(false);
                 setState(() {});
               }
+            },
+          ),
+          _PhoneLinkCard(
+            onOpen: () async {
+              await Navigator.of(context).push<bool>(
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+              );
+              if (mounted) setState(() {});
             },
           ),
           FilledButton(
@@ -353,5 +502,69 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ),
     );
+  }
+}
+
+/// 可选「关联手机号」：非登录墙；强调本地存储与可注销。
+class _PhoneLinkCard extends StatelessWidget {
+  const _PhoneLinkCard({required this.onOpen});
+
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthSession>();
+    final linked = auth.isLoggedIn;
+    final phone = auth.tokens?.phone;
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      margin: const EdgeInsets.only(top: 8),
+      child: ListTile(
+        leading: Icon(
+          linked ? Icons.phone_iphone_rounded : Icons.phone_android_outlined,
+        ),
+        title: Text(linked ? '已关联手机号' : '关联手机号（可选）'),
+        subtitle: Text(
+          linked
+              ? '${phone != null && phone.isNotEmpty ? maskPhone(phone) : '已关联'} · 仅用于换机恢复 / 多端密文同步，可随时注销。病历仍在本机。'
+              : '可选能力，不是登录墙。未关联也可完整使用本机功能；关联仅服务换机恢复与密文同步。',
+        ),
+        trailing: linked
+            ? TextButton(
+                onPressed: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('注销关联？'),
+                      content: const Text(
+                        '将解除本机与手机号的关联（不影响本机病历）。\n'
+                        '云端密文副本需另行在「删除云端副本」中处理。',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('取消'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('注销关联'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (ok != true || !context.mounted) return;
+                  await context.read<AuthSession>().logout();
+                },
+                child: Text('注销', style: TextStyle(color: scheme.error)),
+              )
+            : const Icon(Icons.chevron_right_rounded),
+        onTap: linked ? null : onOpen,
+      ),
+    );
+  }
+
+  static String maskPhone(String phone) {
+    if (phone.length < 7) return phone;
+    return '${phone.substring(0, 3)}****${phone.substring(phone.length - 4)}';
   }
 }

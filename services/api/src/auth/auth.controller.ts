@@ -50,6 +50,13 @@ export class AuthController {
     return this.auth.issueSyncSession(body) as Promise<unknown>;
   }
 
+  /** 推送设备注册短时会话（无登录墙） */
+  @Public()
+  @Post("push-session")
+  pushSession(@Body() body: { appUserId: string; deviceId?: string }) {
+    return this.auth.issuePushSession(body) as Promise<unknown>;
+  }
+
   @ApiBearerAuth()
   @Get("me")
   me(@CurrentUser() user: JwtUser) {

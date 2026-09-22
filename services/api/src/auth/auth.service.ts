@@ -179,6 +179,28 @@ export class AuthService {
     };
   }
 
+  /** 推送注册短时会话（scope=push_register）：只绑 appUserId，无登录墙 */
+  async issuePushSession(input: { appUserId: string; deviceId?: string }) {
+    const user = await this.ensureSessionUser(input.appUserId);
+    const accessToken = this.jwt.sign(
+      {
+        userId: user.id,
+        phone: null,
+        deviceId: input.deviceId,
+        scope: "push_register",
+        appUserId: input.appUserId,
+      } satisfies JwtUser,
+      { expiresIn: "15m" },
+    );
+    return {
+      accessToken,
+      expiresIn: "15m",
+      tokenType: "Bearer",
+      scope: "push_register",
+      appUserId: input.appUserId,
+    };
+  }
+
   /** 将 app_user_uuid 映射为 users 行（openid 存 uuid，非真实微信）。 */
   private async ensureSessionUser(appUserId: string): Promise<UserEntity> {
     if (!appUserId || appUserId.length < 8) {

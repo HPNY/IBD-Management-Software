@@ -82,6 +82,21 @@
 
 ---
 
+## 5b. FCM 推送（services/api，可选）
+
+**未配置任何 `FCM_*` 时 dry-run**（只记日志，不访问 Google）。payload 仅通用文案，详见 [push-privacy](push-privacy.md)。
+
+| 变量 | 类型 | 默认 | 必需 | 说明 |
+|------|------|------|------|------|
+| `FCM_SERVER_KEY` | string | 空 | 否 | 传统 FCM API；与服务账号二选一 |
+| `FCM_PROJECT_ID` | string | 空 | 服务账号方式 | Firebase 项目 ID |
+| `FCM_CLIENT_EMAIL` | string | 空 | 服务账号方式 | 服务账号邮箱 |
+| `FCM_PRIVATE_KEY` | string | 空 | 服务账号方式 | PEM 私钥；`.env` 中可用 `\n` 转义 |
+
+配置齐备后 `POST /api/v1/push/notify` 才真实发送；否则返回 `dryRun: true`。
+
+---
+
 ## 6. 服务端口
 
 | 变量 | 默认 | 说明 |

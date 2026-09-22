@@ -13,6 +13,7 @@ import { ParseModule } from "./modules/parse/parse.module";
 import { SkillModule } from "./modules/skill/skill.module";
 import { ReminderModule } from "./modules/reminder/reminder.module";
 import { SyncModule } from "./modules/sync/sync.module";
+import { PushModule } from "./modules/push/push.module";
 import { StorageModule } from "./storage/storage.module";
 import { dataSourceOptions } from "./database/data-source";
 
@@ -36,6 +37,7 @@ const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
     SkillModule,
     ReminderModule,
     SyncModule,
+    PushModule,
     StorageModule,
   ],
 })

@@ -94,6 +94,23 @@ async function main() {
   }
   if (!diary.id) throw new Error("symptom diary save failed");
 
+  // device_tokens：只绑 appUserId，注册 → 注销
+  const deviceTokens = ds.getRepository(
+    entities.find((e) => e.name === "DeviceTokenEntity")!,
+  );
+  const appUserId = `smoke-app-${randomUUID().slice(0, 8)}`;
+  const token = `local-${randomUUID()}`;
+  const row = await deviceTokens.save(
+    deviceTokens.create({ appUserId, token, platform: "local" }),
+  );
+  const found = await deviceTokens.findOne({ where: { token } });
+  if (!found || found.appUserId !== appUserId) {
+    throw new Error("device token register failed");
+  }
+  await deviceTokens.delete({ appUserId });
+  const gone = await deviceTokens.findOne({ where: { token } });
+  if (gone) throw new Error("device token unregister failed");
+
   console.log(
     JSON.stringify(
       {
@@ -102,6 +119,7 @@ async function main() {
         labId: lab.id,
         labItem: loaded.items[0].nameNorm,
         symptomId: diary.id,
+        deviceTokenId: row.id,
       },
       null,
       2,
