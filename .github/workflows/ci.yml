@@ -49,6 +49,9 @@ jobs:
       - name: Smoke storage
         run: pnpm --filter @ibd/api smoke:storage
 
+      - name: Smoke push copy (privacy)
+        run: pnpm --filter @ibd/api smoke:push-copy
+
   parse-worker:
     name: Parse worker unit
     runs-on: ubuntu-latest
@@ -88,3 +91,7 @@ jobs:
         working-directory: apps/mobile
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
         # 业务 warning 已修复；deprecation info 不阻塞 CI
+
+      - name: Push copy unit tests
+        working-directory: apps/mobile
+        run: flutter test test/push_copy_test.dart

@@ -34,7 +34,7 @@
 | 注销 | 设置页「注销设备令牌」或关闭开关；`DELETE /api/v1/push/devices` 即时删除 |
 | 门禁 | **禁止**把推送开关做成登录墙或功能门禁 |
 
-> `app_user_uuid` 本身是能力凭证：知悉 UUID 即可换发短时 `push-session`。故 UUID 勿外传；导出备份时注意保管。
+> `app_user_uuid` 本身是**能力凭证**：知悉 UUID 即可换发短时 `push-session` / `sync-session`。请勿把 UUID 发到聊天/工单/截图；导出备份注意保管。服务端对会话签发与设备注册做了进程内限流（多实例请上 Redis/网关限流）。
 
 ### 2.2 Payload 白名单（硬约束）
 
@@ -91,9 +91,19 @@
 
 | 层 | 路径 |
 |----|------|
-| 本地落地 + 白名单 | `apps/mobile/lib/core/notify/local_notify.dart` |
+| 本地落地 + 白名单 | `apps/mobile/lib/core/notify/push_copy.dart` · `local_notify.dart` |
 | 注册/注销客户端 | `apps/mobile/lib/core/push/push_service.dart` · `core/api/push_api.dart` |
+| 令牌安全存储 | `apps/mobile/lib/core/push/push_token_store.dart`（Keystore/Keychain） |
 | 设置页开关 | `apps/mobile/lib/features/settings/settings_page.dart` |
 | device_tokens 表 | `services/api/src/database/entities/device-token.entity.ts` |
 | 注册/注销 API | `services/api/src/modules/push/` |
+| 限流 | `services/api/src/common/rate-limit.ts`（会话签发 / 注册 / notify） |
 | FCM dry-run / 真实发送 | `services/api/src/modules/push/fcm.service.ts` |
+| 文案单测 | `apps/mobile/test/push_copy_test.dart` · `services/api/scripts/push-copy-smoke.ts` |
+
+### 真机 FCM 接入（可选）
+
+1. Firebase 控制台建工程，Android 放 `google-services.json`，iOS 放 `GoogleService-Info.plist`
+2. 引入 `firebase_messaging`，实现 `PushTokenSource`（见 `push_service.dart` 注释样例）
+3. 后台/前台消息回调里调用 `PushService.onRemoteMessage(...)`（会走白名单）
+4. 服务端配置 `FCM_*` 后由 dry-run 切换为真实发送

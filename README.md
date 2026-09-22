@@ -161,6 +161,7 @@ pnpm --filter @ibd/api smoke:env
 pnpm --filter @ibd/api smoke:entities
 pnpm --filter @ibd/api smoke:migration
 pnpm --filter @ibd/api smoke:storage
+pnpm --filter @ibd/api smoke:push-copy
 pnpm --filter @ibd/api e2e:fullstack
 pnpm --filter @ibd/api e2e:injection
 pnpm --filter @ibd/api e2e:medication

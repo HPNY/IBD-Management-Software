@@ -15,6 +15,7 @@
     "smoke:storage": "ts-node --transpile-only scripts/storage-smoke.ts",
     "smoke:migration": "ts-node --transpile-only scripts/migration-smoke.ts",
     "smoke:env": "ts-node --transpile-only scripts/env-guard-smoke.ts",
+    "smoke:push-copy": "ts-node --transpile-only scripts/push-copy-smoke.ts",
     "e2e:fullstack": "node scripts/e2e-fullstack.mjs",
     "e2e:injection": "node scripts/e2e-injection.mjs",
     "e2e:medication": "node scripts/e2e-medication.mjs",

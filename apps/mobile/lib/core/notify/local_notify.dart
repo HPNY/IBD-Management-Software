@@ -2,22 +2,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
-/// 远程推送 kind → 通用文案（禁止携带药品/剂量/病历）。
-const Map<String, ({String title, String body})> kGenericPushCopy = {
-  'medication': (title: 'IBDers', body: '您有一条用药提醒'),
-  'injection': (title: 'IBDers', body: '您有一条注射提醒'),
-  'followup': (title: 'IBDers', body: '您有一条复查提醒'),
-  'system': (title: 'IBDers', body: '您有一条系统通知'),
-};
-
-/// 仅允许落地的通用短语白名单；其余远程文案一律丢弃并降级。
-const Set<String> kAllowedRemoteCopy = {
-  'IBDers',
-  '您有一条用药提醒',
-  '您有一条注射提醒',
-  '您有一条复查提醒',
-  '您有一条系统通知',
-};
+import 'push_copy.dart';
 
 /// 本地通知（不依赖服务端推送）+ 远程推送落地为本地通知。
 ///
@@ -83,7 +68,7 @@ class LocalNotifyService {
   /// 远程推送落地为本地通知。
   ///
   /// - [kind]：medication | injection | followup | system，映射通用文案
-  /// - [title]/[body]：仅当命中 [kAllowedRemoteCopy] 时才采用；否则降级通用
+  /// - [title]/[body]：仅当命中白名单时才采用；否则降级通用
   ///
   /// 不读取、不展示任何药品名/剂量/病历字段。
   Future<void> showRemoteAsLocal({
@@ -92,18 +77,11 @@ class LocalNotifyService {
     String? body,
   }) async {
     if (!_ready) await init();
-    final generic =
-        kGenericPushCopy[kind] ?? kGenericPushCopy['system']!;
-    final safeTitle = (title != null && kAllowedRemoteCopy.contains(title))
-        ? title
-        : generic.title;
-    final safeBody = (body != null && kAllowedRemoteCopy.contains(body))
-        ? body
-        : generic.body;
+    final safe = resolveRemoteCopy(kind: kind, title: title, body: body);
     await _plugin.show(
       DateTime.now().microsecondsSinceEpoch.remainder(0x7fffffff),
-      safeTitle,
-      safeBody,
+      safe.title,
+      safe.body,
       const NotificationDetails(android: _remoteAndroid, iOS: DarwinNotificationDetails()),
     );
   }

@@ -2,21 +2,35 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/api_config.dart';
 import '../api/push_api.dart';
 import '../identity/local_identity.dart';
 import '../notify/local_notify.dart';
+import 'push_token_store.dart';
 
-/// 设备推送令牌来源。接入 firebase_messaging 后替换实现即可。
+/// 设备推送令牌来源。
+///
+/// 真机 FCM：在 App 启动后注入基于 `firebase_messaging` 的实现，例如：
+/// ```dart
+/// class FcmPushTokenSource implements PushTokenSource {
+///   Future<String?> getToken() async {
+///     // await Firebase.initializeApp(...);
+///     // return FirebaseMessaging.instance.getToken();
+///   }
+///   Future<void> deleteToken() async {
+///     // await FirebaseMessaging.instance.deleteToken();
+///   }
+/// }
+/// ```
+/// 收到远程消息时调用 [PushService.onRemoteMessage] 落地为本地通知。
+/// 未配置 Firebase 工程前请勿引入 firebase_messaging，以免破坏无密钥构建。
 abstract class PushTokenSource {
   Future<String?> getToken();
   Future<void> deleteToken();
 }
 
 /// 默认令牌源：稳定本地占位串（dry-run / 未接 FCM SDK 时）。
-/// 真机 FCM token 请实现 [PushTokenSource] 并在构造 [PushService] 时注入。
 class LocalPushTokenSource implements PushTokenSource {
   LocalPushTokenSource(this.appUserId);
 
@@ -39,21 +53,24 @@ class LocalPushTokenSource implements PushTokenSource {
 ///
 /// - 默认关闭；与登录无关，令牌只绑 app_user_uuid
 /// - 可随时注销；不把推送做成登录门禁
+/// - 令牌存 [PushTokenStore]（secure storage）
 class PushService extends ChangeNotifier {
   PushService({
     required LocalIdentity identity,
     PushTokenSource? tokenSource,
     ApiConfig? config,
+    PushTokenStore? tokenStore,
   })  : _identity = identity,
-        _config = config ?? ApiConfig.dev() {
+        _config = config ?? ApiConfig.dev(),
+        _tokenStore = tokenStore ?? PushTokenStore() {
     _tokenSource = tokenSource ?? LocalPushTokenSource(identity.uuid);
   }
 
   final LocalIdentity _identity;
   final ApiConfig _config;
+  final PushTokenStore _tokenStore;
   late PushTokenSource _tokenSource;
 
-  static const _kPushToken = 'ibd_push_token';
   bool _busy = false;
   String? _lastError;
   String? _registeredToken;
@@ -68,8 +85,7 @@ class PushService extends ChangeNotifier {
   }
 
   Future<void> load() async {
-    final sp = await SharedPreferences.getInstance();
-    _registeredToken = sp.getString(_kPushToken);
+    _registeredToken = await _tokenStore.read();
     notifyListeners();
   }
 
@@ -93,8 +109,7 @@ class PushService extends ChangeNotifier {
         platform: defaultTargetPlatform.name,
       );
       await _identity.setPushOptIn(true);
-      final sp = await SharedPreferences.getInstance();
-      await sp.setString(_kPushToken, token);
+      await _tokenStore.write(token);
       _registeredToken = token;
       return true;
     } catch (e) {
@@ -124,14 +139,12 @@ class PushService extends ChangeNotifier {
             token: token,
           );
         } catch (e) {
-          // 网络失败仍本地关闭；保留错误提示，避免误以为云端已注销
           _lastError = '云端注销未完成（本机已关闭）：$e';
         }
       }
       await _tokenSource.deleteToken();
       await _identity.setPushOptIn(false);
-      final sp = await SharedPreferences.getInstance();
-      await sp.remove(_kPushToken);
+      await _tokenStore.clear();
       _registeredToken = null;
       return true;
     } finally {

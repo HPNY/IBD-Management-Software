@@ -3,15 +3,25 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
+  HttpStatus,
   Post,
   Query,
+  Req,
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import type { Request } from "express";
 import { resolveAppUserId } from "../../auth/app-user-id";
 import { CurrentUser } from "../../auth/current-user.decorator";
 import { RequireScope } from "../../auth/scope.guard";
 import type { JwtUser } from "../../auth/types";
+import {
+  clientIp,
+  deviceTokenLimiter,
+  RateLimiter,
+  pushNotifyLimiter,
+} from "../../common/rate-limit";
 import { PushService } from "./push.service";
 
 @ApiTags("push")
@@ -25,6 +35,7 @@ export class PushController {
   @Post("devices")
   register(
     @CurrentUser() user: JwtUser,
+    @Req() req: Request,
     @Body()
     body: {
       appUserId?: string;
@@ -33,6 +44,7 @@ export class PushController {
     },
   ) {
     const appUserId = resolveAppUserId(user, body.appUserId);
+    throttle(deviceTokenLimiter, `reg:${appUserId}:${clientIp(req)}`);
     return this.push.register({
       appUserId,
       token: body.token,
@@ -45,6 +57,7 @@ export class PushController {
   @Delete("devices")
   unregister(
     @CurrentUser() user: JwtUser,
+    @Req() req: Request,
     @Body()
     body: { appUserId?: string; token?: string },
     @Query("appUserId") q?: string,
@@ -52,6 +65,7 @@ export class PushController {
   ) {
     const appUserId = resolveAppUserId(user, body?.appUserId || q);
     const token = body?.token || qToken;
+    throttle(deviceTokenLimiter, `unreg:${appUserId}:${clientIp(req)}`);
     return this.push.unregister({ appUserId, token });
   }
 
@@ -87,6 +101,17 @@ export class PushController {
     @Body() body: { appUserId?: string; kind?: string },
   ) {
     const appUserId = resolveAppUserId(user, body?.appUserId);
+    throttle(pushNotifyLimiter, `notify:${appUserId}`);
     return this.push.notifyUser({ appUserId, kind: body?.kind });
+  }
+}
+
+function throttle(limiter: RateLimiter, key: string) {
+  const d = limiter.take(key);
+  if (!d.ok) {
+    throw new HttpException(
+      { message: "too many push requests", retryAfterSec: d.retryAfterSec },
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
   }
 }
