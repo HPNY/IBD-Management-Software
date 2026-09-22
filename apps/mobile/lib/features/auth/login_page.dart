@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../core/auth/auth_session.dart';
 
+/// 可选「关联手机号」——不是登录墙。
+/// 病历始终在本机；关联仅用于密文同步/换机恢复等可选云能力。
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -23,7 +25,7 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  Future<void> _login() async {
+  Future<void> _link() async {
     setState(() {
       _busy = true;
       _error = null;
@@ -42,11 +44,19 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final secondary = Theme.of(context).colorScheme.onSurfaceVariant;
     return Scaffold(
-      appBar: AppBar(title: const Text('登录 IBDers')),
+      appBar: AppBar(title: const Text('关联手机号（可选）')),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
+          Text(
+            'IBDers 默认完全本地使用，不需要账号。\n'
+            '关联手机号仅用于换机恢复、多端密文同步等可选能力。\n'
+            '病历仍保存在本机，未授权不会上传服务器。',
+            style: TextStyle(color: secondary, height: 1.5),
+          ),
+          const SizedBox(height: 24),
           TextField(
             controller: _phoneCtrl,
             keyboardType: TextInputType.phone,
@@ -66,8 +76,12 @@ class _LoginPageState extends State<LoginPage> {
           ),
           const SizedBox(height: 20),
           FilledButton(
-            onPressed: _busy ? null : _login,
-            child: Text(_busy ? '登录中…' : '登录 / 注册'),
+            onPressed: _busy ? null : _link,
+            child: Text(_busy ? '关联中…' : '关联手机号'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            child: const Text('暂不关联，继续本地使用'),
           ),
           if (_error != null)
             Padding(

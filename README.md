@@ -135,7 +135,7 @@ pwsh ./scripts/dev.ps1 -Docker   # 需先复制 .env.example → .env
 | 密文同步 | `POST/GET/DELETE /api/v1/sync/ciphertext*` |
 | 解析 | `POST /api/v1/parse/jobs` · `POST /:id/confirm`（Skill 入库） |
 | 直传 | `POST /api/v1/files/presign` → `PUT uploadUrl` |
-| 可选登录 | `POST /api/v1/auth/login`（开发验证码 `123456`，**勿用于生产**） |
+| 可选账号关联（非登录） | `POST /api/v1/auth/login`（为关联手机号预留；开发验证码 `123456`，**勿用于生产**） |
 | 用药/注射 | Swagger：切换链、协议排期、到期提醒 |
 
 ### LLM（可选）
