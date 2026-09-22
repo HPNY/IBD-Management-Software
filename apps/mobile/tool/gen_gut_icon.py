@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Generate IBDers gut app icons (Android mipmaps + iOS AppIcon)."""
+"""Generate IBDers gut app icons, adaptive layers, and splash logos."""
 
 from __future__ import annotations
 
 import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 MASTER = 1024
@@ -61,7 +61,6 @@ def stroke(draw: ImageDraw.ImageDraw, pts: list[tuple[float, float]], width: flo
 
 
 def shape_mask(size: int, shape: str) -> Image.Image:
-    # render mask at 4x for smooth edges
     s = 4
     W = size * s
     mask = Image.new("L", (W, W), 0)
@@ -113,14 +112,9 @@ def make_base(size: int, shape: str = "square") -> Image.Image:
     return out
 
 
-def draw_gut_layer() -> Image.Image:
-    """
-    Clean stylized gut:
-      - large intestine: thick inverted-U + sigmoid/rectum
-      - small intestine: one continuous meander with soft turns
-      - teal outline separates layers
-    """
-    S = 4  # supersample
+def draw_gut_layer(gut_color=GUT, soft_color=GUT_SOFT, accent_color=ACCENT) -> Image.Image:
+    """Stylized large + small intestine mark in MASTER space (1024)."""
+    S = 4
     layer = Image.new("RGBA", (MASTER * S, MASTER * S), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
 
@@ -130,9 +124,6 @@ def draw_gut_layer() -> Image.Image:
     def pts(ctrl):
         return catmull([sc(x, y) for x, y in ctrl])
 
-    # ----- geometry in 1024 space -----
-    # Large intestine (image: patient right on left)
-    # starts inside the cecum pouch so the end reads as a closed bulb
     colon_ctrl = [
         (305, 710),
         (285, 620),
@@ -153,8 +144,6 @@ def draw_gut_layer() -> Image.Image:
         (580, 850),
         (555, 900),
     ]
-    # Small intestine meander: left→right→left→right with soft U-turns
-    # keep clear of cecum bulb so outlines cannot cut the colon
     small_ctrl = [
         (360, 420),
         (430, 395),
@@ -183,19 +172,19 @@ def draw_gut_layer() -> Image.Image:
     colon_w = 62 * S
     small_w = 40 * S
 
-    # single body pass — colon start is a natural round cap (no offset cecum ball)
-    stroke(d, small_path, width=small_w, color=GUT_SOFT + (255,))
-    stroke(d, colon_path, width=colon_w, color=GUT + (255,))
+    stroke(d, small_path, width=small_w, color=soft_color + (255,))
+    stroke(d, colon_path, width=colon_w, color=gut_color + (255,))
 
-    # accent bead on transverse colon
-    ax, ay = sc(530, 230)
-    ar = 15 * S
-    d.ellipse([ax - ar, ay - ar, ax + ar, ay + ar], fill=ACCENT + (255,))
+    if accent_color is not None:
+        ax, ay = sc(530, 230)
+        ar = 15 * S
+        d.ellipse([ax - ar, ay - ar, ax + ar, ay + ar], fill=accent_color + (255,))
 
     return layer.resize((MASTER, MASTER), Image.Resampling.LANCZOS)
 
 
 _GUT_LAYER = None
+_GUT_MONO = None
 
 
 def gut_layer() -> Image.Image:
@@ -203,6 +192,13 @@ def gut_layer() -> Image.Image:
     if _GUT_LAYER is None:
         _GUT_LAYER = draw_gut_layer()
     return _GUT_LAYER
+
+
+def gut_monochrome() -> Image.Image:
+    global _GUT_MONO
+    if _GUT_MONO is None:
+        _GUT_MONO = draw_gut_layer(gut_color=(255, 255, 255), soft_color=(255, 255, 255), accent_color=None)
+    return _GUT_MONO
 
 
 def compose_icon(size: int, shape: str = "square") -> Image.Image:
@@ -216,6 +212,63 @@ def compose_icon(size: int, shape: str = "square") -> Image.Image:
     return out
 
 
+def compose_foreground(size: int) -> Image.Image:
+    """Adaptive icon foreground: gut in the safe center of a transparent canvas."""
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    # keep mark inside ~66% safe zone
+    mark = int(size * 0.62)
+    gut = gut_layer().resize((mark, mark), Image.Resampling.LANCZOS)
+    off = (size - mark) // 2
+    canvas.alpha_composite(gut, (off, off))
+    return canvas
+
+
+def compose_monochrome(size: int) -> Image.Image:
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    mark = int(size * 0.62)
+    gut = gut_monochrome().resize((mark, mark), Image.Resampling.LANCZOS)
+    off = (size - mark) // 2
+    canvas.alpha_composite(gut, (off, off))
+    return canvas
+
+
+def _load_font(size: int) -> ImageFont.ImageFont:
+    candidates = [
+        r"C:\Windows\Fonts\segoeuib.ttf",
+        r"C:\Windows\Fonts\segoeui.ttf",
+        r"C:\Windows\Fonts\arialbd.ttf",
+        r"C:\Windows\Fonts\arial.ttf",
+        r"/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    ]
+    for path in candidates:
+        if Path(path).exists():
+            try:
+                return ImageFont.truetype(path, size=size)
+            except OSError:
+                continue
+    return ImageFont.load_default()
+
+
+def compose_splash_logo(size: int) -> Image.Image:
+    """Centered gut mark + IBDers wordmark for splash screens (transparent bg)."""
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    mark = int(size * 0.72)
+    gut = gut_layer().resize((mark, mark), Image.Resampling.LANCZOS)
+    ox = (size - mark) // 2
+    oy = int(size * 0.08)
+    canvas.alpha_composite(gut, (ox, oy))
+
+    font = _load_font(int(size * 0.12))
+    text = "IBDers"
+    d = ImageDraw.Draw(canvas)
+    bbox = d.textbbox((0, 0), text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    tx = (size - tw) // 2 - bbox[0]
+    ty = int(size * 0.82)
+    d.text((tx, ty), text, font=font, fill=GUT + (255,))
+    return canvas
+
+
 def to_opaque_rgb(img: Image.Image, bg=TEAL) -> Image.Image:
     flat = Image.new("RGB", img.size, bg)
     if img.mode == "RGBA":
@@ -227,6 +280,8 @@ def to_opaque_rgb(img: Image.Image, bg=TEAL) -> Image.Image:
 
 def save_all() -> None:
     android_res = ROOT / "android" / "app" / "src" / "main" / "res"
+
+    # classic square + round launchers
     android_map = {
         "mdpi": 48,
         "hdpi": 72,
@@ -242,6 +297,26 @@ def save_all() -> None:
         rnd = compose_icon(px, shape="round")
         rnd.save(folder / "ic_launcher_round.png", optimize=True)
 
+    # adaptive icon layers (108dp canvas)
+    adaptive_map = {
+        "mdpi": 108,
+        "hdpi": 162,
+        "xhdpi": 216,
+        "xxhdpi": 324,
+        "xxxhdpi": 432,
+    }
+    for dens, px in adaptive_map.items():
+        folder = android_res / f"mipmap-{dens}"
+        folder.mkdir(parents=True, exist_ok=True)
+        compose_foreground(px).save(folder / "ic_launcher_foreground.png", optimize=True)
+        compose_monochrome(px).save(folder / "ic_launcher_monochrome.png", optimize=True)
+
+    # splash logo (nodpi, large enough for all screens)
+    nodpi = android_res / "drawable-nodpi"
+    nodpi.mkdir(parents=True, exist_ok=True)
+    compose_splash_logo(512).save(nodpi / "launch_logo.png", optimize=True)
+
+    # iOS AppIcon
     ios_dir = ROOT / "ios" / "Runner" / "Assets.xcassets" / "AppIcon.appiconset"
     ios_specs = [
         (20, 1),
@@ -266,27 +341,20 @@ def save_all() -> None:
         img = compose_icon(px, shape="square")
         to_opaque_rgb(img).save(ios_dir / name, optimize=True)
 
+    # iOS LaunchImage
+    launch_dir = ROOT / "ios" / "Runner" / "Assets.xcassets" / "LaunchImage.imageset"
+    for name, px in (("LaunchImage.png", 200), ("LaunchImage@2x.png", 400), ("LaunchImage@3x.png", 600)):
+        compose_splash_logo(px).save(launch_dir / name, optimize=True)
+
     brand_dir = (ROOT.parents[1] / "docs" / "assets").resolve()
     brand_dir.mkdir(parents=True, exist_ok=True)
     preview = compose_icon(512, shape="square")
     to_opaque_rgb(preview).save(brand_dir / "ibders-app-icon.png", optimize=True)
     round_preview = compose_icon(512, shape="round")
     round_preview.save(brand_dir / "ibders-app-icon-round.png", optimize=True)
+    compose_splash_logo(512).save(brand_dir / "ibders-splash-logo.png", optimize=True)
 
-    sheet = Image.new("RGB", (560, 220), (244, 247, 246))
-    x = 24
-    for px in [48, 72, 96, 144, 192]:
-        icon = compose_icon(px, shape="square")
-        sheet.paste(to_opaque_rgb(icon), (x, 100 - px // 2))
-        x += px + 16
-    sheet.save(brand_dir / "ibders-app-icon-sheet.png", optimize=True)
-
-    # nearest-neighbor zoom of smallest size for QA
-    tiny = compose_icon(48, shape="square")
-    to_opaque_rgb(tiny).resize((192, 192), Image.Resampling.NEAREST).save(
-        brand_dir / "ibders-app-icon-48zoom.png", optimize=True
-    )
-    print("icons written")
+    print("icons + adaptive + splash written")
 
 
 if __name__ == "__main__":
