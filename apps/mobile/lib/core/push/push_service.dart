@@ -61,7 +61,11 @@ class PushService extends ChangeNotifier {
   bool get optIn => _identity.pushOptIn;
   bool get busy => _busy;
   String? get lastError => _lastError;
-  String? get registeredTokenPrefix => _registeredToken?.substring(0, 12);
+  String? get registeredTokenPrefix {
+    final t = _registeredToken;
+    if (t == null || t.isEmpty) return null;
+    return t.length <= 12 ? t : t.substring(0, 12);
+  }
 
   Future<void> load() async {
     final sp = await SharedPreferences.getInstance();
@@ -103,6 +107,7 @@ class PushService extends ChangeNotifier {
   }
 
   /// 关闭并注销设备令牌（可随时调用）。
+  /// 返回是否已在**本机**关闭；若远端注销失败会写入 [lastError]（本地仍关闭）。
   Future<bool> disable({bool unregisterRemote = true}) async {
     _busy = true;
     _lastError = null;
@@ -119,8 +124,8 @@ class PushService extends ChangeNotifier {
             token: token,
           );
         } catch (e) {
-          // 网络失败仍本地关闭；下次 enable 会覆盖
-          _lastError = '注销请求失败（已在本机关闭）：$e';
+          // 网络失败仍本地关闭；保留错误提示，避免误以为云端已注销
+          _lastError = '云端注销未完成（本机已关闭）：$e';
         }
       }
       await _tokenSource.deleteToken();

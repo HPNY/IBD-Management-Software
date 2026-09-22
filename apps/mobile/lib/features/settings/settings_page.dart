@@ -206,9 +206,15 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!mounted) return;
     setState(() {
       _busy = false;
-      _message = ok
-          ? (v ? '系统推送已开启（远程 opt-in，仅通用提醒）' : '系统推送已关闭并注销设备令牌')
-          : (_push.lastError ?? '操作失败');
+      if (!ok) {
+        _message = _push.lastError ?? '操作失败';
+      } else if (_push.lastError != null) {
+        _message = _push.lastError;
+      } else {
+        _message = v
+            ? '系统推送已开启（远程 opt-in，仅通用提醒）'
+            : '系统推送已关闭并注销设备令牌';
+      }
     });
   }
 
@@ -242,9 +248,13 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!mounted) return;
     setState(() {
       _busy = false;
-      _message = done
-          ? '设备令牌已注销'
-          : (_push.lastError ?? '注销失败');
+      if (!done) {
+        _message = _push.lastError ?? '注销失败';
+      } else if (_push.lastError != null) {
+        _message = _push.lastError;
+      } else {
+        _message = '设备令牌已注销';
+      }
     });
   }
 

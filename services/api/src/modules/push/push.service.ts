@@ -119,7 +119,18 @@ export class PushService {
     const rows = await this.tokens.find({ where: { appUserId } });
     const results: SendPushResult[] = [];
     for (const row of rows) {
-      results.push(await this.fcm.send({ token: row.token, kind, platform: row.platform }));
+      // 本地占位令牌（local-）不是 FCM token，真发时跳过，避免无效调用
+      if (this.fcm.configured && row.token.startsWith("local-")) {
+        results.push({
+          ok: true,
+          dryRun: true,
+          tokenPrefix: row.token.slice(0, 12),
+        });
+        continue;
+      }
+      results.push(
+        await this.fcm.send({ token: row.token, kind, platform: row.platform }),
+      );
     }
     return {
       kind,

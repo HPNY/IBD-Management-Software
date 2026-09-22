@@ -80,18 +80,19 @@ export class FcmService {
   }
 
   async send(input: SendPushInput): Promise<SendPushResult> {
-    const copy = GENERIC_PUSH_COPY[input.kind];
+    const kind = normalizePushKind(input.kind);
+    const copy = GENERIC_PUSH_COPY[kind];
     const tokenPrefix = input.token.slice(0, 12);
     // 永远只发通用 title/body；data 仅 kind 路由，无临床字段
     const payload = {
       title: copy.title,
       body: copy.body,
-      data: { kind: input.kind },
+      data: { kind },
     };
 
     if (!this.configured) {
       this.logger.log(
-        `[dry-run] push kind=${input.kind} token=${tokenPrefix}… title=${payload.title} body=${payload.body}`,
+        `[dry-run] push kind=${kind} token=${tokenPrefix}… title=${payload.title} body=${payload.body}`,
       );
       return { ok: true, dryRun: true, tokenPrefix };
     }

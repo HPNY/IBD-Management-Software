@@ -30,8 +30,11 @@
 | 绑定键 | **仅** `app_user_uuid`（`appUserId`） |
 | 登录 | **不强制**；不依赖手机号 / 微信 |
 | 存储 | 服务端 `device_tokens` 表：`appUserId` + `token` + `platform` |
+| 会话 | `push-session` 签发后，操作以 JWT 内 `appUserId` 为准；body/query 回显不一致 → 403 |
 | 注销 | 设置页「注销设备令牌」或关闭开关；`DELETE /api/v1/push/devices` 即时删除 |
 | 门禁 | **禁止**把推送开关做成登录墙或功能门禁 |
+
+> `app_user_uuid` 本身是能力凭证：知悉 UUID 即可换发短时 `push-session`。故 UUID 勿外传；导出备份时注意保管。
 
 ### 2.2 Payload 白名单（硬约束）
 

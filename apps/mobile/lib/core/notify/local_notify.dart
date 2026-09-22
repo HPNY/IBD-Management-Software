@@ -101,7 +101,7 @@ class LocalNotifyService {
         ? body
         : generic.body;
     await _plugin.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      DateTime.now().microsecondsSinceEpoch.remainder(0x7fffffff),
       safeTitle,
       safeBody,
       const NotificationDetails(android: _remoteAndroid, iOS: DarwinNotificationDetails()),

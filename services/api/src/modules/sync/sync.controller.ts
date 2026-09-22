@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Post, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { UseGuards } from "@nestjs/common";
+import { resolveAppUserId } from "../../auth/app-user-id";
 import { CurrentUser } from "../../auth/current-user.decorator";
 import { RequireScope } from "../../auth/scope.guard";
 import type { JwtUser } from "../../auth/types";
@@ -20,21 +21,21 @@ export class SyncController {
     @Body()
     body: Omit<PutSnapshotInput, "appUserId"> & { appUserId?: string },
   ) {
-    const appUserId = body.appUserId || user.appUserId || user.userId;
+    const appUserId = resolveAppUserId(user, body.appUserId);
     return this.sync.putCipher({ ...body, appUserId });
   }
 
   @UseGuards(RequireScope("full", "sync_ciphertext"))
   @Get("ciphertexts")
   list(@CurrentUser() user: JwtUser, @Query("appUserId") q?: string) {
-    const appUserId = q || user.appUserId || user.userId;
+    const appUserId = resolveAppUserId(user, q);
     return this.sync.listCipher(appUserId);
   }
 
   @UseGuards(RequireScope("full", "sync_ciphertext"))
   @Delete("ciphertexts")
   wipe(@CurrentUser() user: JwtUser, @Query("appUserId") q?: string) {
-    const appUserId = q || user.appUserId || user.userId;
+    const appUserId = resolveAppUserId(user, q);
     return this.sync.wipe(appUserId);
   }
 }
