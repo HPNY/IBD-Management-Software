@@ -337,7 +337,7 @@ class _TodayAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: filled ? Colors.white : Colors.white.withOpacity(0.16),
+      color: filled ? Colors.white : Colors.white.withValues(alpha: 0.16),
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
@@ -396,7 +396,7 @@ class _ModuleCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.black.withOpacity(0.04)),
+            border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,7 +405,7 @@ class _ModuleCard extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 22),
@@ -454,7 +454,7 @@ class _StatChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: IbdColors.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
       ),
       child: Row(
         children: [

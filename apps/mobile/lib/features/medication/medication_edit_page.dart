@@ -352,7 +352,7 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
                           color: selected
-                              ? IbdColors.primary.withOpacity(0.10)
+                              ? IbdColors.primary.withValues(alpha: 0.10)
                               : const Color(0xFFF8FAFC),
                           border: Border.all(
                             color: selected
@@ -446,7 +446,7 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: Text(_error!, style: TextStyle(color: IbdColors.danger)),
+              child: Text(_error!, style: const TextStyle(color: IbdColors.danger)),
             ),
         ],
       ),
@@ -465,7 +465,7 @@ class _IosCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
       ),
       child: child,
     );

@@ -47,7 +47,7 @@ ThemeData buildIbdTheme() {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Colors.black.withOpacity(0.04)),
+        side: BorderSide(color: Colors.black.withValues(alpha: 0.04)),
       ),
       margin: EdgeInsets.zero,
     ),
@@ -89,13 +89,13 @@ ThemeData buildIbdTheme() {
       ),
       labelStyle: const TextStyle(color: IbdColors.textSecondary),
     ),
-    navigationBarTheme: NavigationBarThemeData(
+    navigationBarTheme: const NavigationBarThemeData(
       backgroundColor: Colors.white,
       indicatorColor: IbdColors.chipBg,
       height: 64,
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       labelTextStyle: WidgetStatePropertyAll(
-        const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
       ),
     ),
   );

@@ -55,7 +55,7 @@ void main() {
       tester,
       LabEntryPage(
         labRepo: repo,
-        seedParsedItems: [
+        seedParsedItems: const [
           {
             'nameNorm': '超敏C反应蛋白',
             'nameRaw': 'hs-CRP',

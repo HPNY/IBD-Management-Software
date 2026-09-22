@@ -682,7 +682,7 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: IbdColors.card,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -764,7 +764,7 @@ class _BloodChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? color.withOpacity(0.15) : Colors.white,
+            color: selected ? color.withValues(alpha: 0.15) : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected ? color : const Color(0xFFE2E8F0),
@@ -807,7 +807,7 @@ class _FeelingChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? color.withOpacity(0.15) : Colors.white,
+            color: selected ? color.withValues(alpha: 0.15) : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected ? color : const Color(0xFFE2E8F0),

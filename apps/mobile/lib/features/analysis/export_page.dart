@@ -64,11 +64,10 @@ class _ExportPageState extends State<ExportPage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Card(
+          const Card(
             child: ListTile(
-              leading: const Icon(Icons.lock_rounded),
-              title: const Text('仅本机生成'),
-              subtitle: const Text('文件写入应用文档目录后由系统分享，不会自动上传服务器'),
+              leading: Icon(Icons.lock_rounded),
+
             ),
           ),
           const SizedBox(height: 12),

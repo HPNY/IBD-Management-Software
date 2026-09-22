@@ -185,7 +185,7 @@ class _InjectionPageState extends State<InjectionPage> {
               decoration: BoxDecoration(
                 color: IbdColors.card,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.black.withOpacity(0.04)),
+                border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,9 +298,9 @@ class _InjectionPageState extends State<InjectionPage> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(
+                  const Text(
                     '例：每隔 8 周打一次；或每隔 14 天。默认值来自所选药品。',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: IbdColors.textSecondary,
                     ),
@@ -341,7 +341,7 @@ class _InjectionPageState extends State<InjectionPage> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text(_error!, style: TextStyle(color: IbdColors.danger)),
+                child: Text(_error!, style: const TextStyle(color: IbdColors.danger)),
               ),
             const SizedBox(height: 16),
             const Text('已生成计划',
@@ -423,7 +423,7 @@ class _MonthCalendar extends StatelessWidget {
           margin: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            color: marked ? IbdColors.primary.withOpacity(0.12) : null,
+            color: marked ? IbdColors.primary.withValues(alpha: 0.12) : null,
             border: Border.all(
               color: isToday ? IbdColors.primary : Colors.transparent,
               width: 1.2,
@@ -460,7 +460,7 @@ class _MonthCalendar extends StatelessWidget {
       decoration: BoxDecoration(
         color: IbdColors.card,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
       ),
       child: Column(
         children: [

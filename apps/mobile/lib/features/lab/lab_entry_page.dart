@@ -65,7 +65,6 @@ class _ParsedItem {
     required this.unit,
     this.refMin,
     this.refMax,
-    this.matchedPanel = false,
   }) : ctrl = TextEditingController(text: valueText);
 
   final String nameNorm;
@@ -77,7 +76,7 @@ class _ParsedItem {
   final TextEditingController ctrl;
 
   /// true：与套餐项同名，值已写入套餐输入框，不在下方重复展示。
-  bool matchedPanel;
+  bool matchedPanel = false;
 
   void dispose() => ctrl.dispose();
 
@@ -359,8 +358,6 @@ class _LabEntryPageState extends State<LabEntryPage> {
   Future<void> _save() async {
     final items = <Map<String, dynamic>>[];
     var usedParse = false;
-
-    final specsByName = {for (final s in _specs) s.nameNorm: s};
     for (final spec in _specs) {
       final raw =
           _panelCtrl(spec.nameNorm, _panelValues[spec.nameNorm] ?? '')
@@ -514,7 +511,7 @@ class _LabEntryPageState extends State<LabEntryPage> {
             ),
           ),
           const SizedBox(height: 16),
-          _SectionTitle(
+          const _SectionTitle(
             icon: Icons.document_scanner_rounded,
             title: '报告解析填充（可选）',
             subtitle: '服务录入：解析结果进入本表单，不直接替你保存',
@@ -582,7 +579,7 @@ class _LabEntryPageState extends State<LabEntryPage> {
             ),
           ),
           const SizedBox(height: 16),
-          _SectionTitle(
+          const _SectionTitle(
             icon: Icons.playlist_add_check_rounded,
             title: '检验套餐',
             subtitle: '选大项自动带出小项；解析到同名项会填入这里',
@@ -638,7 +635,7 @@ class _LabEntryPageState extends State<LabEntryPage> {
           ],
           if (visibleParsed.isNotEmpty) ...[
             const SizedBox(height: 16),
-            _SectionTitle(
+            const _SectionTitle(
               icon: Icons.fact_check_outlined,
               title: '解析待确认项',
               subtitle: '未在当前套餐中，确认数值后一并保存',

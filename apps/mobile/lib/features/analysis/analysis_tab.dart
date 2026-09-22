@@ -135,7 +135,7 @@ class _NavCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.black.withOpacity(0.04)),
+              border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
             ),
             child: Row(
               children: [
@@ -143,7 +143,7 @@ class _NavCard extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
+                    color: color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, color: color),

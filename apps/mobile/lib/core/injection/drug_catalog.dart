@@ -1,6 +1,9 @@
 /// 注射相关药品目录（国内 IBD 常用）+ 排期工具。
 /// 大类（通用名）→ 商品名；默认间隔供「快速填入」，可改日/周。
 
+library;
+
+
 class DrugBrand {
   const DrugBrand({required this.brand, this.note});
   final String brand;

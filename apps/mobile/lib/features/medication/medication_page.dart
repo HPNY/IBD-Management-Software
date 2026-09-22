@@ -192,7 +192,7 @@ class _MedicationPageState extends State<MedicationPage> {
                         decoration: BoxDecoration(
                           color: stopped
                               ? const Color(0xFFE2E8F0)
-                              : IbdColors.primary.withOpacity(0.15),
+                              : IbdColors.primary.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -254,7 +254,7 @@ class _MedicationPageState extends State<MedicationPage> {
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(_error!,
-                    style: TextStyle(color: IbdColors.danger)),
+                    style: const TextStyle(color: IbdColors.danger)),
               ),
           ],
         ),
@@ -345,7 +345,7 @@ class _InjectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: IbdColors.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
       ),
       child: Row(
         children: [
@@ -353,7 +353,7 @@ class _InjectionCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: const Color(0xFF8B5CF6).withOpacity(0.12),
+              color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.vaccines_rounded,
@@ -406,7 +406,7 @@ class _DailyMedCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: IbdColors.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -417,7 +417,7 @@ class _DailyMedCard extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B).withOpacity(0.12),
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.medication_liquid_rounded,

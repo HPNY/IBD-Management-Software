@@ -275,11 +275,11 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           const SizedBox(height: 8),
-          Card(
+          const Card(
             child: ListTile(
-              leading: const Icon(Icons.notifications_active_rounded),
-              title: const Text('注射提醒'),
-              subtitle: const Text(
+              leading: Icon(Icons.notifications_active_rounded),
+              title: Text('注射提醒'),
+              subtitle: Text(
                 '本地通知（提前 3 天）；厂商推送 FCM 后续接入',
               ),
             ),

@@ -183,7 +183,7 @@ class _LineChartPainter extends CustomPainter {
       ..color = const Color(0xFFE2E8F0)
       ..strokeWidth = 1;
 
-    final pad = 24.0;
+    const pad = 24.0;
     final w = size.width - pad * 2;
     final h = size.height - pad * 2;
     final range = (maxV - minV) == 0 ? 1.0 : (maxV - minV);
@@ -215,7 +215,7 @@ class _LineChartPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset(0, pad - 14));
+    tp.paint(canvas, const Offset(0, 10));
   }
 
   @override

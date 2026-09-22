@@ -133,7 +133,7 @@ class _MedicationCheckinPageState extends State<MedicationCheckinPage> {
             decoration: BoxDecoration(
               color: IbdColors.card,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.black.withOpacity(0.04)),
+              border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
             ),
             child: Column(
               children: [
@@ -204,7 +204,7 @@ class _MedicationCheckinPageState extends State<MedicationCheckinPage> {
                               color: selected
                                   ? IbdColors.primary
                                   : (count > 0
-                                      ? IbdColors.primary.withOpacity(0.15)
+                                      ? IbdColors.primary.withValues(alpha: 0.15)
                                       : null),
                               border: Border.all(
                                 color: isToday && !selected

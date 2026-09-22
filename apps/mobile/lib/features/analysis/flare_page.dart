@@ -72,7 +72,7 @@ class _FlarePageState extends State<FlarePage> {
                         gradient: LinearGradient(
                           colors: [
                             _color(r.level),
-                            _color(r.level).withOpacity(0.75),
+                            _color(r.level).withValues(alpha: 0.75),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(24),
