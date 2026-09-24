@@ -1,4 +1,5 @@
 import { useState } from "react";
+import * as XLSX from "xlsx";
 
 const KEYS = {
   labs: "ibd_web_labs",
@@ -59,6 +60,50 @@ export default function DataExport() {
     setMsg("已导出 CSV");
   };
 
+  const exportExcel = () => {
+    const data = collect();
+    const labRows: Array<{
+      date: string;
+      nameNorm: string;
+      value: number;
+      unit?: string;
+    }> = [];
+    for (const l of data.labs as Array<{
+      date: string;
+      items: Array<{ nameNorm: string; value: number; unit?: string }>;
+    }>) {
+      for (const it of l.items || []) {
+        labRows.push({
+          date: l.date,
+          nameNorm: it.nameNorm,
+          value: it.value,
+          unit: it.unit,
+        });
+      }
+    }
+    const clinicalRows = data.clinical as Array<{
+      kind: string;
+      date: string;
+      type: string;
+      conclusion: string;
+    }>;
+
+    const wb = XLSX.utils.book_new();
+    const labsSheet = XLSX.utils.json_to_sheet(labRows, {
+      header: ["date", "nameNorm", "value", "unit"],
+    });
+    const clinicalSheet = XLSX.utils.json_to_sheet(clinicalRows, {
+      header: ["kind", "date", "type", "conclusion"],
+    });
+    XLSX.utils.book_append_sheet(wb, labsSheet, "labs");
+    XLSX.utils.book_append_sheet(wb, clinicalSheet, "clinical");
+    XLSX.writeFile(
+      wb,
+      `ibders-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    );
+    setMsg("已导出 Excel");
+  };
+
   const importJson = (file: File | null) => {
     if (!file) return;
     const reader = new FileReader();
@@ -91,11 +136,14 @@ export default function DataExport() {
   return (
     <div>
       <h1>数据 / 报告导出</h1>
-      <p className="hint">JSON / CSV 导出 · 导入换机 · 摘要打印。数据默认仅本机。</p>
+      <p className="hint">
+        JSON / CSV / Excel 导出 · 导入换机 · 摘要打印。数据默认仅本机。
+      </p>
       <div className="card">
         <div className="row">
           <button onClick={exportJson}>导出 JSON</button>
           <button onClick={exportCsv}>导出 CSV</button>
+          <button onClick={exportExcel}>导出 Excel</button>
           <button className="ghost" onClick={printSummary}>
             打印就诊摘要
           </button>

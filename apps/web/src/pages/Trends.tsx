@@ -29,7 +29,7 @@ export default function Trends() {
       try {
         setLabs(JSON.parse(raw) as LabRecord[]);
       } catch {
-        /* ignore */
+        setErr("本机数据解析失败");
       }
     }
   }, []);

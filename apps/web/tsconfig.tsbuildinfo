@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/pages/clinicaledit.tsx","./src/pages/dataexport.tsx","./src/pages/parsebatch.tsx","./src/pages/skills.tsx","./src/pages/trends.tsx"],"errors":true,"version":"5.9.3"}

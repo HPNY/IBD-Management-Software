@@ -3,12 +3,14 @@ import ParseBatch from "./pages/ParseBatch";
 import Trends from "./pages/Trends";
 import ClinicalEdit from "./pages/ClinicalEdit";
 import DataExport from "./pages/DataExport";
+import Skills from "./pages/Skills";
 
 const tabs = [
   { to: "/", label: "趋势分析" },
   { to: "/parse", label: "批量解析" },
   { to: "/clinical", label: "检查/手术" },
   { to: "/export", label: "数据导出" },
+  { to: "/skills", label: "Skill 模板" },
 ];
 
 export default function App() {
@@ -46,6 +48,7 @@ export default function App() {
           <Route path="/parse" element={<ParseBatch />} />
           <Route path="/clinical" element={<ClinicalEdit />} />
           <Route path="/export" element={<DataExport />} />
+          <Route path="/skills" element={<Skills />} />
         </Routes>
       </main>
     </div>
