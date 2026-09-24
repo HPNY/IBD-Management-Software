@@ -3,7 +3,7 @@ import 'package:ibd_mobile/core/db/repositories.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// 与 local_db.dart v5 对齐的测试库 schema。
+/// 与 local_db.dart v6 对齐的测试库 schema。
 Future<Database> _openTestDb() async {
   sqfliteFfiInit();
   final factory = databaseFactoryFfi;
@@ -15,7 +15,7 @@ Future<Database> _openTestDb() async {
   final db = await factory.openDatabase(
     dbPath,
     options: OpenDatabaseOptions(
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE symptom_diaries (
@@ -31,7 +31,17 @@ Future<Database> _openTestDb() async {
             overall_feeling TEXT,
             urgency INTEGER,
             mucus INTEGER,
-            bowel_count INTEGER
+            bowel_count INTEGER,
+            oral_ulcer INTEGER,
+            joint_pain INTEGER,
+            joint_pain_site TEXT,
+            custom_items TEXT,
+            sleep_hours REAL,
+            sleep_quality INTEGER,
+            sleep_insomnia INTEGER,
+            night_wakes INTEGER,
+            stress_level INTEGER,
+            stress_source TEXT
           )
         ''');
         await db.execute('''

@@ -39,6 +39,16 @@ class FakeSymptomRepository extends SymptomRepository {
     bool? urgency,
     bool? mucus,
     int? bowelCount,
+    bool? oralUlcer,
+    bool? jointPain,
+    String? jointPainSite,
+    String? customItemsJson,
+    double? sleepHours,
+    int? sleepQuality,
+    bool? sleepInsomnia,
+    int? nightWakes,
+    int? stressLevel,
+    String? stressSource,
   }) async {
     store.symptoms[date] = {
       'id': 'sym-$date',
@@ -54,6 +64,16 @@ class FakeSymptomRepository extends SymptomRepository {
       'urgency': urgency == null ? null : (urgency ? 1 : 0),
       'mucus': mucus == null ? null : (mucus ? 1 : 0),
       'bowel_count': bowelCount,
+      'oral_ulcer': oralUlcer == null ? null : (oralUlcer ? 1 : 0),
+      'joint_pain': jointPain == null ? null : (jointPain ? 1 : 0),
+      'joint_pain_site': jointPainSite,
+      'custom_items': customItemsJson,
+      'sleep_hours': sleepHours,
+      'sleep_quality': sleepQuality,
+      'sleep_insomnia': sleepInsomnia == null ? null : (sleepInsomnia ? 1 : 0),
+      'night_wakes': nightWakes,
+      'stress_level': stressLevel,
+      'stress_source': stressSource,
     };
 
     final hasBathroomPayload = stoolType != null ||

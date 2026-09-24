@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
+import '../../core/checkin/diary_severity.dart';
+import '../../core/checkin/quick_template.dart';
 import '../../core/db/repositories.dart';
 import '../../core/ui/theme.dart';
 
@@ -43,6 +47,28 @@ class _SymptomPageState extends State<SymptomPage> {
   String? _todayBathSummary;
   bool _loading = true;
 
+  // G2：日记补全
+  bool _oralUlcer = false;
+  bool _jointPain = false;
+  final Set<String> _jointSites = <String>{};
+  final List<Map<String, String>> _customItems = <Map<String, String>>[];
+
+  // G4：睡眠/压力
+  double _sleepHours = 7;
+  int _sleepQuality = 3;
+  bool _sleepInsomnia = false;
+  int _nightWakes = 0;
+  int _stressLevel = 5;
+  String? _stressSource;
+
+  // G2：快捷模板 + 日历热力
+  Map<String, dynamic>? _yesterday;
+  final Map<String, double> _severityByDate = <String, double>{};
+  String? _selectedCalDate;
+
+  static const _jointSiteOptions = ['膝', '踝', '手', '肘', '背', '其他'];
+  static const _stressSources = ['工作', '家庭', '疾病', '其他'];
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +80,9 @@ class _SymptomPageState extends State<SymptomPage> {
     final date = _isoDate(n);
     final row = await _repo.getByDate(date);
     final bathRows = await _bathRepo.listByDate(date);
+    final yesterdayDate = _isoDate(n.subtract(const Duration(days: 1)));
+    final yesterday = await _repo.getByDate(yesterdayDate);
+    final all = await _repo.listAll();
     if (!mounted) return;
     setState(() {
       if (row != null) {
@@ -76,13 +105,69 @@ class _SymptomPageState extends State<SymptomPage> {
         _fatigueFlag = fatigue > 0;
         _fatigue = fatigue;
         _feeling = '${row['overall_feeling'] ?? 'same'}';
+        // G2/G4 回读
+        final ulcer = row['oral_ulcer'];
+        _oralUlcer = ulcer == 1 || ulcer == true;
+        final jp = row['joint_pain'];
+        _jointPain = jp == 1 || jp == true;
+        final site = '${row['joint_pain_site'] ?? ''}';
+        _jointSites
+          ..clear()
+          ..addAll(
+            site
+                .split(',')
+                .map((s) => s.trim())
+                .where((s) => s.isNotEmpty && _jointSiteOptions.contains(s)),
+          );
+        _customItems
+          ..clear()
+          ..addAll(_decodeCustomItems(row['custom_items']));
+        _sleepHours = ((row['sleep_hours'] as num?) ?? 7).toDouble();
+        _sleepQuality = ((row['sleep_quality'] as num?) ?? 3).toInt();
+        final ins = row['sleep_insomnia'];
+        _sleepInsomnia = ins == 1 || ins == true;
+        _nightWakes = ((row['night_wakes'] as num?) ?? 0).toInt();
+        _stressLevel = ((row['stress_level'] as num?) ?? 5).toInt();
+        final ss = '${row['stress_source'] ?? ''}';
+        _stressSource = ss.isEmpty ? null : ss;
         _saved = true;
+      }
+      _yesterday = yesterday;
+      _severityByDate.clear();
+      for (final s in all) {
+        final d = '${s['date']}';
+        _severityByDate[d] = diarySeverity(
+          painLevel: (s['pain_level'] as num?)?.round(),
+          bowelCount: (s['bowel_count'] as num?)?.round(),
+          diarrheaCount: (s['diarrhea_count'] as num?)?.round(),
+          bloodyStool: '${s['bloody_stool'] ?? ''}',
+        );
       }
       _syncedToBathroom =
           bathRows.any((r) => '${r['source'] ?? ''}' == 'checkin');
       _todayBathSummary = bathRows.isEmpty ? null : _formatBathSummary(bathRows);
       _loading = false;
     });
+  }
+
+  static List<Map<String, String>> _decodeCustomItems(Object? raw) {
+    if (raw is! String || raw.trim().isEmpty) return [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return [];
+      return decoded
+          .whereType<Map>()
+          .map(
+            (m) => {
+              'label': '${m['label'] ?? ''}',
+              'value': '${m['value'] ?? ''}',
+            },
+          )
+          .where((m) => (m['label'] ?? '').isNotEmpty)
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   static String _isoDate(DateTime n) =>
@@ -120,6 +205,13 @@ class _SymptomPageState extends State<SymptomPage> {
 
   Future<void> _save() async {
     final date = _isoDate(DateTime.now());
+    final customJson = _customItems.isEmpty
+        ? null
+        : jsonEncode(
+            _customItems
+                .map((e) => {'label': e['label'], 'value': e['value']})
+                .toList(),
+          );
     await _repo.upsert(
       date: date,
       painLevel: _pain.round(),
@@ -133,6 +225,18 @@ class _SymptomPageState extends State<SymptomPage> {
       urgency: _urgency,
       mucus: _mucus,
       bowelCount: _bowelCount,
+      oralUlcer: _oralUlcer,
+      jointPain: _jointPain,
+      jointPainSite: _jointPain && _jointSites.isNotEmpty
+          ? _jointSites.join(',')
+          : null,
+      customItemsJson: customJson,
+      sleepHours: _sleepHours,
+      sleepQuality: _sleepQuality,
+      sleepInsomnia: _sleepInsomnia,
+      nightWakes: _nightWakes,
+      stressLevel: _stressLevel,
+      stressSource: _stressSource,
     );
     final bathRows = await _bathRepo.listByDate(date);
     if (!mounted) return;
@@ -141,6 +245,98 @@ class _SymptomPageState extends State<SymptomPage> {
       _syncedToBathroom =
           bathRows.any((r) => '${r['source'] ?? ''}' == 'checkin');
       _todayBathSummary = bathRows.isEmpty ? null : _formatBathSummary(bathRows);
+      final sev = diarySeverity(
+        painLevel: _pain.round(),
+        bowelCount: _bowelCount,
+        diarrheaCount: _diarrhea,
+        bloodyStool: _blood,
+      );
+      _severityByDate[date] = sev;
+    });
+  }
+
+  void _applyQuickTemplate(String feeling) {
+    final y = _yesterday;
+    if (y == null) return;
+    final m = prefilledFromYesterday(y, overallFeeling: feeling);
+    setState(() {
+      _pain = ((m['painLevel'] as num?) ?? 0).toDouble();
+      _diarrhea = (m['diarrheaCount'] as num?)?.toInt() ?? 0;
+      _stoolType = (m['stoolType'] as num?)?.toInt() ?? 4;
+      _bowelCount = (m['bowelCount'] as num?)?.toInt() ?? 0;
+      _blood = '${m['bloodyStool'] ?? 'none'}';
+      _urgency = m['urgency'] == true;
+      _mucus = m['mucus'] == true;
+      _nausea = m['nausea'] == true;
+      _fatigueFlag = m['fatigueFlag'] == true;
+      _fatigue = (m['fatigue'] as num?)?.toDouble() ?? 0;
+      _feeling = '${m['overallFeeling'] ?? feeling}';
+      _oralUlcer = m['oralUlcer'] == true;
+      _jointPain = m['jointPain'] == true;
+      _jointSites
+        ..clear()
+        ..addAll(
+          '${m['jointPainSite'] ?? ''}'
+              .split(',')
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty),
+        );
+      _customItems
+        ..clear()
+        ..addAll(_decodeCustomItems(m['customItemsJson']));
+      final sh = m['sleepHours'] as num?;
+      if (sh != null) _sleepHours = sh.toDouble();
+      final sq = m['sleepQuality'] as num?;
+      if (sq != null) _sleepQuality = sq.toInt();
+      _sleepInsomnia = m['sleepInsomnia'] == true;
+      _nightWakes = (m['nightWakes'] as num?)?.toInt() ?? 0;
+      final st = m['stressLevel'] as num?;
+      if (st != null) _stressLevel = st.toInt();
+      final src = '${m['stressSource'] ?? ''}';
+      _stressSource = src.isEmpty ? null : src;
+      _saved = false;
+    });
+  }
+
+  Future<void> _addCustomItem() async {
+    final labelCtrl = TextEditingController();
+    final valueCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('添加自定义关注项'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: labelCtrl,
+              decoration: const InputDecoration(labelText: '名称（如：皮疹）'),
+            ),
+            TextField(
+              controller: valueCtrl,
+              decoration: const InputDecoration(labelText: '情况（如：轻/无）'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('添加'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final label = labelCtrl.text.trim();
+    if (label.isEmpty) return;
+    setState(() {
+      _customItems
+          .add({'label': label, 'value': valueCtrl.text.trim()});
+      _saved = false;
     });
   }
 
@@ -186,6 +382,99 @@ class _SymptomPageState extends State<SymptomPage> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               children: [
+                if (_yesterday != null) ...[
+                  _SectionCard(
+                    title: '快捷模板',
+                    trailing: const Text(
+                      '预填昨日 · 仍需保存',
+                      style: TextStyle(fontSize: 11, color: IbdColors.textSecondary),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '基于昨日记录一键预填，可再微调后保存。',
+                          style: _hintStyle,
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            _QuickBtn(
+                              label: '和昨天一样',
+                              onTap: () => _applyQuickTemplate('same'),
+                            ),
+                            const SizedBox(width: 8),
+                            _QuickBtn(
+                              label: '比昨天好',
+                              onTap: () => _applyQuickTemplate('better'),
+                            ),
+                            const SizedBox(width: 8),
+                            _QuickBtn(
+                              label: '比昨天差',
+                              onTap: () => _applyQuickTemplate('worse'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+                _SectionCard(
+                  title: '症状日历',
+                  trailing: Text(
+                    _selectedCalDate ?? '近 6 周',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: IbdColors.textSecondary,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      _SeverityCalendar(
+                        severityByDate: _severityByDate,
+                        selected: _selectedCalDate,
+                        onSelect: (d, sev) => setState(() {
+                          _selectedCalDate = d;
+                          if (sev != null) _severityByDate[d] = sev;
+                        }),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: const [
+                          _LegendDot(color: Color(0xFFE2E8F0), label: '未记录'),
+                          SizedBox(width: 12),
+                          _LegendDot(color: IbdColors.success, label: '轻'),
+                          SizedBox(width: 12),
+                          _LegendDot(color: IbdColors.warning, label: '中'),
+                          SizedBox(width: 12),
+                          _LegendDot(color: IbdColors.danger, label: '重'),
+                        ],
+                      ),
+                      if (_selectedCalDate != null) ...[
+                        const SizedBox(height: 8),
+                        Builder(
+                          builder: (_) {
+                            final d = _selectedCalDate!;
+                            final sev = _severityByDate[d];
+                            if (sev == null) {
+                              return Text(
+                                '$d：无记录（灰色）',
+                                style: _hintStyle,
+                              );
+                            }
+                            return Text(
+                              '$d · 严重度 ${sev.toStringAsFixed(1)} / 10',
+                              style: _hintStyle,
+                            );
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
                 _SectionCard(
                   title: '腹痛',
                   trailing: Text(
@@ -567,6 +856,222 @@ class _SymptomPageState extends State<SymptomPage> {
                           }),
                         ),
                       ],
+                      const Divider(height: 1),
+                      _SwitchRow(
+                        label: '口腔溃疡',
+                        hint: '口腔出现溃疡或破皮',
+                        value: _oralUlcer,
+                        onChanged: (v) => setState(() {
+                          _oralUlcer = v;
+                          _saved = false;
+                        }),
+                      ),
+                      const Divider(height: 1),
+                      _SwitchRow(
+                        label: '关节痛',
+                        hint: '关节酸痛或肿胀',
+                        value: _jointPain,
+                        onChanged: (v) => setState(() {
+                          _jointPain = v;
+                          _saved = false;
+                        }),
+                      ),
+                      if (_jointPain) ...[
+                        const SizedBox(height: 4),
+                        const Text('部位（可多选）', style: _hintStyle),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final site in _jointSiteOptions)
+                              FilterChip(
+                                label: Text(site),
+                                selected: _jointSites.contains(site),
+                                onSelected: (sel) => setState(() {
+                                  if (sel) {
+                                    _jointSites.add(site);
+                                  } else {
+                                    _jointSites.remove(site);
+                                  }
+                                  _saved = false;
+                                }),
+                                selectedColor:
+                                    IbdColors.primary.withValues(alpha: 0.18),
+                                checkmarkColor: IbdColors.primaryDark,
+                                labelStyle: TextStyle(
+                                  color: _jointSites.contains(site)
+                                      ? IbdColors.primaryDark
+                                      : IbdColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                      const Divider(height: 1),
+                      if (_customItems.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Column(
+                            children: [
+                              for (var i = 0; i < _customItems.length; i++)
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  dense: true,
+                                  title: Text(
+                                    '${_customItems[i]['label']}：'
+                                    '${_customItems[i]['value'] ?? ''}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.close_rounded, size: 18),
+                                    tooltip: '删除',
+                                    onPressed: () => setState(() {
+                                      _customItems.removeAt(i);
+                                      _saved = false;
+                                    }),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: _addCustomItem,
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: const Text('添加自定义关注项'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _SectionCard(
+                  title: '睡眠与压力',
+                  trailing: Text(
+                    '可选',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: IbdColors.textSecondary,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('睡眠时长 ${_sleepHours.toStringAsFixed(1)} 小时', style: _hintStyle),
+                      Slider(
+                        value: _sleepHours,
+                        min: 0,
+                        max: 12,
+                        divisions: 24,
+                        onChanged: (v) => setState(() {
+                          _sleepHours = v;
+                          _saved = false;
+                        }),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text('睡眠质量', style: _hintStyle),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          for (var q = 1; q <= 5; q++)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: _QualityChip(
+                                score: q,
+                                selected: _sleepQuality == q,
+                                onTap: () => setState(() {
+                                  _sleepQuality = q;
+                                  _saved = false;
+                                }),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const Divider(height: 20),
+                      _SwitchRow(
+                        label: '入睡困难',
+                        hint: '躺下后较难睡着',
+                        value: _sleepInsomnia,
+                        onChanged: (v) => setState(() {
+                          _sleepInsomnia = v;
+                          _saved = false;
+                        }),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text(
+                          '夜间醒来',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text('$_nightWakes 次', style: _hintStyle),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              onPressed: _nightWakes > 0
+                                  ? () => setState(() {
+                                        _nightWakes--;
+                                        _saved = false;
+                                      })
+                                  : null,
+                              icon: const Icon(Icons.remove_rounded),
+                            ),
+                            IconButton(
+                              onPressed: _nightWakes < 10
+                                  ? () => setState(() {
+                                        _nightWakes++;
+                                        _saved = false;
+                                      })
+                                  : null,
+                              icon: const Icon(Icons.add_rounded),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      Text('压力水平 $_stressLevel / 10', style: _hintStyle),
+                      Slider(
+                        value: _stressLevel.toDouble(),
+                        min: 1,
+                        max: 10,
+                        divisions: 9,
+                        onChanged: (v) => setState(() {
+                          _stressLevel = v.round();
+                          _saved = false;
+                        }),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text('压力来源（可空）', style: _hintStyle),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          for (final s in _stressSources)
+                            ChoiceChip(
+                              label: Text(s),
+                              selected: _stressSource == s,
+                              onSelected: (sel) => setState(() {
+                                _stressSource = sel ? s : null;
+                                _saved = false;
+                              }),
+                              selectedColor:
+                                  IbdColors.primary.withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: _stressSource == s
+                                    ? IbdColors.primaryDark
+                                    : IbdColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -824,6 +1329,209 @@ class _FeelingChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _QuickBtn extends StatelessWidget {
+  const _QuickBtn({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Material(
+        color: IbdColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: IbdColors.primaryDark,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QualityChip extends StatelessWidget {
+  const _QualityChip({
+    required this.score,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final int score;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 36,
+        height: 36,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? IbdColors.primary : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? IbdColors.primary : const Color(0xFFE2E8F0),
+          ),
+        ),
+        child: Text(
+          '$score',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            color: selected ? Colors.white : IbdColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LegendDot extends StatelessWidget {
+  const _LegendDot({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 11, color: IbdColors.textSecondary)),
+      ],
+    );
+  }
+}
+
+/// 近 6 周热力月历：颜色=严重度分档，灰色=无记录，今日描边。
+class _SeverityCalendar extends StatelessWidget {
+  const _SeverityCalendar({
+    required this.severityByDate,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final Map<String, double> severityByDate;
+  final String? selected;
+  final void Function(String date, double? severity) onSelect;
+
+  static String _iso(DateTime n) =>
+      '${n.year.toString().padLeft(4, '0')}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
+
+  Color _colorFor(DateTime day, bool isToday) {
+    final sev = severityByDate[_iso(day)];
+    if (sev == null) return const Color(0xFFE2E8F0);
+    switch (severityBand(sev)) {
+      case 'green':
+        return IbdColors.success;
+      case 'warning':
+        return IbdColors.warning;
+      default:
+        return IbdColors.danger;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final todayIso = _iso(today);
+    // 从今天往回 41 天（6 周），再对齐到周一开头展示
+    final start = today.subtract(const Duration(days: 41));
+    final days = List.generate(42, (i) => start.add(Duration(days: i)));
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            for (final w in const ['一', '二', '三', '四', '五', '六', '日'])
+              Expanded(
+                child: Center(
+                  child: Text(
+                    w,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: IbdColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        for (var r = 0; r < 6; r++)
+          Row(
+            children: [
+              for (var c = 0; c < 7; c++)
+                Expanded(
+                  child: Builder(
+                    builder: (_) {
+                      final day = days[r * 7 + c];
+                      final iso = _iso(day);
+                      final isToday = iso == todayIso;
+                      final isSel = iso == selected;
+                      final color = _colorFor(day, isToday);
+                      return InkWell(
+                        onTap: () => onSelect(iso, severityByDate[iso]),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          margin: const EdgeInsets.all(2),
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: color,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isToday || isSel
+                                  ? IbdColors.primaryDark
+                                  : Colors.transparent,
+                              width: isToday || isSel ? 1.5 : 0,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${day.day}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight:
+                                  isToday ? FontWeight.w800 : FontWeight.w600,
+                              color: severityByDate[iso] == null
+                                  ? IbdColors.textSecondary
+                                  : Colors.white,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+      ],
     );
   }
 }
