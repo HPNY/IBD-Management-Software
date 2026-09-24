@@ -54,11 +54,11 @@
 | T6.2 | 医生端 Web + 患者扫码授权（DEK 再包裹） | 待办 | 可收回、可过期；审计日志 |
 | T6.3 | 年度报告（PRD V1.5） | 已完成 | 按年生成概览/用药 + 分享导出 |
 | T6.4 | V2 扩展：饮食 / 药物评价 / 同城病友 / AI 分析 | 待办 | 按 PRD V2.0 里程碑拆分实施 |
-| G1 | 疾病活动度仪表盘（状态灯/Limberg/SES-CD/倒计时） | 进行中 | PRD §2.6.1 · V1.5 |
-| G2 | 症状日记补全 + 日历热力 + 快捷模板 | 进行中 | PRD §2.7.1 · 溃疡/关节痛/自定义 · V1.5 |
-| G3 | 年报：补齐原版设计（自动生成/同比/检查手术汇总） | 进行中 | PRD §2.6.2 · 现为临时手动；**C3 用户裁：文档已标注** |
-| G4 | 睡眠/压力每日打卡 | 进行中 | PRD §4.2.2 App 功能表 |
-| G5 | PC Excel 导出 + Skill 模板管理表单 | 进行中 | PRD §4.2.4 · V1.5 |
+| G1 | 疾病活动度仪表盘（状态灯/Limberg/SES-CD/倒计时） | 已完成 | PRD §2.6.1 · V1.5 |
+| G2 | 症状日记补全 + 日历热力 + 快捷模板 | 已完成 | PRD §2.7.1 · 溃疡/关节痛/自定义 · V1.5 |
+| G3 | 年报：补齐原版设计（自动生成/同比/检查手术汇总） | 已完成 | PRD §2.6.2 · 默认最近完整年自动构建 + 同比 + 检查手术汇总 |
+| G4 | 睡眠/压力每日打卡 | 已完成 | PRD §4.2.2 App 功能表 |
+| G5 | PC Excel 导出 + Skill 模板管理表单 | 已完成 | PRD §4.2.4 · V1.5 |
 | G6 | 食物-排便关联分析入口 | 待办 | PRD §2.7.2 · V2.0 |
 | G7 | 标准 SF-36 计分（8 维 0–100） | 待办 | 用户裁定 C4 · 替换简化 0–4 计分或并行标准分 |
 
@@ -100,6 +100,8 @@
 | 2026-09 | T13 | 已完成 | 二次验证排查：Flutter 0 error，修 6 处编译/结构 bug |
 | 2026-09 | T21 | 已完成 | T2.8 Widget UI 回归全过（settings_a11y_test 新增） |
 | 2026-09 | T9a | 已完成 | CI 修复：pnpm-lock 同步（frozen-lockfile 失败根因）· `37bf276` |
+| 2026-09 | G1–G5 | 已完成 | prd-v15-gaps：库 v6 / 打卡补全+热力+模板 / 活动度卡 / 年报同比 / Web Excel+Skill 表单 |
+| 2026-09 | T2.7 | 已完成 | web tsc 归零；根因 api-client 重复方法已清 |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 
@@ -109,7 +111,7 @@
 |----|------|------|------|
 | T4.2b | PC Web 批量解析接真上传（presign/enqueue/confirm） | 已完成 | 真 API：presign→PUT→enqueue→轮询→confirm(deleteSource) |
 | T2.6 | `GET /parse/jobs/:id` 补归属校验（getForUser） | 已完成 | 他人 jobId 返回 404 · tsc 通过 |
-| T2.7 | Web 装依赖后跑 `tsc --noEmit` | 阻塞 | 零 error（当前 node_modules 缺失） |
+| T2.7 | Web 装依赖后跑 `tsc --noEmit` | 已完成 | 零 error · 顺带修复 api-client 重复方法（prd-v15-gaps） |
 | T2.8 | 真机/模拟器 UI 回归（analyze 通过后） | 已完成 | Widget 回归全过（五 Tab/设置大字/语言/诊断）· 真机残留见 T2.4/T2.5 |
 | T2.9 | 清理 info：`const FirebaseOptions` · Radio 弃用改 RadioGroup | 已完成 | analyze **No issues found** |
 | T4.2a | T4.2 清单措辞：与真上传行为一致 | 已完成 | 已改为「真上传链路」描述 |
