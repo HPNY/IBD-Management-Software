@@ -1,14 +1,20 @@
 ---
 feature: prd-v15-gaps
-status: in-progress
+status: delivered
 updated: 2026-09-23
 branch: feature/prd-v15-gaps
-commits:
+commits: 66820d8..0da20a7
 ---
 
 # PRD V1.5 缺口批（G1–G5）
 
 ## Report
+
+**What was built** — 一次交付 PRD V1.5 五个缺口：本地库 v5→v6 增 10 列支撑日记补全与睡眠/压力打卡；打卡页新增溃疡/关节痛/自定义项、睡眠压力区、昨日快捷模板与周一对齐的 6 周热力月历；首页疾病活动度卡 + 详情页（CRP/ESR/钙卫状态灯、注射倒计时、Limberg/SES-CD 正则趋势、用药卡、待打前 3 条）；年度报告默认最近完整年自动构建并输出同比与检查/手术汇总；PC Web 增加 xlsx 双 sheet 导出与 `/skills` Skill 模板管理（localStorage CRUD + 导入校验）。顺带清理 `api-client` 重复方法使 `@ibd/web` typecheck 归零（解锁 T2.7）。
+
+**Verification** — `flutter analyze --no-fatal-infos` PASS（7 infos）；`flutter test` PASS **63** tests（含 v6 迁移、severity/quick-template/activity/年报同比、打卡 UI、首页与活动度详情 widget）；`pnpm --filter @ibd/web typecheck` PASS；`@ibd/api` / `@ibd/domain-types` typecheck PASS。独立审阅首轮 REQUEST_CHANGES（4 critical）→ 修复 `0da20a7` → 复审 **APPROVE**。
+
+**Journey log** — 本机 flutter test 需先补 `ProgramFiles(x86)` 环境变量（缺失会静默 exit 1）；pnpm 不在 PATH，经 hermes `corepack pnpm` 调用。`apps/web` typecheck 曾被 HEAD 上 api-client 重复 `uploadBytes`/`waitParseJob` 卡死（baseline 可复现），属 T2.7 同根因。打卡页加长后测试视口 2800 不够，调至 4200；首页模块卡 GridView 曾溢出 7.8px，改 aspect 1.15 + spaceBetween。Dashboard 的 7 天/60 天 listPending 必须分查询，否则快捷入口计数语义被静默改掉。
 
 ## [S1] Problem
 
@@ -148,11 +154,11 @@ severity = clamp( pain*0.5 + min(bowelCount??diarrheaCount,10)*0.3 + bloodPts , 
 
 ## Tasks
 
-- [ ] T1: 本地库 v6 迁移 + `SymptomRepository`/domain-types 扩展 — acceptance: `db_migration_v6_test` 通过，`flutter analyze` 无 error (covers: S2.2)
-- [ ] T2: 打卡页 G2+G4：溃疡/关节/自定义 + 睡眠压力区 + 快捷模板 — acceptance: quick_template 与页测试通过，保存往返含新字段 (covers: S2.3; depends: T1)
-- [ ] T3: 打卡页日历热力 + severity 纯函数 — acceptance: severity 单测过，月历按灰/绿/黄/红渲染 (covers: S2.4; depends: T1)
-- [ ] T4: 首页活动度卡 + 详情页（状态灯/Limberg/SES-CD/用药/倒计时） — acceptance: activity_lights 测试过，首页与详情页 widget 可渲染 (covers: S2.5)
-- [ ] T5: 年报同比 + 检查手术汇总 + 默认最近完整年份 — acceptance: annual_report_compare 测试过，报告页含对比与汇总段 (covers: S2.6)
-- [ ] T6: Web Excel 导出（xlsx 两 sheet） — acceptance: `@ibd/web typecheck` 通过，导出调用 writeFile 含 labs/clinical (covers: S2.7)
-- [ ] T7: Web Skill 模板管理表单 `/skills` — acceptance: typecheck 通过；localStorage CRUD + 校验路径完整 (covers: S2.8)
-- [ ] T8: worklist G1–G5 状态同步 + 全量验证记录 — acceptance: 清单项状态与实现一致，Verify 命令全过或记 PRE-EXISTING (covers: S2.1; depends: T1,T2,T3,T4,T5,T6,T7)
+- [x] T1: 本地库 v6 迁移 + `SymptomRepository`/domain-types 扩展 — acceptance: `db_migration_v6_test` 通过，`flutter analyze` 无 error (covers: S2.2)
+- [x] T2: 打卡页 G2+G4：溃疡/关节/自定义 + 睡眠压力区 + 快捷模板 — acceptance: quick_template 与页测试通过，保存往返含新字段 (covers: S2.3; depends: T1)
+- [x] T3: 打卡页日历热力 + severity 纯函数 — acceptance: severity 单测过，月历按灰/绿/黄/红渲染（周一开头） (covers: S2.4; depends: T1)
+- [x] T4: 首页活动度卡 + 详情页（状态灯/Limberg/SES-CD/用药/倒计时） — acceptance: activity_lights + activity_widget 测试过 (covers: S2.5)
+- [x] T5: 年报同比 + 检查手术汇总 + 默认最近完整年份 — acceptance: annual_report_compare 测试过，报告页含对比与汇总段 (covers: S2.6)
+- [x] T6: Web Excel 导出（xlsx 两 sheet） — acceptance: `@ibd/web typecheck` 通过，导出调用 writeFile 含 labs/clinical (covers: S2.7)
+- [x] T7: Web Skill 模板管理表单 `/skills` — acceptance: typecheck 通过；localStorage CRUD + 校验（含导入路径）完整 (covers: S2.8)
+- [x] T8: worklist G1–G5 状态同步 + 全量验证记录 — acceptance: 清单项状态与实现一致，Verify 命令全过 (covers: S2.1; depends: T1,T2,T3,T4,T5,T6,T7)
