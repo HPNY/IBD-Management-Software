@@ -91,6 +91,8 @@
 | 2026-09 | T3.3 | 进行中 | 差微信 appid/模板 ID |
 | 2026-09 | T9 | 已完成 | 代码审阅：修 IDOR + FCM API 误用 + 死代码 |
 | 2026-09 | T13 | 已完成 | 二次验证排查：Flutter 0 error，修 6 处编译/结构 bug |
+| 2026-09 | T21 | 已完成 | T2.8 Widget UI 回归全过（settings_a11y_test 新增） |
+| 2026-09 | T9a | 已完成 | CI 修复：pnpm-lock 同步（frozen-lockfile 失败根因）· `37bf276` |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 
