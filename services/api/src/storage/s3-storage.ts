@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -65,5 +66,12 @@ export class S3ObjectStorage {
       contentType: res.ContentType,
       size: body.length,
     };
+  }
+
+  /** 删除对象；不存在视为成功（幂等）。 */
+  async delete(objectKey: string): Promise<void> {
+    await this.client.send(
+      new DeleteObjectCommand({ Bucket: this.bucket, Key: objectKey }),
+    );
   }
 }

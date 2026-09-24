@@ -15,6 +15,7 @@ IBD（克罗恩病 / 溃疡性结肠炎）患者全病程自我管理应用。
 | [设备联调清单](docs/device-test-checklist.md) | AVD / 真机验收 |
 | [配置加固清单](docs/config-hardening-checklist.md) | 环境、密钥、依赖、CI |
 | [配置说明](docs/configuration.md) | 全部环境变量与 `STORAGE_LOCAL_DIR` |
+| [会话工作清单](docs/session-worklist.md) | 未完成项 backlog · 状态强制同步 |
 
 ---
 
@@ -196,7 +197,30 @@ Actions：https://github.com/HPNY/IBD-Management-Software/actions
 |------|------|
 | **v0.1.0** | 本地优先 MVP：检验/用药/注射/打卡、SQLCipher、解析+Skill、密文同步、UI 仪表盘与五 Tab、分析页（趋势/时间线/检查手术/排便/摘要/发作预警）、CI 全绿 |
 
-后续：真机验收、微信小程序、PC Web、医生端、量表等（见 [配置加固清单](docs/config-hardening-checklist.md) 与会话工作清单）。系统推送（本地保底 + FCM opt-in）见 [push-privacy](docs/push-privacy.md)。
+后续未完成项见 **[会话工作清单](docs/session-worklist.md)**（真机验收、推送真发、微信小程序、PC Web、解析后删原件、医生端等）。配置加固已清零（[配置加固清单](docs/config-hardening-checklist.md)）。系统推送（本地保底 + FCM opt-in）见 [push-privacy](docs/push-privacy.md)。
+
+### 工作清单状态规则
+
+**每开始一项工作，必须先把 [docs/session-worklist.md](docs/session-worklist.md) 中对应项改为 `进行中`；完成后改为 `已完成`；受阻改为 `阻塞` 并写明原因。**
+
+- 状态只改任务面板、不改清单文件 → 视为未遵守。
+- 新增未完成项时，须同步写入清单（补 ID、任务、验收标准、状态 `待办`）。
+- **任何新增工作（功能、bugfix、审阅遗留、文档、排查记录）都必须一并写入 [docs/session-worklist.md](docs/session-worklist.md)**，含 ID / 任务 / 状态 / 验收；避免切换会话后丢失。工作面板有而清单无 → 视为未遵守。
+- 交付收尾时核对清单与实现一致，禁止留下「代码已做、清单未勾」或相反。
+
+### 二次验证规则（强制）
+
+**每次编写完代码，必须二次验证是否存在 bug，通过后才算完成。** 未验证不得把清单/任务标为「已完成」。
+
+最低验证清单：
+
+1. **编译/静态检查**：`tsc` / `flutter analyze` / 对应构建命令零错误
+2. **重复与截断**：多次编辑同一文件后，确认无重复块、语法截断（引号/括号配对）
+3. **安全**：新接口/删除/上传路径有归属校验（防 IDOR）；不引入 OWASP Top 10
+4. **一致性**：调用方签名与实现一致；清单/文档与真实行为一致
+5. **回归点**：改动波及的入口至少跑通主路径（或说明无法运行的阻塞项）
+
+验证发现的问题**当场修复**再复验；无法立即修的必须记入 [session-worklist](docs/session-worklist.md)。
 
 ---
 

@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Headers, Post, Put, Query, RawBodyRequest, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Headers, Post, Put, Query, RawBodyRequest, Req, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { Public } from "../auth/public.decorator";
@@ -64,6 +64,18 @@ export class FilesController {
     } catch {
       return { objectKey, exists: false };
     }
+  }
+
+  /** 用完即删：删除已上传原件（仅限 parse/:id/delete-source 调用链；此处拒绝裸 objectKey 删除） */
+  @UseGuards(RequireScope("full", "parse_session"))
+  @Delete("object")
+  async deleteObject(@Query("objectKey") objectKey: string) {
+    if (!objectKey) throw new BadRequestException("objectKey required");
+    // 防 IDOR：objectKey 任意删除会清掉他人文件。
+    // 请走 POST /parse/jobs/:id/delete-source（带患者归属校验）。
+    throw new ForbiddenException(
+      "use POST /parse/jobs/:id/delete-source (ownership-checked)",
+    );
   }
 
   private readRaw(req: Request): Promise<Buffer> {

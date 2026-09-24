@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, normalize, resolve, sep } from "node:path";
 
 export interface PresignRequest {
@@ -114,5 +114,12 @@ export class LocalObjectStorage {
 
   exists(objectKey: string): boolean {
     return existsSync(this.resolveSafe(objectKey));
+  }
+
+  /** 删除对象及 meta；不存在视为成功（幂等）。 */
+  delete(objectKey: string): void {
+    const full = this.resolveSafe(objectKey);
+    if (existsSync(full)) unlinkSync(full);
+    if (existsSync(`${full}.meta.json`)) unlinkSync(`${full}.meta.json`);
   }
 }

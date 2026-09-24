@@ -2,11 +2,29 @@
   "name": "@ibd/miniapp",
   "version": "0.1.0",
   "private": true,
+  "description": "IBDers 微信小程序（Taro · 轻量入口）",
   "scripts": {
-    "dev:weapp": "echo \"run: npx @tarojs/cli init && taro build --type weapp --watch\"",
-    "build:weapp": "echo \"scaffold with Taro 3 first\""
+    "dev:weapp": "taro build --type weapp --watch",
+    "build:weapp": "taro build --type weapp",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@tarojs/taro": "3.6.34"
+    "@tarojs/components": "3.6.34",
+    "@tarojs/plugin-framework-react": "3.6.34",
+    "@tarojs/plugin-platform-weapp": "3.6.34",
+    "@tarojs/react": "3.6.34",
+    "@tarojs/taro": "3.6.34",
+    "@ibd/api-client": "workspace:*",
+    "@ibd/domain-types": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@babel/runtime": "^7.24.0",
+    "@tarojs/cli": "3.6.34",
+    "@tarojs/webpack5-runner": "3.6.34",
+    "@types/react": "^18.3.0",
+    "typescript": "^5.4.5",
+    "webpack": "5.91.0"
   }
 }

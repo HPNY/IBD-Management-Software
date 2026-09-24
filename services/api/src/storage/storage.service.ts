@@ -65,4 +65,13 @@ export class StorageService {
     }
     return false;
   }
+
+  /** 删除云端/本地对象（幂等）。用于「用完即删」。 */
+  async delete(objectKey: string): Promise<void> {
+    if (this.impl instanceof LocalObjectStorage) {
+      this.impl.delete(objectKey);
+      return;
+    }
+    await (this.impl as S3ObjectStorage).delete(objectKey);
+  }
 }

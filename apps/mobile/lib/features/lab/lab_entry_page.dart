@@ -243,7 +243,8 @@ class _LabEntryPageState extends State<LabEntryPage> {
           '解析是为了帮你填写本次检验录入。\n'
           '文件「$name」将上传到服务器解析，结果回到本页，由你确认后再保存。\n'
           '应用标识：${identity.uuid}\n'
-          '短时解析会话约 30 分钟；取消则不会上传。',
+          '短时解析会话约 30 分钟；解析完成后会删除云端原件（用完即删）。\n'
+          '取消则不会上传。',
         ),
         actions: [
           TextButton(
@@ -332,6 +333,14 @@ class _LabEntryPageState extends State<LabEntryPage> {
         onProgress: (p) => onProgress?.call(p.stage),
       );
       final done = await upload.waitUntilDone(job.id);
+      // 用完即删：解析完成后立即删除云端 PDF 原件
+      if (!job.objectKey.startsWith('inline://')) {
+        try {
+          await api.deleteParseSource(job.id);
+        } catch (_) {
+          // 删除失败不阻断填表；稍后可再调 delete-source
+        }
+      }
       return normalizeParseLabItems(done.items);
     } finally {
       api.dispose();

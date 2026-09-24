@@ -1,0 +1,49 @@
+.page {
+  padding: 32px;
+}
+.hero {
+  padding: 40px 32px;
+  background: #0b6e4f;
+  color: #fff;
+  border-radius: 24px;
+  margin-bottom: 32px;
+}
+.title {
+  font-size: 40px;
+  font-weight: 600;
+  display: block;
+}
+.sub {
+  opacity: 0.9;
+  margin-top: 8px;
+  display: block;
+}
+.uid {
+  opacity: 0.7;
+  margin-top: 16px;
+  font-size: 22px;
+  display: block;
+}
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.card {
+  width: calc(50% - 12px);
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px 28px;
+  box-sizing: border-box;
+}
+.card-title {
+  font-size: 30px;
+  font-weight: 600;
+  display: block;
+}
+.card-sub {
+  color: #6b7280;
+  margin-top: 8px;
+  font-size: 24px;
+  display: block;
+}

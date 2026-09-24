@@ -1,0 +1,35 @@
+.page {
+  padding: 32px;
+}
+.h {
+  font-size: 34px;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 24px;
+}
+.field {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+.picker {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+.feeling {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.chip {
+  padding: 12px 28px;
+  border-radius: 999px;
+  background: #fff;
+}
+.chip.on {
+  background: #0b6e4f;
+  color: #fff;
+}

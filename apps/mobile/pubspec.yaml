@@ -24,6 +24,9 @@ dependencies:
   cryptography: ^2.7.0
   crypto: ^3.0.3
   share_plus: ^10.0.2
+  # 系统推送（opt-in）：无 Firebase 工程时构建仍可用，运行时回落 local 占位令牌
+  firebase_core: ^3.8.0
+  firebase_messaging: ^15.1.5
 
 dev_dependencies:
   flutter_test:

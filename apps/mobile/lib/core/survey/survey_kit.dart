@@ -130,6 +130,61 @@ class SurveyKit {
     return '较差（可与医生讨论）';
   }
 
+  /// SF-36：通用生活质量（过去 4 周）· 36 题 · 分数越高越好
+  /// 简化统一 0–4 计分，便于自管趋势；临床诊断请用原版量表。
+  static const sf36Questions = [
+    SurveyQuestion(text: '总体健康状况自评', hint: '从「极好」到「极差」打分'),
+    SurveyQuestion(text: '与一年前相比，健康变好还是变差', hint: '和去年比一比'),
+    SurveyQuestion(text: '剧烈活动（跑步、搬重物）是否受限', hint: '身体原因导致做不了'),
+    SurveyQuestion(text: '中等活动（扫地、上楼）是否受限', hint: '身体原因'),
+    SurveyQuestion(text: '手提重物（买菜、行李）是否受限', hint: '身体原因'),
+    SurveyQuestion(text: '上几层楼梯是否受限', hint: '身体原因'),
+    SurveyQuestion(text: '弯腰、屈膝、下蹲是否受限', hint: '身体原因'),
+    SurveyQuestion(text: '步行一公里以上是否受限', hint: '身体原因'),
+    SurveyQuestion(text: '步行几百米是否受限', hint: '身体原因'),
+    SurveyQuestion(text: '自己洗澡、穿衣是否受限', hint: '身体原因'),
+    SurveyQuestion(text: '近一个月：工作/做事是否因身体减少了时间', hint: '实际完成量'),
+    SurveyQuestion(text: '近一个月：完成工作/做事是否感到吃力', hint: '做得不如平时好'),
+    SurveyQuestion(text: '近一个月：工作/做事是否受限于身体', hint: '只能做一部分'),
+    SurveyQuestion(text: '近一个月：工作/做事是否因情绪减少了时间', hint: '心情影响了产出'),
+    SurveyQuestion(text: '近一个月：完成工作/做事是否不够专心', hint: '情绪导致粗心'),
+    SurveyQuestion(text: '近一个月：是否因情绪只能完成更少的事', hint: '心情影响了量'),
+    SurveyQuestion(text: '近一个月：与家人朋友相处是否受影响', hint: '情绪或身体原因'),
+    SurveyQuestion(text: '近一个月：社交活动是否减少', hint: '聚会/走动变少'),
+    SurveyQuestion(text: '近一个月：身体疼痛程度', hint: '越痛分越低'),
+    SurveyQuestion(text: '近一个月：疼痛是否影响日常工作（含家务）', hint: '影响越大分越低'),
+    SurveyQuestion(text: '近一个月：生活充实、有活力的程度', hint: '精力如何'),
+    SurveyQuestion(text: '近一个月：是否神清气爽、平静安详', hint: '心里是否踏实'),
+    SurveyQuestion(text: '近一个月：是否有充沛精力', hint: '干劲够不够'),
+    SurveyQuestion(text: '近一个月：是否因身体原因社交活动变少', hint: '朋友往来是否受影响'),
+    SurveyQuestion(text: '近一个月：情绪低落的程度', hint: '越低落分越低'),
+    SurveyQuestion(text: '近一个月：做事是否提不起劲', hint: '动力不足'),
+    SurveyQuestion(text: '近一个月：是否感到疲惫、无力', hint: '累不累'),
+    SurveyQuestion(text: '近一个月：是否坐立不安', hint: '静不下来'),
+    SurveyQuestion(text: '近一个月：情绪不好导致工作/做事变少', hint: '情绪影响产出'),
+    SurveyQuestion(text: '近一个月：健康/情绪是否影响了外出次数', hint: '出门是否变少'),
+    SurveyQuestion(text: '近一个月：与人相处是否不如平时融洽', hint: '容易闹别扭'),
+    SurveyQuestion(text: '近一个月：与人相处是否因健康受限', hint: '身体原因社交变少'),
+    SurveyQuestion(text: '近一个月：注意力是否容易分散', hint: '看报/看书是否走神'),
+    SurveyQuestion(text: '近一个月：日常活动是否因健康/情绪出错变多', hint: '家务、工作差错'),
+    SurveyQuestion(text: '近一个月：是否因健康难以完成既定计划', hint: '计划被打乱'),
+    SurveyQuestion(text: '近一个月：是否因健康放弃过想做的事', hint: '不得不搁置'),
+  ];
+
+  static const sf36Options = [
+    SurveyOption(0, '很差 / 总是', '几乎每天都受影响'),
+    SurveyOption(1, '较差 / 大多如此', '大半时间受影响'),
+    SurveyOption(2, '一般 / 有时', '一半左右'),
+    SurveyOption(3, '较好 / 偶尔', '偶尔受影响'),
+    SurveyOption(4, '很好 / 几乎没有', '几乎不受影响'),
+  ];
+
+  static String sf36Band(int total) {
+    if (total >= 110) return '较好（通用生活质量良好）';
+    if (total >= 72) return '一般（可关注并复诊沟通）';
+    return '较差（建议与医生讨论）';
+  }
+
   static String miniQoLBand(int total) {
     if (total >= 20) return '较好';
     if (total >= 13) return '一般';
@@ -142,6 +197,8 @@ class SurveyKit {
         return phq9Band(total);
       case 'IBDQ':
         return ibdqBand(total);
+      case 'SF36':
+        return sf36Band(total);
       default:
         return miniQoLBand(total);
     }
@@ -153,6 +210,8 @@ class SurveyKit {
         return phq9Questions;
       case 'IBDQ':
         return ibdqQuestions;
+      case 'SF36':
+        return sf36Questions;
       default:
         return miniQoLQuestions;
     }
@@ -164,6 +223,8 @@ class SurveyKit {
         return phq9Options;
       case 'IBDQ':
         return ibdqOptions;
+      case 'SF36':
+        return sf36Options;
       default:
         return miniQoLOptions;
     }
@@ -178,6 +239,9 @@ class SurveyKit {
       case 'IBDQ':
         return '请回忆「最近两周」肠病对生活的影响。分数越高表示状态越好。'
             '若某项说不清，选「一般」即可。';
+      case 'SF36':
+        return '请回忆「最近一个月」通用健康与生活状态（不限肠病）。'
+            '分数越高越好。简化 0–4 计分，用于自管趋势；临床评估请用原版 SF-36。';
       default:
         return '快速给最近的整体状态打分（1–5），约 30 秒完成。';
     }
@@ -204,6 +268,8 @@ class SurveyKit {
         return 'PHQ-9 · 情绪自查';
       case 'IBDQ':
         return '简版 IBDQ · 肠病生活质量';
+      case 'SF36':
+        return 'SF-36 · 通用生活质量';
       default:
         return 'Mini QoL · 快速生活评分';
     }

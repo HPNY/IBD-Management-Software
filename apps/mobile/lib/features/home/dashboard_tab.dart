@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/db/repositories.dart';
 import '../../core/identity/local_identity.dart';
+import '../../core/ui/accessibility.dart';
 import '../../core/ui/theme.dart';
 import '../analysis/trend_page.dart';
 import '../lab/lab_entry_page.dart';
@@ -68,6 +69,7 @@ class _DashboardTabState extends State<DashboardTab> {
   @override
   Widget build(BuildContext context) {
     final identity = context.watch<LocalIdentity>();
+    final simple = context.watch<AccessibilityPrefs>().simpleMode;
     return SafeArea(
       bottom: false,
       child: RefreshIndicator(
@@ -79,7 +81,7 @@ class _DashboardTabState extends State<DashboardTab> {
               greeting: _greeting,
               onSettings: () => widget.onOpen(ShellTabs.me),
             ),
-            _PrivacyBanner(syncOn: identity.syncOptIn),
+            if (!simple) _PrivacyBanner(syncOn: identity.syncOptIn),
             _TodayCard(
               symptomDone: _symptomToday,
               dueInjections: _dueInj.length,

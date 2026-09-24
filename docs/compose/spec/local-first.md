@@ -115,8 +115,8 @@ branch: main
 
 ### Phase 0 — 决策冻结（0.5–1 天）
 
-- [ ] 确认 A/B/C/D 分类与「用完即删」产品文案  
-- [ ] 确认同步采用：E2E 密文同步 vs 服务端可读副本（建议 **E2E 密文**）  
+- [x] 确认 A/B/C/D 分类与「用完即删」产品文案 → **是**：A 病程本体永不自动上传；B 解析单次同意且 confirm 后删云端原件（`sourceDeleted` / `delete-source`，2026-09 落地）；C Skill 可匿名；D 诊断默认关（见 [session-worklist](../../session-worklist.md) T8.1）
+- [x] 确认同步采用：E2E 密文同步 vs 服务端可读副本 → **E2E 密文**（AES-GCM + PBKDF2；服务端仅 cipher/nonce/mac，不可解密）
 - [x] 确认 MVP 是否完全砍掉「强制登录」→ **是：无登录墙，仅可选关联手机号**
 
 **验收**：书面勾选本节，无 TBD。

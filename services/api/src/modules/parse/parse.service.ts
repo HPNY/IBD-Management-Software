@@ -32,6 +32,8 @@ export interface ConfirmParseInput {
   deviceId?: string;
   /** 默认 true：自动生成/升版 Skill */
   generateSkill?: boolean;
+  /** 默认 true：confirm 后删除云端 PDF 原件（用完即删） */
+  deleteSource?: boolean;
 }
 
 export interface ParseWorkerResult {
@@ -152,6 +154,16 @@ export class ParseService {
     return job;
   }
 
+  /** 按用户取 job（归属校验，防 IDOR） */
+  async getForUser(userId: string, id: string): Promise<ParseJobEntity> {
+    const job = await this.get(id);
+    const patient = await this.patients.ensurePatientForUser(userId);
+    if (job.patientId !== patient.id) {
+      throw new NotFoundException(`parse job ${id} not found`);
+    }
+    return job;
+  }
+
   async list(userId: string, patientId?: string): Promise<ParseJobEntity[]> {
     const pid = patientId || (await this.patients.ensurePatientForUser(userId)).id;
     return this.jobs.find({
@@ -164,7 +176,7 @@ export class ParseService {
    * 用户确认解析结果 → 写 LabResult，并自动生成/升版 ParseSkill。
    */
   async confirm(userId: string, jobId: string, input: ConfirmParseInput) {
-    const job = await this.get(jobId);
+    const job = await this.getForUser(userId, jobId);
     if (!input.items?.length) {
       throw new NotFoundException("items required");
     }
@@ -198,6 +210,22 @@ export class ParseService {
       }
     }
 
+    const deleteSource = input.deleteSource !== false;
+    let sourceDeleted = job.sourceDeleted;
+    if (deleteSource && !sourceDeleted) {
+      if (job.objectKey.startsWith("inline://")) {
+        sourceDeleted = true;
+      } else {
+        try {
+          await this.storage.delete(job.objectKey);
+          sourceDeleted = true;
+          this.logger.log(`deleted source for parse job ${job.id}`);
+        } catch (e) {
+          this.logger.warn(`delete source failed for ${job.id}: ${String(e)}`);
+        }
+      }
+    }
+
     const updated = await this.jobs.save({
       ...job,
       confirmedItems: input.items,
@@ -205,13 +233,29 @@ export class ParseService {
       labResultId: lab.id,
       reportDate: date,
       skillVersionId: skillResult?.versionId ?? job.skillVersionId,
+      sourceDeleted,
     });
 
     return {
       job: updated,
       labResultId: lab.id,
       skill: skillResult,
+      sourceDeleted,
     };
+  }
+
+  /** 单独删除解析原件（未 confirm 或需再次清理）。带归属校验。 */
+  async deleteSource(
+    userId: string,
+    jobId: string,
+  ): Promise<{ sourceDeleted: boolean }> {
+    const job = await this.getForUser(userId, jobId);
+    if (job.sourceDeleted) return { sourceDeleted: true };
+    if (!job.objectKey.startsWith("inline://")) {
+      await this.storage.delete(job.objectKey);
+    }
+    const updated = await this.jobs.save({ ...job, sourceDeleted: true });
+    return { sourceDeleted: updated.sourceDeleted };
   }
 
   async markCompleted(jobId: string, result: ParseWorkerResult) {

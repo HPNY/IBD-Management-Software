@@ -1,0 +1,31 @@
+.page {
+  padding: 32px;
+}
+.h {
+  font-size: 34px;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 24px;
+}
+.row {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+.name {
+  display: block;
+  font-weight: 500;
+}
+.val {
+  display: block;
+  color: #6b7280;
+  margin-top: 8px;
+  font-size: 26px;
+}
+.muted {
+  color: #6b7280;
+}
+.err {
+  color: #b45309;
+}

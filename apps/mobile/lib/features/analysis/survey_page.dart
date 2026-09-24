@@ -85,6 +85,7 @@ class _SurveyPageState extends State<SurveyPage> {
             segments: const [
               ButtonSegment(value: 'PHQ9', label: Text('情绪 PHQ-9')),
               ButtonSegment(value: 'IBDQ', label: Text('肠病 IBDQ')),
+              ButtonSegment(value: 'SF36', label: Text('通用 SF-36')),
               ButtonSegment(value: 'MiniQoL', label: Text('快速评分')),
             ],
             selected: {_kind},

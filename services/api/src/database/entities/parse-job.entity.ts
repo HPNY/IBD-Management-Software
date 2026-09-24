@@ -55,6 +55,10 @@ export class ParseJobEntity {
   @Column({ type: "text", nullable: true })
   error: string | null;
 
+  /** 用完即删：云端 PDF 原件是否已删除 */
+  @Column({ type: "boolean", default: false })
+  sourceDeleted: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

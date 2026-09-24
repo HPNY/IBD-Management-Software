@@ -36,8 +36,14 @@ export class ParseController {
     return this.parse.confirm(user.userId, id, body);
   }
 
+  /** 用完即删：删除该 job 的云端 PDF 原件 */
+  @Post(":id/delete-source")
+  deleteSource(@CurrentUser() user: JwtUser, @Param("id") id: string) {
+    return this.parse.deleteSource(user.userId, id);
+  }
+
   @Get(":id")
-  get(@Param("id") id: string) {
-    return this.parse.get(id);
+  get(@CurrentUser() user: JwtUser, @Param("id") id: string) {
+    return this.parse.getForUser(user.userId, id);
   }
 }

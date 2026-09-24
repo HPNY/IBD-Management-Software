@@ -228,6 +228,27 @@ class IbdApiClient {
     return ParseJobDto.fromJson(_json(res));
   }
 
+  /// 用完即删：删除该 job 的云端 PDF 原件（幂等）。
+  Future<bool> deleteParseSource(String jobId) async {
+    final res = await _send(
+      'POST',
+      config.uri('/api/v1/parse/jobs/$jobId/delete-source'),
+      body: const {},
+    );
+    _ensureOk(res, 'deleteParseSource');
+    return _json(res)['sourceDeleted'] == true;
+  }
+
+  /// @Deprecated 服务端为防 IDOR 已拒绝裸 objectKey 删除。
+  /// 请使用 [deleteParseSource]（带 job 归属校验）。
+  Future<void> deleteObject(String objectKey) async {
+    final res = await _send(
+      'DELETE',
+      config.uri('/api/v1/files/object', {'objectKey': objectKey}),
+    );
+    _ensureOk(res, 'deleteObject');
+  }
+
   Future<List<dynamic>> listProtocols() async {
     final res = await _send('GET', config.uri('/api/v1/injections/protocols'));
     _ensureOk(res, 'listProtocols');

@@ -9,8 +9,12 @@ import '../../core/auth/auth_session.dart';
 import '../../core/backup/backup_service.dart';
 import '../../core/db/local_db.dart';
 import '../../core/identity/local_identity.dart';
+import '../../core/push/push_bootstrap.dart';
 import '../../core/push/push_service.dart';
 import '../../core/skill/local_skill_store.dart';
+import '../../core/diagnostics/diagnostics_prefs.dart';
+import '../../core/i18n/app_locale.dart';
+import '../../core/ui/accessibility.dart';
 import '../../core/ui/theme.dart';
 import '../auth/login_page.dart';
 
@@ -31,10 +35,8 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   late final BackupService _backup =
       BackupService(context.read<LocalIdentity>().uuid);
-  late final PushService _push = PushService(
-    identity: context.read<LocalIdentity>(),
-    config: ApiConfig.dev(),
-  );
+  late PushService _push;
+  bool _pushReady = false;
   bool _busy = false;
   String? _message;
   Map<String, Object?>? _dbProbe;
@@ -42,6 +44,25 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
+    _push = PushService(
+      identity: context.read<LocalIdentity>(),
+      config: ApiConfig.dev(),
+    );
+    _pushReady = true;
+    // 异步升级到 FCM 真令牌；失败则保持 local 占位
+    createPushService(identity: context.read<LocalIdentity>()).then((p) {
+      if (!mounted) {
+        p.dispose();
+        return;
+      }
+      _push.removeListener(_onPushChanged);
+      _push.dispose();
+      setState(() {
+        _push = p;
+      });
+      _push.addListener(_onPushChanged);
+      _push.load();
+    }).catchError((_) {});
     _loadDbProbe();
     _push.addListener(_onPushChanged);
     _push.load();
@@ -49,8 +70,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   void dispose() {
-    _push.removeListener(_onPushChanged);
-    _push.dispose();
+    if (_pushReady) {
+      _push.removeListener(_onPushChanged);
+      _push.dispose();
+    }
     super.dispose();
   }
 
@@ -381,6 +404,55 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           const SizedBox(height: 16),
+          Text('诊断（崩溃/性能）', style: Theme.of(context).textTheme.titleSmall),
+          Consumer<DiagnosticsPrefs>(
+            builder: (context, diag, _) => SwitchListTile(
+              title: const Text('允许匿名诊断上报'),
+              subtitle: const Text(
+                '默认关闭；关闭时数据只留本机，绝不上传。不含病历。',
+              ),
+              value: diag.enabled,
+              onChanged: (v) => diag.setEnabled(v),
+            ),
+          ),
+          Text('语言 / Language', style: Theme.of(context).textTheme.titleSmall),
+          Consumer<AppLocale>(
+            builder: (context, loc, _) => RadioGroup<String>(
+              groupValue: loc.locale.languageCode,
+              onChanged: (v) => loc.setLocale(v ?? 'zh'),
+              child: const Column(
+                children: [
+                  RadioListTile<String>(
+                    title: Text('中文'),
+                    value: 'zh',
+                  ),
+                  RadioListTile<String>(
+                    title: Text('English'),
+                    value: 'en',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Text('可用性（大字/简洁）', style: Theme.of(context).textTheme.titleSmall),
+          Consumer<AccessibilityPrefs>(
+            builder: (context, a11y, _) => Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('大字体模式'),
+                  subtitle: const Text('文字放大 1.25×，方便阅读'),
+                  value: a11y.largeFont,
+                  onChanged: (v) => a11y.setLargeFont(v),
+                ),
+                SwitchListTile(
+                  title: const Text('简洁模式'),
+                  subtitle: const Text('首页只显核心指标与今日待办'),
+                  value: a11y.simpleMode,
+                  onChanged: (v) => a11y.setSimpleMode(v),
+                ),
+              ],
+            ),
+          ),
           Text('系统推送（可选）', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 4),
           Text(
