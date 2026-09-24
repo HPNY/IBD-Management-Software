@@ -208,15 +208,29 @@ export default function Skills() {
           throw new Error("缺少 hospital/reportType 字段");
         }
         const normalized: ParseSkill = {
-          hospital: s.hospital,
-          reportType: s.reportType,
+          hospital: s.hospital.trim(),
+          reportType: s.reportType.trim(),
           version: typeof s.version === "string" ? s.version : "",
           dateExtraction: {
             primary: s.dateExtraction?.primary ?? "",
             ...(s.dateExtraction?.fallback ? { fallback: s.dateExtraction.fallback } : {}),
           },
-          items: Array.isArray(s.items) ? s.items : [],
+          items: Array.isArray(s.items)
+            ? s.items.filter(
+                (it): it is ParseSkillItemRule =>
+                  !!it &&
+                  typeof it === "object" &&
+                  typeof (it as ParseSkillItemRule).name === "string" &&
+                  typeof (it as ParseSkillItemRule).pattern === "string",
+              )
+            : [],
         };
+        const importErrors = validate(skillToForm(normalized));
+        if (importErrors.length > 0) {
+          setErrors(importErrors);
+          setMsg(null);
+          return;
+        }
         const next = [...skills, normalized];
         persist(next);
         setSelectedIdx(next.length - 1);

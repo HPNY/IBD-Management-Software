@@ -3,22 +3,35 @@ import 'package:flutter/material.dart';
 import '../../core/activity/activity_service.dart';
 import '../../core/db/repositories.dart';
 import '../../core/ui/theme.dart';
+import '../injection/injection_page.dart';
 import '../medication/medication_page.dart';
 
 /// G1 疾病活动度详情页（PRD §2.6.1）：
 /// 炎症三联状态灯 · Limberg/SES-CD 趋势 · 当前用药卡 · 注射倒计时。
 class ActivityDetailPage extends StatefulWidget {
-  const ActivityDetailPage({super.key});
+  const ActivityDetailPage({
+    super.key,
+    this.labRepo,
+    this.medRepo,
+    this.injRepo,
+    this.examRepo,
+  });
+
+  /// 测试可注入仓库。
+  final LabRepository? labRepo;
+  final MedicationRepository? medRepo;
+  final InjectionRepository? injRepo;
+  final ExamRepository? examRepo;
 
   @override
   State<ActivityDetailPage> createState() => _ActivityDetailPageState();
 }
 
 class _ActivityDetailPageState extends State<ActivityDetailPage> {
-  final _labs = LabRepository();
-  final _meds = MedicationRepository();
-  final _inj = InjectionRepository();
-  final _exams = ExamRepository();
+  late final _labs = widget.labRepo ?? LabRepository();
+  late final _meds = widget.medRepo ?? MedicationRepository();
+  late final _inj = widget.injRepo ?? InjectionRepository();
+  late final _exams = widget.examRepo ?? ExamRepository();
 
   List<Map<String, dynamic>> _labRows = [];
   List<Map<String, dynamic>> _medsNow = [];
@@ -186,36 +199,65 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                   const SizedBox(height: 14),
                   _Card(
                     title: '下次注射倒计时',
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _daysToNext == null
-                                ? '无待打针'
-                                : _daysToNext! < 0
-                                    ? '已逾期 ${-_daysToNext!} 天'
-                                    : _daysToNext == 0
-                                        ? '今天该打'
-                                        : '还有 ${_daysToNext!} 天',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: _daysToNext == null
-                                  ? IbdColors.textSecondary
-                                  : (_daysToNext! <= 3
-                                      ? IbdColors.warning
-                                      : IbdColors.primaryDark),
-                            ),
-                          ),
+                    trailing: TextButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const InjectionPage(),
                         ),
-                        if (_pendingInj.isNotEmpty)
-                          Text(
-                            '${_pendingInj.first['drug'] ?? ''}',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: IbdColors.textSecondary,
+                      ),
+                      child: const Text('排期'),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _daysToNext == null
+                                    ? '无待打针'
+                                    : _daysToNext! < 0
+                                        ? '已逾期 ${-_daysToNext!} 天'
+                                        : _daysToNext == 0
+                                            ? '今天该打'
+                                            : '还有 ${_daysToNext!} 天',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: _daysToNext == null
+                                      ? IbdColors.textSecondary
+                                      : (_daysToNext! <= 3
+                                          ? IbdColors.warning
+                                          : IbdColors.primaryDark),
+                                ),
+                              ),
                             ),
-                          ),
+                            if (_pendingInj.isNotEmpty)
+                              Text(
+                                '${_pendingInj.first['drug'] ?? ''}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: IbdColors.textSecondary,
+                                ),
+                              ),
+                          ],
+                        ),
+                        if (_pendingInj.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          for (final row in _pendingInj.take(3))
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                '· ${row['planned_date'] ?? ''} '
+                                '${row['drug'] ?? ''} ${row['dose'] ?? ''}',
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: IbdColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                        ],
                       ],
                     ),
                   ),

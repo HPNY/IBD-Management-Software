@@ -66,6 +66,9 @@ class _SymptomPageState extends State<SymptomPage> {
   final Map<String, double> _severityByDate = <String, double>{};
   String? _selectedCalDate;
 
+  /// 睡眠/压力区是否被用户改过或本日本来有值；否则保存为 null（可选不填）。
+  bool _wellnessTouched = false;
+
   static const _jointSiteOptions = ['膝', '踝', '手', '肘', '背', '其他'];
   static const _stressSources = ['工作', '家庭', '疾病', '其他'];
 
@@ -130,6 +133,12 @@ class _SymptomPageState extends State<SymptomPage> {
         _stressLevel = ((row['stress_level'] as num?) ?? 5).toInt();
         final ss = '${row['stress_source'] ?? ''}';
         _stressSource = ss.isEmpty ? null : ss;
+        _wellnessTouched = row['sleep_hours'] != null ||
+            row['sleep_quality'] != null ||
+            row['sleep_insomnia'] != null ||
+            row['night_wakes'] != null ||
+            row['stress_level'] != null ||
+            row['stress_source'] != null;
         _saved = true;
       }
       _yesterday = yesterday;
@@ -231,12 +240,12 @@ class _SymptomPageState extends State<SymptomPage> {
           ? _jointSites.join(',')
           : null,
       customItemsJson: customJson,
-      sleepHours: _sleepHours,
-      sleepQuality: _sleepQuality,
-      sleepInsomnia: _sleepInsomnia,
-      nightWakes: _nightWakes,
-      stressLevel: _stressLevel,
-      stressSource: _stressSource,
+      sleepHours: _wellnessTouched ? _sleepHours : null,
+      sleepQuality: _wellnessTouched ? _sleepQuality : null,
+      sleepInsomnia: _wellnessTouched ? _sleepInsomnia : null,
+      nightWakes: _wellnessTouched ? _nightWakes : null,
+      stressLevel: _wellnessTouched ? _stressLevel : null,
+      stressSource: _wellnessTouched ? _stressSource : null,
     );
     final bathRows = await _bathRepo.listByDate(date);
     if (!mounted) return;
@@ -285,15 +294,33 @@ class _SymptomPageState extends State<SymptomPage> {
         ..clear()
         ..addAll(_decodeCustomItems(m['customItemsJson']));
       final sh = m['sleepHours'] as num?;
-      if (sh != null) _sleepHours = sh.toDouble();
+      if (sh != null) {
+        _sleepHours = sh.toDouble();
+        _wellnessTouched = true;
+      }
       final sq = m['sleepQuality'] as num?;
-      if (sq != null) _sleepQuality = sq.toInt();
-      _sleepInsomnia = m['sleepInsomnia'] == true;
-      _nightWakes = (m['nightWakes'] as num?)?.toInt() ?? 0;
+      if (sq != null) {
+        _sleepQuality = sq.toInt();
+        _wellnessTouched = true;
+      }
+      final hadIns = m['sleepInsomnia'] == true;
+      if (hadIns) {
+        _sleepInsomnia = true;
+        _wellnessTouched = true;
+      }
+      final nw = (m['nightWakes'] as num?)?.toInt();
+      if (nw != null) {
+        _nightWakes = nw;
+        if (nw > 0) _wellnessTouched = true;
+      }
       final st = m['stressLevel'] as num?;
-      if (st != null) _stressLevel = st.toInt();
+      if (st != null) {
+        _stressLevel = st.toInt();
+        _wellnessTouched = true;
+      }
       final src = '${m['stressSource'] ?? ''}';
       _stressSource = src.isEmpty ? null : src;
+      if (_stressSource != null) _wellnessTouched = true;
       _saved = false;
     });
   }
@@ -971,6 +998,7 @@ class _SymptomPageState extends State<SymptomPage> {
                         divisions: 24,
                         onChanged: (v) => setState(() {
                           _sleepHours = v;
+                          _wellnessTouched = true;
                           _saved = false;
                         }),
                       ),
@@ -987,6 +1015,7 @@ class _SymptomPageState extends State<SymptomPage> {
                                 selected: _sleepQuality == q,
                                 onTap: () => setState(() {
                                   _sleepQuality = q;
+                                  _wellnessTouched = true;
                                   _saved = false;
                                 }),
                               ),
@@ -1000,6 +1029,7 @@ class _SymptomPageState extends State<SymptomPage> {
                         value: _sleepInsomnia,
                         onChanged: (v) => setState(() {
                           _sleepInsomnia = v;
+                          _wellnessTouched = true;
                           _saved = false;
                         }),
                       ),
@@ -1018,6 +1048,7 @@ class _SymptomPageState extends State<SymptomPage> {
                               onPressed: _nightWakes > 0
                                   ? () => setState(() {
                                         _nightWakes--;
+                                        _wellnessTouched = true;
                                         _saved = false;
                                       })
                                   : null,
@@ -1027,6 +1058,7 @@ class _SymptomPageState extends State<SymptomPage> {
                               onPressed: _nightWakes < 10
                                   ? () => setState(() {
                                         _nightWakes++;
+                                        _wellnessTouched = true;
                                         _saved = false;
                                       })
                                   : null,
@@ -1044,6 +1076,7 @@ class _SymptomPageState extends State<SymptomPage> {
                         divisions: 9,
                         onChanged: (v) => setState(() {
                           _stressLevel = v.round();
+                          _wellnessTouched = true;
                           _saved = false;
                         }),
                       ),
@@ -1059,6 +1092,7 @@ class _SymptomPageState extends State<SymptomPage> {
                               selected: _stressSource == s,
                               onSelected: (sel) => setState(() {
                                 _stressSource = sel ? s : null;
+                                _wellnessTouched = true;
                                 _saved = false;
                               }),
                               selectedColor:
@@ -1460,8 +1494,9 @@ class _SeverityCalendar extends StatelessWidget {
   Widget build(BuildContext context) {
     final today = DateTime.now();
     final todayIso = _iso(today);
-    // 从今天往回 41 天（6 周），再对齐到周一开头展示
-    final start = today.subtract(const Duration(days: 41));
+    // 周一开头的 6 个整周：本周一往前 5 周，共 42 格（含本周日）
+    final thisMonday = today.subtract(Duration(days: today.weekday - 1));
+    final start = thisMonday.subtract(const Duration(days: 35));
     final days = List.generate(42, (i) => start.add(Duration(days: i)));
 
     return Column(

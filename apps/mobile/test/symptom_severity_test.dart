@@ -44,12 +44,13 @@ void main() {
   });
 
   group('severityBand', () {
-    test('分档边界', () {
+    test('分档边界（0–3 绿 · 4–6 黄 · 7–10 红，左闭右开）', () {
       expect(severityBand(0), 'green');
       expect(severityBand(3), 'green');
-      expect(severityBand(3.1), 'warning');
-      expect(severityBand(6), 'warning');
-      expect(severityBand(6.1), 'danger');
+      expect(severityBand(3.9), 'green');
+      expect(severityBand(4), 'warning');
+      expect(severityBand(6.9), 'warning');
+      expect(severityBand(7), 'danger');
       expect(severityBand(10), 'danger');
     });
   });

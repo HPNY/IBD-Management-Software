@@ -14,20 +14,33 @@ import 'activity_detail_page.dart';
 
 /// 首页 Tab：仪表盘 + 快捷入口（不负责底部导航壳）
 class DashboardTab extends StatefulWidget {
-  const DashboardTab({super.key, required this.onOpen});
+  const DashboardTab({
+    super.key,
+    required this.onOpen,
+    this.injRepo,
+    this.labRepo,
+    this.medRepo,
+    this.symptomRepo,
+  });
 
   /// 跳转到 Shell 底部 Tab，索引见 [ShellTabs]。
   final void Function(int index) onOpen;
+
+  /// 测试可注入仓库；生产默认本机 LocalDb。
+  final InjectionRepository? injRepo;
+  final LabRepository? labRepo;
+  final MedicationRepository? medRepo;
+  final SymptomRepository? symptomRepo;
 
   @override
   State<DashboardTab> createState() => _DashboardTabState();
 }
 
 class _DashboardTabState extends State<DashboardTab> {
-  final _inj = InjectionRepository();
-  final _labs = LabRepository();
-  final _meds = MedicationRepository();
-  final _symptoms = SymptomRepository();
+  late final _inj = widget.injRepo ?? InjectionRepository();
+  late final _labs = widget.labRepo ?? LabRepository();
+  late final _meds = widget.medRepo ?? MedicationRepository();
+  late final _symptoms = widget.symptomRepo ?? SymptomRepository();
   List<Map<String, dynamic>> _dueInj = [];
   int _labCount = 0;
   int _medCount = 0;
@@ -47,14 +60,15 @@ class _DashboardTabState extends State<DashboardTab> {
 
   Future<void> _loadStats() async {
     try {
-      final due = await _inj.listPending(withinDays: 60);
+      // 快捷入口「注射 N」保持原 7 天窗口；活动度倒计时单独查 60 天。
+      final dueSoon = await _inj.listPending(withinDays: 7);
+      final dueWide = await _inj.listPending(withinDays: 60);
       final labs = await _labs.listAll();
       final meds = await _meds.listCurrent();
       final symptoms = await _symptoms.listAll();
       final today = DateTime.now().toIso8601String().substring(0, 10);
 
-      // 活动度卡数据
-      final sortedDue = [...due]
+      final sortedDue = [...dueWide]
         ..sort((a, b) =>
             '${a['planned_date']}'.compareTo('${b['planned_date']}'));
       final days = sortedDue.isEmpty
@@ -70,7 +84,7 @@ class _DashboardTabState extends State<DashboardTab> {
 
       if (!mounted) return;
       setState(() {
-        _dueInj = due;
+        _dueInj = dueSoon;
         _labCount = labs.length;
         _medCount = meds.length;
         _symptomToday = symptoms.any((s) => '${s['date']}' == today);
@@ -149,7 +163,10 @@ class _DashboardTabState extends State<DashboardTab> {
                   ? '暂无在用药物'
                   : _medsNow.length <= 2
                       ? _medsNow
-                          .map((m) => '${m['drugName'] ?? ''}')
+                          .map(
+                            (m) =>
+                                '${m['drugName'] ?? ''} ${m['dosage'] ?? ''}',
+                          )
                           .join(' · ')
                       : '${_medsNow[0]['drugName'] ?? ''} · '
                           '${_medsNow[1]['drugName'] ?? ''} 等 ${_medsNow.length} 项',
@@ -164,7 +181,7 @@ class _DashboardTabState extends State<DashboardTab> {
                 crossAxisCount: 2,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 1.35,
+                childAspectRatio: 1.15,
                 children: [
                   _ModuleCard(
                     icon: Icons.biotech_rounded,
@@ -590,40 +607,46 @@ class _ModuleCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: color, size: 22),
+                child: Icon(icon, color: color, size: 20),
               ),
-              const Spacer(),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: IbdColors.textSecondary,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: IbdColors.textSecondary,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ],
           ),

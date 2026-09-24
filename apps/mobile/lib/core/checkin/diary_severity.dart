@@ -27,8 +27,9 @@ double diarySeverity({
 }
 
 /// 热力分档：null=无记录灰 · green · warning · danger（与 IbdColors 语义一致）。
+/// PRD 档位 0–3 绿 · 4–6 黄 · 7–10 红（分数可为小数，按左闭右开）。
 String severityBand(double severity) {
-  if (severity <= 3) return 'green';
-  if (severity <= 6) return 'warning';
+  if (severity < 4) return 'green';
+  if (severity < 7) return 'warning';
   return 'danger';
 }
