@@ -6,7 +6,8 @@ import 'package:ibd_mobile/features/symptom/symptom_page.dart';
 import 'fake_ibd_repos.dart';
 
 /// 放大测试视口，避免 ListView 懒加载导致屏外文案不在树中。
-void useTallViewport(WidgetTester tester, {double height = 2800}) {
+/// 打卡页含日历+睡眠压力区后更长，需更高视口。
+void useTallViewport(WidgetTester tester, {double height = 4200}) {
   tester.view.physicalSize = Size(390, height);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);

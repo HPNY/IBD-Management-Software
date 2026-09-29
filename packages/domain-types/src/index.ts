@@ -98,6 +98,20 @@ export interface SymptomDiary {
   urgency?: boolean;
   mucus?: boolean;
   bowelCount?: number;
+  /** G2 日记补全 */
+  oralUlcer?: boolean;
+  jointPain?: boolean;
+  /** 部位，逗号分隔（膝/踝/手/背/其他） */
+  jointPainSite?: string;
+  /** 自定义关注项 JSON：[{label,value}] */
+  customItems?: string;
+  /** G4 睡眠/压力每日打卡 */
+  sleepHours?: number;
+  sleepQuality?: number;
+  sleepInsomnia?: boolean;
+  nightWakes?: number;
+  stressLevel?: number;
+  stressSource?: string;
 }
 
 export interface BathroomRecord {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/activity/activity_service.dart';
 import '../../core/db/repositories.dart';
 import '../../core/identity/local_identity.dart';
 import '../../core/ui/accessibility.dart';
@@ -9,27 +10,47 @@ import '../analysis/trend_page.dart';
 import '../lab/lab_entry_page.dart';
 import '../medication/medication_page.dart';
 import '../shell_page.dart';
+import 'activity_detail_page.dart';
 
 /// 首页 Tab：仪表盘 + 快捷入口（不负责底部导航壳）
 class DashboardTab extends StatefulWidget {
-  const DashboardTab({super.key, required this.onOpen});
+  const DashboardTab({
+    super.key,
+    required this.onOpen,
+    this.injRepo,
+    this.labRepo,
+    this.medRepo,
+    this.symptomRepo,
+  });
 
   /// 跳转到 Shell 底部 Tab，索引见 [ShellTabs]。
   final void Function(int index) onOpen;
+
+  /// 测试可注入仓库；生产默认本机 LocalDb。
+  final InjectionRepository? injRepo;
+  final LabRepository? labRepo;
+  final MedicationRepository? medRepo;
+  final SymptomRepository? symptomRepo;
 
   @override
   State<DashboardTab> createState() => _DashboardTabState();
 }
 
 class _DashboardTabState extends State<DashboardTab> {
-  final _inj = InjectionRepository();
-  final _labs = LabRepository();
-  final _meds = MedicationRepository();
-  final _symptoms = SymptomRepository();
+  late final _inj = widget.injRepo ?? InjectionRepository();
+  late final _labs = widget.labRepo ?? LabRepository();
+  late final _meds = widget.medRepo ?? MedicationRepository();
+  late final _symptoms = widget.symptomRepo ?? SymptomRepository();
   List<Map<String, dynamic>> _dueInj = [];
   int _labCount = 0;
   int _medCount = 0;
   bool _symptomToday = false;
+
+  // G1 疾病活动度卡
+  List<Map<String, dynamic>> _labRows = [];
+  List<Map<String, dynamic>> _medsNow = [];
+  String _countdownLabel = '—';
+  bool _countdownWarn = false;
 
   @override
   void initState() {
@@ -39,17 +60,38 @@ class _DashboardTabState extends State<DashboardTab> {
 
   Future<void> _loadStats() async {
     try {
-      final due = await _inj.listPending(withinDays: 7);
+      // 快捷入口「注射 N」保持原 7 天窗口；活动度倒计时单独查 60 天。
+      final dueSoon = await _inj.listPending(withinDays: 7);
+      final dueWide = await _inj.listPending(withinDays: 60);
       final labs = await _labs.listAll();
       final meds = await _meds.listCurrent();
       final symptoms = await _symptoms.listAll();
       final today = DateTime.now().toIso8601String().substring(0, 10);
+
+      final sortedDue = [...dueWide]
+        ..sort((a, b) =>
+            '${a['planned_date']}'.compareTo('${b['planned_date']}'));
+      final days = sortedDue.isEmpty
+          ? null
+          : daysUntilInjection('${sortedDue.first['planned_date']}');
+      final countdown = days == null
+          ? '无待打针'
+          : days < 0
+              ? '逾期 ${-days} 天'
+              : days == 0
+                  ? '今天该打'
+                  : '$days 天';
+
       if (!mounted) return;
       setState(() {
-        _dueInj = due;
+        _dueInj = dueSoon;
         _labCount = labs.length;
         _medCount = meds.length;
         _symptomToday = symptoms.any((s) => '${s['date']}' == today);
+        _labRows = labs;
+        _medsNow = meds;
+        _countdownLabel = countdown;
+        _countdownWarn = days != null && days <= 3;
       });
     } catch (_) {}
   }
@@ -64,6 +106,25 @@ class _DashboardTabState extends State<DashboardTab> {
   Future<void> _push(Widget page) async {
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
     if (mounted) _loadStats();
+  }
+
+  ({String label, String light}) _trioSpot(String nameNorm, String label) {
+    final item = latestLabItem(_labRows, nameNorm);
+    return (
+      label: label,
+      light: item == null ? 'gray' : inflammationLight(item['flag'] as String?),
+    );
+  }
+
+  Color _lightColor(String light) {
+    switch (light) {
+      case 'red':
+        return IbdColors.danger;
+      case 'green':
+        return IbdColors.success;
+      default:
+        return const Color(0xFFCBD5E1);
+    }
   }
 
   @override
@@ -88,6 +149,29 @@ class _DashboardTabState extends State<DashboardTab> {
               onSymptom: () => widget.onOpen(ShellTabs.checkIn),
               onInjection: () => widget.onOpen(ShellTabs.injection),
             ),
+            // G1：疾病活动度卡（PRD §2.6.1）
+            _ActivityCard(
+              lights: [
+                _trioSpot('超敏C反应蛋白', 'CRP'),
+                _trioSpot('血沉', 'ESR'),
+                _trioSpot('粪便钙卫蛋白', '钙卫'),
+              ],
+              lightColorOf: _lightColor,
+              countdown: _countdownLabel,
+              countdownWarn: _countdownWarn,
+              medSummary: _medsNow.isEmpty
+                  ? '暂无在用药物'
+                  : _medsNow.length <= 2
+                      ? _medsNow
+                          .map(
+                            (m) =>
+                                '${m['drugName'] ?? ''} ${m['dosage'] ?? ''}',
+                          )
+                          .join(' · ')
+                      : '${_medsNow[0]['drugName'] ?? ''} · '
+                          '${_medsNow[1]['drugName'] ?? ''} 等 ${_medsNow.length} 项',
+              onTap: () => _push(const ActivityDetailPage()),
+            ),
             const IbdSectionTitle('快捷入口'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -97,7 +181,7 @@ class _DashboardTabState extends State<DashboardTab> {
                 crossAxisCount: 2,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 1.35,
+                childAspectRatio: 1.15,
                 children: [
                   _ModuleCard(
                     icon: Icons.biotech_rounded,
@@ -371,6 +455,134 @@ class _TodayAction extends StatelessWidget {
   }
 }
 
+/// G1 首页疾病活动度卡：三联状态灯 + 注射倒计时 + 用药摘要。
+class _ActivityCard extends StatelessWidget {
+  const _ActivityCard({
+    required this.lights,
+    required this.lightColorOf,
+    required this.countdown,
+    required this.countdownWarn,
+    required this.medSummary,
+    required this.onTap,
+  });
+
+  final List<({String label, String light})> lights;
+  final Color Function(String light) lightColorOf;
+  final String countdown;
+  final bool countdownWarn;
+  final String medSummary;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: IbdColors.card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      '疾病活动度',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '详情 ›',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: IbdColors.primaryDark,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  for (final t in lights)
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: lightColorOf(t.light),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            t.label,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    Icons.vaccines_rounded,
+                    size: 16,
+                    color: countdownWarn
+                        ? IbdColors.warning
+                        : IbdColors.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '注射倒计时 $countdown',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: countdownWarn
+                          ? IbdColors.warning
+                          : IbdColors.textPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Flexible(
+                    child: Text(
+                      medSummary,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: IbdColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ModuleCard extends StatelessWidget {
   const _ModuleCard({
     required this.icon,
@@ -395,40 +607,46 @@ class _ModuleCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: color, size: 22),
+                child: Icon(icon, color: color, size: 20),
               ),
-              const Spacer(),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: IbdColors.textSecondary,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: IbdColors.textSecondary,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ],
           ),

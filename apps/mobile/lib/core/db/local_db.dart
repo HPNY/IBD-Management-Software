@@ -38,7 +38,7 @@ class LocalDb {
       final db = await openDatabase(
         path,
         password: password,
-        version: 5,
+        version: 6,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
         },
@@ -310,6 +310,34 @@ class LocalDb {
       await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_bath_source ON bathroom_records (source)',
       );
+    }
+    if (from < 6) {
+      // G2/G4：日记补全（溃疡/关节/自定义）+ 睡眠/压力每日打卡
+      await _addColumnIfMissing(db, 'symptom_diaries', 'oral_ulcer', 'INTEGER');
+      await _addColumnIfMissing(db, 'symptom_diaries', 'joint_pain', 'INTEGER');
+      await _addColumnIfMissing(
+        db,
+        'symptom_diaries',
+        'joint_pain_site',
+        'TEXT',
+      );
+      await _addColumnIfMissing(db, 'symptom_diaries', 'custom_items', 'TEXT');
+      await _addColumnIfMissing(db, 'symptom_diaries', 'sleep_hours', 'REAL');
+      await _addColumnIfMissing(
+        db,
+        'symptom_diaries',
+        'sleep_quality',
+        'INTEGER',
+      );
+      await _addColumnIfMissing(
+        db,
+        'symptom_diaries',
+        'sleep_insomnia',
+        'INTEGER',
+      );
+      await _addColumnIfMissing(db, 'symptom_diaries', 'night_wakes', 'INTEGER');
+      await _addColumnIfMissing(db, 'symptom_diaries', 'stress_level', 'INTEGER');
+      await _addColumnIfMissing(db, 'symptom_diaries', 'stress_source', 'TEXT');
     }
   }
 

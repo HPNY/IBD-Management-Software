@@ -1,6 +1,11 @@
 // 共享 API 客户端（小程序 / PC Web / 医生端）
 // 类型来自 @ibd/domain-types；契约见 openapi.yaml
 
+// 无 @types/node：窄化 process 形状，兼容浏览器 typeof 守卫。
+declare const process:
+  | { env?: Record<string, string | undefined> }
+  | undefined;
+
 export const API_BASE =
   (typeof process !== "undefined" && process.env?.IBD_API_BASE) ||
   "http://localhost:3000";
@@ -114,130 +119,6 @@ export class IbdApiClient {
     reportType?: string;
   }): Promise<ParseJobDto> {
     return this.request("POST", "/api/v1/parse/jobs", input);
-  }
-
-  /** PUT 字节到 presign 返回的 uploadUrl（local HMAC / S3 预签名） */
-  async uploadBytes(
-    presign: { uploadUrl: string; method: string; headers: Record<string, string> },
-    bytes: Uint8Array,
-  ): Promise<void> {
-    const res = await this.fetchImpl(presign.uploadUrl, {
-      method: presign.method || "PUT",
-      headers: { ...presign.headers },
-      body: bytes as unknown as BodyInit,
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`upload failed: ${res.status} ${text}`);
-    }
-  }
-
-  /** 轮询至 done/failed */
-  async waitParseJob(
-    id: string,
-    opts: { intervalMs?: number; timeoutMs?: number } = {},
-  ): Promise<ParseJobDto> {
-    const interval = opts.intervalMs ?? 2000;
-    const deadline = Date.now() + (opts.timeoutMs ?? 120000);
-    for (;;) {
-      const job = await this.getParseJob(id);
-      if (job.status === "done" || job.status === "failed") return job;
-      if (Date.now() > deadline) throw new Error(`parse job ${id} timeout`);
-      await new Promise((r) => setTimeout(r, interval));
-    }
-  }
-
-  /** PUT 字节到 presign 返回的 uploadUrl（local HMAC / S3 预签名） */
-  async uploadBytes(
-    presign: { uploadUrl: string; method: string; headers: Record<string, string> },
-    bytes: Uint8Array,
-  ): Promise<void> {
-    const res = await this.fetchImpl(presign.uploadUrl, {
-      method: presign.method || "PUT",
-      headers: { ...presign.headers },
-      body: bytes as unknown as BodyInit,
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`upload failed: ${res.status} ${text}`);
-    }
-  }
-
-  /** 轮询至 done/failed */
-  async waitParseJob(
-    id: string,
-    opts: { intervalMs?: number; timeoutMs?: number } = {},
-  ): Promise<ParseJobDto> {
-    const interval = opts.intervalMs ?? 2000;
-    const deadline = Date.now() + (opts.timeoutMs ?? 120000);
-    for (;;) {
-      const job = await this.getParseJob(id);
-      if (job.status === "done" || job.status === "failed") return job;
-      if (Date.now() > deadline) throw new Error(`parse job ${id} timeout`);
-      await new Promise((r) => setTimeout(r, interval));
-    }
-  }
-
-  /** PUT 字节到 presign 返回的 uploadUrl（local HMAC / S3 预签名） */
-  async uploadBytes(
-    presign: { uploadUrl: string; method: string; headers: Record<string, string> },
-    bytes: Uint8Array,
-  ): Promise<void> {
-    const res = await this.fetchImpl(presign.uploadUrl, {
-      method: presign.method || "PUT",
-      headers: { ...presign.headers },
-      body: bytes as unknown as BodyInit,
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`upload failed: ${res.status} ${text}`);
-    }
-  }
-
-  /** 轮询至 done/failed */
-  async waitParseJob(
-    id: string,
-    opts: { intervalMs?: number; timeoutMs?: number } = {},
-  ): Promise<ParseJobDto> {
-    const interval = opts.intervalMs ?? 2000;
-    const deadline = Date.now() + (opts.timeoutMs ?? 120000);
-    for (;;) {
-      const job = await this.getParseJob(id);
-      if (job.status === "done" || job.status === "failed") return job;
-      if (Date.now() > deadline) throw new Error(`parse job ${id} timeout`);
-      await new Promise((r) => setTimeout(r, interval));
-    }
-  }
-
-  /** PUT 字节到 presign 返回的 uploadUrl（local HMAC / S3 预签名） */
-  async uploadBytes(
-    presign: { uploadUrl: string; method: string; headers: Record<string, string> },
-    bytes: Uint8Array,
-  ): Promise<void> {
-    const res = await this.fetchImpl(presign.uploadUrl, {
-      method: presign.method || "PUT",
-      headers: { ...presign.headers },
-      body: bytes as unknown as BodyInit,
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`upload failed: ${res.status} ${text}`);
-    }
-  }
-
-  /** 轮询至 done/failed */
-  async waitParseJob(
-    id: string,
-    opts: { intervalMs?: number; timeoutMs?: number } = {},
-  ): Promise<ParseJobDto> {
-    const interval = opts.intervalMs ?? 2000;
-    const deadline = Date.now() + (opts.timeoutMs ?? 120000);
-    for (;;) {
-      const job = await this.getParseJob(id);
-      if (job.status === "done" || job.status === "failed") return job;
-      if (Date.now() > deadline) throw new Error(`parse job ${id} timeout`);
-      await new Promise((r) => setTimeout(r, interval));
-    }
   }
 
   /** PUT 字节到 presign 返回的 uploadUrl（local HMAC / S3 预签名） */

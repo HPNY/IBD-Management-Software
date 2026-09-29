@@ -231,6 +231,18 @@ class SymptomRepository {
     bool? urgency,
     bool? mucus,
     int? bowelCount,
+    // G2：日记补全
+    bool? oralUlcer,
+    bool? jointPain,
+    String? jointPainSite,
+    String? customItemsJson,
+    // G4：睡眠/压力
+    double? sleepHours,
+    int? sleepQuality,
+    bool? sleepInsomnia,
+    int? nightWakes,
+    int? stressLevel,
+    String? stressSource,
   }) async {
     final db = await _db;
     final now = DateTime.now();
@@ -260,6 +272,17 @@ class SymptomRepository {
           'urgency': urgency == null ? null : (urgency ? 1 : 0),
           'mucus': mucus == null ? null : (mucus ? 1 : 0),
           'bowel_count': bowelCount,
+          'oral_ulcer': oralUlcer == null ? null : (oralUlcer ? 1 : 0),
+          'joint_pain': jointPain == null ? null : (jointPain ? 1 : 0),
+          'joint_pain_site': jointPainSite,
+          'custom_items': customItemsJson,
+          'sleep_hours': sleepHours,
+          'sleep_quality': sleepQuality,
+          'sleep_insomnia':
+              sleepInsomnia == null ? null : (sleepInsomnia ? 1 : 0),
+          'night_wakes': nightWakes,
+          'stress_level': stressLevel,
+          'stress_source': stressSource,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
