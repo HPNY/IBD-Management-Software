@@ -1,13 +1,20 @@
 ---
 feature: local-first
-status: designed
-updated: 2026-09-13
+status: delivered
+updated: 2026-09-23
 branch: main
+commits: 75c4208
 ---
 
 # IBDers 本地优先改造方案
 
 ## Report
+
+**What was built** — 本地优先核心能力已合入 main：`LocalIdentity` 生成 `app_user_uuid`，无登录墙；本地库（sqflite + SQLCipher）为病程权威源；注射提醒走本地通知；AI 解析须「同意上传并解析」，confirm 后走 `delete-source` 用完即删；可选「关联手机号」+ E2E 密文同步/备份（`backup_crypto` / sync ciphertext API，服务端仅存 cipher）；隐私设置含诊断上报默认关与云端密文删除。病程写路径不再依赖 JWT 门禁（auth 仅 parse/push/sync 等可选能力）。
+
+**Verification** — 代码路径对照 main `75c4208`：`local_identity` / `local_db` / `repositories` / `local_notify` / `lab_entry_page`（同意上传+用完即删）/ `backup_crypto` / `sync_api` / `data_exporter` / `settings`（关联手机号、云恢复、SQLCipher）均在。Phase 3 的 Skill 社区与医生端仍属产品待办（T6.1/T6.2），不在本方案交付范围。
+
+**Journey log** — 设计稿写 Drift，实现落地为 sqflite+SQLCipher 本地库；Phase 勾选原先滞后于 Tasks，本次仅做文档对齐，不改业务代码。无网冒烟等验收未在本会话复跑，保持未勾。
 
 ## [S1] Problem
 
@@ -123,41 +130,43 @@ branch: main
 
 ### Phase 1 — App 本地权威（核心，约 1–2 周）
 
-- [ ] Drift schema + 迁移（对齐现有 API 实体）  
-- [ ] `app_user_uuid` 身份；删除登录门禁  
-- [ ] 检验/用药/注射/症状/日记改为本地读写  
-- [ ] 注射提醒改为本地通知  
-- [ ] 解析：本地 Skill 快路径；AI 解析弹「是否上传本文件」  
+- [x] 本地库 schema + 迁移（实现为 sqflite + SQLCipher，对齐 API 实体）  
+- [x] `app_user_uuid` 身份；删除登录门禁  
+- [x] 检验/用药/注射/症状/日记改为本地读写  
+- [x] 注射提醒改为本地通知  
+- [x] 解析：AI 解析须用户同意上传；解析后删除云端原件（用完即删）  
 - [ ] 无网冒烟：飞行模式下完成打卡 + 用药 + 看历史  
 
-**验收**：断网全流程可用；抓包无病历上传（未开同步、未点 AI 解析）。
+**验收**：断网全流程可用；抓包无病历上传（未开同步、未点 AI 解析）。→ 代码路径已落地；离线抓包冒烟未在文档对齐会话复验。
 
 ### Phase 2 — 可选云能力（约 1–2 周）
 
-- [ ] 解析上传：短时令牌 + 可选「解析后删除」  
-- [ ] 同步/备份：设置开关 → **关联手机号**（非登录）→ 密文增量同步  
-- [ ] 服务端表语义改为 cloud replica；清理「无登录写 lab」路径  
-- [ ] 导出 JSON / 换机导入  
+- [x] 解析上传：短时令牌 + 可选「解析后删除」  
+- [x] 同步/备份：设置开关 → **关联手机号**（非登录）→ 密文增量同步  
+- [x] 服务端不再作为病程权威：病程写路径不强制 JWT（auth 仅 parse/push/sync 等可选 scope）；同步只收 E2E 密文快照（cipher/nonce/mac），不读病历明文  
+- [x] 导出 JSON / 换机导入  
 
 **验收**：关同步则服务器无新病历行；开同步可在第二台设备恢复。
 
 ### Phase 3 — 加固与产品扩展（约 1 周+）
 
-- [ ] SQLCipher / 字段加密  
-- [ ] 隐私设置：分析开关、云端数据删除  
-- [ ] Skill 社区（匿名模板，无病历）  
-- [ ] 医生端授权（P2）  
+- [x] SQLCipher / 字段加密  
+- [x] 隐私设置：分析开关、云端数据删除  
+- [ ] Skill 社区（匿名模板，无病历） → **未做**：worklist T6.1 待办  
+- [ ] 医生端授权（P2） → **未做**：worklist T6.2 待办  
 
-**验收**：安全清单过一遍；删除账号可清云副本。
+**验收**：安全清单过一遍；删除账号可清云副本。→ SQLCipher/隐私设置已落地；Skill 社区与医生端不属本 spec 交付范围。
 
-## [S5] 与现状差距（摘）
+## [S5] 与现状差距（摘）· 对齐后
 
-| 现状 | 目标 |
-|------|------|
-| JWT 全局守卫，未登录 401 | 默认无账号；JWT 仅同步/云解析 |
-| Nest labs/meds 为权威 | Drift 为权威 |
-| 解析成功即写 parse_jobs/labs | 解析结果回写 App；云 jobs 可短期保留 |
-| FCM/厂商 | 本地通知保底；远程推送 opt-in，payload 仅通用文案（见 [push-privacy](../../push-privacy.md)） |
+> 下表为设计期差距描述；**2026-09-23 对照 main 后核心项已消除**（见 Report）。未关闭项仅剩离线冒烟复验与 T6.1/T6.2 产品待办。
+
+| 设计期差距 | main 现状（`75c4208`） |
+|------------|----------------------|
+| JWT 全局守卫，未登录 401 | **已消除**：无登录墙；JWT 仅同步/解析/推送等可选 scope |
+| Nest labs/meds 为权威 | **已消除**：病程权威在本地 SQLCipher 库 |
+| 解析成功即写 parse_jobs/labs | **已消除**：结果回写 App 由用户确认；云原件用完即删 |
+| FCM/厂商 | 本地通知保底；远程推送 opt-in（见 [push-privacy](../../push-privacy.md)） |
 
 ## [S6] Out of Scope
 
