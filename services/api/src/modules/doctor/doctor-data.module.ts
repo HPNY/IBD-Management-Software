@@ -15,17 +15,11 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { InjectRepository, TypeOrmModule } from "@nestjs/typeorm";
+import { IsNull, Repository } from "typeorm";
 import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  IsNull,
-  PrimaryGeneratedColumn,
-  Repository,
-} from "typeorm";
-import {
+  DoctorAuditLogEntity,
   DoctorGrantEntity,
+  DoctorNoteEntity,
   InjectionEntity,
   LabResultEntity,
   MedicationEntity,
@@ -35,51 +29,6 @@ import {
 import { RequireScope } from "../../auth/scope.guard";
 import type { JwtUser } from "../../auth/types";
 import { buildVisitSummaryText } from "./visit-summary";
-
-@Entity("doctor_notes")
-export class DoctorNoteEntity {
-  @PrimaryGeneratedColumn("uuid")
-  id: string;
-
-  @Column({ type: "uuid" })
-  grantId: string;
-
-  @Column({ type: "uuid" })
-  doctorId: string;
-
-  @Column({ type: "uuid" })
-  patientId: string;
-
-  @Column({ type: "varchar", length: 10, nullable: true })
-  anchorDate: string | null;
-
-  @Column({ type: "varchar", length: 500 })
-  content: string;
-
-  @CreateDateColumn()
-  createdAt: Date;
-}
-
-@Entity("doctor_audit_logs")
-export class DoctorAuditLogEntity {
-  @PrimaryGeneratedColumn("uuid")
-  id: string;
-
-  @Column({ type: "uuid" })
-  doctorId: string;
-
-  @Column({ type: "uuid" })
-  patientId: string;
-
-  @Column({ type: "varchar", length: 32 })
-  action: string;
-
-  @Column({ type: "varchar", length: 64, nullable: true })
-  resourceId: string | null;
-
-  @CreateDateColumn()
-  createdAt: Date;
-}
 
 /** M3.4：require 字段是否在授权 scope 内。 */
 export function scopeAllows(granted: string[], require?: string): boolean {
