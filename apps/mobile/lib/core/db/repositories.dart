@@ -573,7 +573,11 @@ class TimelineRepository {
 
 /// 生活质量/心理量表（本地，v3）
 class QualitySurveyRepository {
-  Future<Database> get _db => LocalDb.instance.database;
+  QualitySurveyRepository({Database? database}) : _dbOverride = database;
+
+  final Database? _dbOverride;
+  Future<Database> get _db async =>
+      _dbOverride ?? await LocalDb.instance.database;
 
   Future<String> save({
     required String date,
