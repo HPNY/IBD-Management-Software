@@ -1,14 +1,20 @@
 ---
 feature: sf36-standard-scoring
-status: in-progress
+status: delivered
 updated: 2026-09-23
 branch: feature/sf36-standard-scoring
-commits:
+commits: 978d1c5..91e0777
 ---
 
 # SF-36 标准 8 维计分（G7）
 
 ## Report
+
+**What was built** — SF-36 在保留简化 0–4 合计（0–144，含变化题）的同时并行输出标准 8 维 0–100 域分。新增纯函数 `sf36_scoring.dart`：固定 36 题索引映射（变化题不入域），域分 = `round(100×sum/(4×n))`，`stdAverage` 为 8 域算术均（不称 PCS/MCS）。量表页实时预览 8 维 chip 与均分；保存写入 `detail_json` 的 `scoring: v1-parallel` / `domains` / `stdAverage`；历史卡片显示均分与最弱 2 维。intro 文案改为「并行标准 8 维 + 简化合计」。
+
+**Verification** — `flutter test` PASS **69**（含 `sf36_domain_score_test` 6 项：映射覆盖、全 0/全 4、round 边界、stdAverage、简化合计、越界 ArgumentError）；`flutter analyze --no-fatal-infos` PASS（7 infos 为既有 prefer_const，与本次无关）。独立审阅 **APPROVE**，无 critical。
+
+**Journey log** — 用户裁定并行而非替换，历史简化分趋势不断档；题干/0–4 选项未改，故无需反向计分（方向已统一高分好）。`sf36Domains.byId` 为唯一真相，题序若改必须同步映射。历史 `detail_json` 仍用正则解析（与既有 band 一致）；后续可改 `jsonDecode`。本机 `flutter test` 需 `ProgramFiles(x86)` 环境变量。
 
 ## [S1] Problem
 
@@ -110,6 +116,6 @@ domainScore = round( 100 * sum(itemValue) / (4 * itemCount) )   // 整数 0–10
 
 ## Tasks
 
-- [ ] T1: `sf36_scoring.dart` 域映射 + `scoreDomain`/`scoreAll` 纯函数 — acceptance: `sf36_domain_score_test` 通过 (covers: S2.2, S2.3)
-- [ ] T2: `survey_page.dart` 预览/保存/历史展示 8 维 + intro 文案 — acceptance: 保存后 detail 含 domains/stdAverage；历史卡片显示均分与最弱 2 维 (covers: S2.4, S2.5; depends: T1)
-- [ ] T3: 回归：既有 survey 相关测试/analyze 无 error；worklist G7 标完成 — acceptance: `flutter test` 全绿、`flutter analyze` 无 error (covers: S2.6; depends: T1,T2)
+- [x] T1: `sf36_scoring.dart` 域映射 + `scoreDomain`/`scoreAll` 纯函数 — acceptance: `sf36_domain_score_test` 通过 (covers: S2.2, S2.3)
+- [x] T2: `survey_page.dart` 预览/保存/历史展示 8 维 + intro 文案 — acceptance: 保存后 detail 含 domains/stdAverage；历史卡片显示均分与最弱 2 维 (covers: S2.4, S2.5; depends: T1)
+- [x] T3: 回归：既有 survey 相关测试/analyze 无 error；worklist G7 标完成 — acceptance: `flutter test` 全绿、`flutter analyze` 无 error (covers: S2.6; depends: T1,T2)
