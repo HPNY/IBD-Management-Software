@@ -5,6 +5,7 @@ import 'clinical_pages.dart';
 import 'export_page.dart';
 import 'flare_page.dart';
 import 'food_stool_page.dart';
+import 'ai_rules_page.dart';
 import 'survey_page.dart';
 import 'annual_report_page.dart';
 import 'timeline_page.dart';
@@ -90,6 +91,16 @@ class AnalysisTab extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const FlarePage()),
+            ),
+          ),
+          _NavCard(
+            icon: Icons.auto_awesome_rounded,
+            title: 'AI / 规则分析',
+            subtitle: '趋势方向 · 异常提示 · 用药前后对比（D4）',
+            color: const Color(0xFF7C3AED),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AiRulesPage()),
             ),
           ),
           _NavCard(

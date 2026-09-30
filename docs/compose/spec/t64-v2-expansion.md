@@ -1,20 +1,20 @@
 ---
 feature: t64-v2-expansion
-status: designed
+status: in-progress
 updated: 2026-09-23
-branch: feature/t64-breakdown
-commits: 9395ee1
+branch: feature/t64-d4-ai
+commits: e9c1462..34f70b5
 ---
 
 # T6.4 V2 扩展拆解：饮食 / 药物评价 / 同城病友 / AI 分析
 
 ## Report
 
-**What was built** — T6.4 权威拆解文档：四轨并行子包 D1 饮食 / D2 药物评价 / D3 同城病友+就诊指南 / D4 AI 辅助分析，每轨 3–5 个带 acceptance 的可验收任务（D1.1–D5 / D2.1–D5 / D3.1–D5 / D4.1–D5）。固定 local-first 优先、匿名/隐私契约（药评无病历、同城无精确位置）、与 T6.1/T6.2 边界。**本 spec 只拆解不实施**；T1–T4 为四轨实施总控，待各轨 compose 立项后勾选。
+**What was built** — **D4 AI/规则分析已交付**（D4.1–D4.4）：`ai_rules.dart` 纯函数（趋势方向/摘要、连续升高、便血连续、排便突增、用药前后对比）；分析 Tab「AI / 规则分析」入口页聚合三类卡片与免责声明；本地规则、不推送云端。**D4.5 LLM 总结未做**（可选，默认关）。D1 饮食 / D2 药评 / D3 同城 **未实施**。
 
-**Verification** — 文档拆解对照 PRD §2.7.6–2.7.7、§5.2/5.4/5.5 与 G6 现状；worklist T6.4 已指向本 spec。无代码变更。
+**Verification** — `flutter test` PASS **86**（含 `ai_rules_test` 6）；`flutter analyze --no-fatal-infos` PASS（7 pre-existing infos）。独立审阅 **APPROVE** 无 critical；遗留：排便/疼痛趋势卡、用药详情页对比卡、日历窗口均值（现为点数窗口）— 记入 Journey，不挡 D4 验收。
 
-**Journey log** — 四轨并行、子包+可验收任务为用户裁定；G6 已做食物×排便关联，D1 从词典/营养/食谱扩展而非重做关联。D4 允许规则版先于 LLM，降低云端与隐私成本。
+**Journey log** — D4 纯本地规则即可满足 PRD §5.2 主路径，LLM 后置。`seriesByName` 按 `name_norm` LIKE 中文规范名。`listAll` 日记为 date DESC，分析前需反转。avg30/avg90 为末 N 点均值而非日历 30/90 日；缺失日记日按 0 计入排便突增基线可能偏保守。
 
 ## [S1] Problem
 
@@ -110,4 +110,4 @@ worklist **T6.4**「V2 扩展：饮食 / 药物评价 / 同城病友 / AI 分析
 - [ ] T1: D1 饮食管理按 S2.1 子表实施并验收 — acceptance: D1.1–D1.5 全勾，`food_nutrition_test` 过 (covers: S2.1)
 - [ ] T2: D2 药物评价按 S2.2 子表实施并验收 — acceptance: D2.1–D2.5 全勾，匿名白名单测试过 (covers: S2.2)
 - [ ] T3: D3 同城病友与就诊指南按 S2.3 子表实施并验收 — acceptance: D3.1–D3.5 全勾，隐私边界测试过 (covers: S2.3)
-- [ ] T4: D4 AI/规则分析按 S2.4 子表实施并验收 — acceptance: D4.1–D4.4 全勾（D4.5 可选） (covers: S2.4)
+- [x] T4: D4 AI/规则分析按 S2.4 子表实施并验收 — acceptance: D4.1–D4.4 全勾（D4.5 LLM 可选未做） (covers: S2.4)
