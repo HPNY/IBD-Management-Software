@@ -583,6 +583,8 @@ class FoodRepository {
     required String date,
     required String foods,
     String? meal,
+    double? calories,
+    double? proteinG,
   }) async {
     final db = await _db;
     final id = const Uuid().v4();
@@ -591,6 +593,8 @@ class FoodRepository {
       'date': date,
       'meal': meal,
       'foods': foods,
+      'calories': calories,
+      'protein_g': proteinG,
       'created_at': DateTime.now().toIso8601String(),
     });
     return id;

@@ -38,7 +38,7 @@ class LocalDb {
       final db = await openDatabase(
         path,
         password: password,
-        version: 7,
+        version: 8,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
         },
@@ -353,6 +353,11 @@ class LocalDb {
       await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_food_logs_date ON food_logs (date)',
       );
+    }
+    if (from < 8) {
+      // D1：营养粗记可空列
+      await _addColumnIfMissing(db, 'food_logs', 'calories', 'REAL');
+      await _addColumnIfMissing(db, 'food_logs', 'protein_g', 'REAL');
     }
   }
 
