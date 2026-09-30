@@ -104,6 +104,7 @@
 | 2026-09 | T2.7 | 已完成 | web tsc 归零；根因 api-client 重复方法已清 |
 | 2026-09 | docs-align | 已完成 | 文档对齐：local-first status→delivered + Phase 勾选；architecture T6 回勾；prd-gap-audit T3 标注由 prd-v15-gaps 接管 |
 | 2026-09 | G7 | 已完成 | SF-36 并行标准 8 维 0–100 + 简化合计；域映射/域分纯函数 + UI 预览/历史 |
+| 2026-09 | D-group | 已完成 | 8 维趋势卡（sf36_trend + 量表页）；无网冒烟自动化代理 offline_smoke_test |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 

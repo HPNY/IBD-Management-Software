@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/db/repositories.dart';
 import '../../core/survey/sf36_scoring.dart';
+import '../../core/survey/sf36_trend.dart';
 import '../../core/survey/survey_kit.dart';
 import '../../core/ui/theme.dart';
 
@@ -45,6 +46,8 @@ class _SurveyPageState extends State<SurveyPage> {
 
   Sf36DomainResult? get _sf36Domains =>
       _kind == 'SF36' && _scores.length == 36 ? Sf36Scoring.scoreAll(_scores) : null;
+
+  List<Sf36TrendPoint> get _sf36Trend => sf36TrendFromHistory(_history);
 
   Future<void> _save() async {
     final n = DateTime.now();
@@ -262,6 +265,13 @@ class _SurveyPageState extends State<SurveyPage> {
             style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
           ),
           const SizedBox(height: 20),
+          if (_sf36Trend.isNotEmpty) ...[
+            const Text('SF-36 · 8 维趋势（近 8 次）',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 8),
+            _Sf36TrendCard(points: _sf36Trend),
+            const SizedBox(height: 20),
+          ],
           const Text('历史',
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
           const SizedBox(height: 8),
@@ -302,4 +312,124 @@ class _SurveyPageState extends State<SurveyPage> {
       ),
     );
   }
+}
+
+/// SF-36 域分趋势卡：最近 8 次有 domains 的记录。
+class _Sf36TrendCard extends StatelessWidget {
+  const _Sf36TrendCard({required this.points});
+
+  final List<Sf36TrendPoint> points;
+
+  @override
+  Widget build(BuildContext context) {
+    final recent =
+        points.length <= 8 ? points : points.sublist(points.length - 8);
+    final stds = [for (final p in recent) p.stdAverage.toDouble()];
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: IbdColors.card,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '8 维均分：${stds.map((e) => e.round()).join(' → ')}',
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: IbdColors.primaryDark,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${recent.first.date} → ${recent.last.date} · ${recent.length} 次',
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: IbdColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 120,
+            child: CustomPaint(
+              painter: _DomainSparkPainter(points: recent),
+              size: const Size(double.infinity, 120),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final id in sf36DomainLabels.keys)
+                Text(
+                  sf36DomainLabels[id]!,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: IbdColors.textSecondary,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DomainSparkPainter extends CustomPainter {
+  _DomainSparkPainter({required this.points});
+
+  final List<Sf36TrendPoint> points;
+
+  static const _colors = [
+    Color(0xFF2563EB),
+    Color(0xFF16A34A),
+    Color(0xFFD97706),
+    Color(0xFFDC2626),
+    Color(0xFF7C3AED),
+    Color(0xFF0891B2),
+    Color(0xFFDB2777),
+    Color(0xFF4B5563),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.isEmpty) return;
+    const pad = 8.0;
+    final w = size.width - pad * 2;
+    final h = size.height - pad * 2;
+    final ids = sf36DomainLabels.keys.toList();
+    for (var di = 0; di < ids.length; di++) {
+      final vals = domainSeries(points, ids[di]);
+      if (vals.length < 2) continue;
+      final paint = Paint()
+        ..color = _colors[di % _colors.length].withValues(alpha: 0.85)
+        ..strokeWidth = 1.6
+        ..style = PaintingStyle.stroke;
+      final path = Path();
+      for (var i = 0; i < vals.length; i++) {
+        final x = pad + w * i / (vals.length - 1);
+        final y = pad + h - (vals[i] / 100.0) * h;
+        if (i == 0) {
+          path.moveTo(x, y);
+        } else {
+          path.lineTo(x, y);
+        }
+      }
+      canvas.drawPath(path, paint);
+    }
+    final grid = Paint()
+      ..color = const Color(0xFFE2E8F0)
+      ..strokeWidth = 1;
+    for (final t in [0.0, 50.0, 100.0]) {
+      final y = pad + h - (t / 100.0) * h;
+      canvas.drawLine(Offset(pad, y), Offset(size.width - pad, y), grid);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DomainSparkPainter old) => old.points != points;
 }
