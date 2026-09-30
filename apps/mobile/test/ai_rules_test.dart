@@ -18,6 +18,20 @@ void main() {
     expect(t.points, 4);
   });
 
+  test('日历窗口 30 日 ≠ 点窗口（样本稀疏）', () {
+    // 两点：2026-01-01=10、2026-03-01=20；asOf=2026-03-01
+    // 点窗口 avg30=15；近 30 日只含 3/1 → 20
+    final t = summarizeSeries(
+      name: 'CRP',
+      values: [10, 20],
+      dates: ['2026-01-01', '2026-03-01'],
+      asOf: DateTime(2026, 3, 1),
+    );
+    expect(t.avg30, 15);
+    expect(t.avg30Days, 20);
+    expect(t.avg90Days, 15); // 1/1 在 90 日内（1/1 与 3/1 相隔 59 天）
+  });
+
   test('labConsecutiveRise：连续两次升高', () {
     expect(
       labConsecutiveRise(name: '钙卫蛋白', values: [10, 20, 30]).length,

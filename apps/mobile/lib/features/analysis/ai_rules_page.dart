@@ -64,7 +64,7 @@ class _AiRulesPageState extends State<AiRulesPage> {
           dates.add('${r['date']}');
         }
         if (values.isEmpty) continue;
-        _trends.add(summarizeSeries(name: name, values: values));
+        _trends.add(summarizeSeries(name: name, values: values, dates: dates));
         _alerts.addAll(labConsecutiveRise(name: name, values: values));
 
         final meds = await _meds.listAll();

@@ -335,6 +335,39 @@ class IbdApiClient {
     return _json(res);
   }
 
+  Future<List<dynamic>> geoCities() async {
+    final res = await _send('GET', config.uri('/api/v1/geo-community/cities'));
+    _ensureOk(res, 'geoCities');
+    return _json(res) as List<dynamic>;
+  }
+
+  Future<List<dynamic>> geoPosts(String city) async {
+    final res = await _send(
+      'GET',
+      config.uri('/api/v1/geo-community/posts?city=${Uri.encodeComponent(city)}'),
+    );
+    _ensureOk(res, 'geoPosts');
+    return _json(res) as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createGeoPost({
+    required String city,
+    required String content,
+    String? nickname,
+  }) async {
+    final res = await _send(
+      'POST',
+      config.uri('/api/v1/geo-community/posts'),
+      body: {
+        'city': city,
+        'content': content,
+        if (nickname != null) 'nickname': nickname,
+      },
+    );
+    _ensureOk(res, 'createGeoPost');
+    return _json(res) as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> drugReviewSummary(String drug) async {
     final res = await _send(
       'GET',
