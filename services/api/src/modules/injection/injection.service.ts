@@ -28,7 +28,7 @@ export class InjectionService {
   ) {}
 
   async list(userId: string, patientId?: string): Promise<InjectionEntity[]> {
-    const pid = patientId || (await this.patients.ensurePatientForUser(userId)).id;
+    const pid = await this.patients.resolveOwnedPatientId(userId, patientId);
     return this.injections.find({
       where: { patientId: pid },
       order: { plannedDate: "ASC" },
@@ -40,7 +40,7 @@ export class InjectionService {
     patientId?: string,
     withinDays = 30,
   ): Promise<InjectionEntity[]> {
-    const pid = patientId || (await this.patients.ensurePatientForUser(userId)).id;
+    const pid = await this.patients.resolveOwnedPatientId(userId, patientId);
     const until = new Date(Date.now() + withinDays * 86400000)
       .toISOString()
       .slice(0, 10);
@@ -56,7 +56,7 @@ export class InjectionService {
 
   async create(userId: string, dto: CreateInjectionDto): Promise<InjectionEntity> {
     const patientId =
-      dto.patientId || (await this.patients.ensurePatientForUser(userId)).id;
+      await this.patients.resolveOwnedPatientId(userId, dto.patientId);
     const { patient: _p, createdAt: _c, updatedAt: _u, ...rest } =
       dto as InjectionEntity;
     return this.injections.save(this.injections.create({ ...rest, patientId }));

@@ -1,11 +1,13 @@
-import { Controller, Get, Param } from "@nestjs/common";
+import { Controller, Get, Param, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../../auth/current-user.decorator";
+import { RequireScope } from "../../auth/scope.guard";
 import type { JwtUser } from "../../auth/types";
 import { PatientService } from "./patient.service";
 
 @ApiTags("patient")
 @ApiBearerAuth()
+@UseGuards(RequireScope("full"))
 @Controller("patients")
 export class PatientController {
   constructor(private readonly patients: PatientService) {}

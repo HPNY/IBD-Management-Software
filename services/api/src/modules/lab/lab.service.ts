@@ -34,7 +34,7 @@ export class LabService {
   ) {}
 
   async list(userId: string, patientId?: string): Promise<LabResultEntity[]> {
-    const pid = patientId || (await this.patients.ensurePatientForUser(userId)).id;
+    const pid = await this.patients.resolveOwnedPatientId(userId, patientId);
     return this.labs.find({
       where: { patientId: pid },
       order: { date: "DESC", createdAt: "DESC" },
@@ -42,8 +42,10 @@ export class LabService {
   }
 
   async create(userId: string, dto: CreateLabDto): Promise<LabResultEntity> {
-    const patientId =
-      dto.patientId || (await this.patients.ensurePatientForUser(userId)).id;
+    const patientId = await this.patients.resolveOwnedPatientId(
+      userId,
+      dto.patientId,
+    );
     const entity = this.labs.create({
       patientId,
       date: dto.date,

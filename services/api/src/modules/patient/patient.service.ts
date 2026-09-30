@@ -31,4 +31,18 @@ export class PatientService {
       }),
     );
   }
+
+  /** 归属校验：patientId 必须属于当前 user，否则 404（防 IDOR）。 */
+  async resolveOwnedPatientId(
+    userId: string,
+    patientId?: string,
+  ): Promise<string> {
+    const own = await this.ensurePatientForUser(userId);
+    if (!patientId || patientId === own.id) return own.id;
+    const row = await this.patients.findOne({ where: { id: patientId } });
+    if (!row || row.userId !== userId) {
+      throw new NotFoundException(`patient ${patientId} not found`);
+    }
+    return row.id;
+  }
 }

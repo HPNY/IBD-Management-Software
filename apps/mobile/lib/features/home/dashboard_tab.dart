@@ -165,11 +165,11 @@ class _DashboardTabState extends State<DashboardTab> {
                       ? _medsNow
                           .map(
                             (m) =>
-                                '${m['drugName'] ?? ''} ${m['dosage'] ?? ''}',
+                                '${(m['drugName'] ?? m['drug_name']) ?? ''} ${m['dosage'] ?? ''}',
                           )
                           .join(' · ')
-                      : '${_medsNow[0]['drugName'] ?? ''} · '
-                          '${_medsNow[1]['drugName'] ?? ''} 等 ${_medsNow.length} 项',
+                      : '${_medsNow[0]['drugName'] ?? _medsNow[0]['drug_name'] ?? ''} · '
+                          '${_medsNow[1]['drugName'] ?? _medsNow[1]['drug_name'] ?? ''} 等 ${_medsNow.length} 项',
               onTap: () => _push(const ActivityDetailPage()),
             ),
             const IbdSectionTitle('快捷入口'),

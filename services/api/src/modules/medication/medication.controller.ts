@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../../auth/current-user.decorator";
+import { RequireScope } from "../../auth/scope.guard";
 import type { JwtUser } from "../../auth/types";
 import {
   AdjustMedicationDto,
@@ -12,6 +13,7 @@ import {
 
 @ApiTags("medication")
 @ApiBearerAuth()
+@UseGuards(RequireScope("full"))
 @Controller("medications")
 export class MedicationController {
   constructor(private readonly meds: MedicationService) {}

@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../../auth/current-user.decorator";
+import { RequireScope } from "../../auth/scope.guard";
 import type { JwtUser } from "../../auth/types";
 import { listProtocols } from "./injection.protocols";
 import {
@@ -11,6 +12,7 @@ import {
 
 @ApiTags("injection")
 @ApiBearerAuth()
+@UseGuards(RequireScope("full"))
 @Controller("injections")
 export class InjectionController {
   constructor(private readonly injections: InjectionService) {}
