@@ -50,7 +50,7 @@ class AnnualReportBuilder {
 
     final allMeds = await _meds.listAll();
     final meds = allMeds.where((m) {
-      final s = '${m['startDate'] ?? ''}';
+      final s = '${m['startDate'] ?? m['start_date'] ?? ''}';
       final e = '${m['endDate'] ?? ''}';
       return s.isNotEmpty &&
           s.compareTo(end) <= 0 &&
@@ -65,7 +65,7 @@ class AnnualReportBuilder {
 
     final allInj = await _injections.listAll();
     final injections = allInj.where((i) {
-      final d = '${i['plannedDate'] ?? i['actualDate'] ?? ''}';
+      final d = '${i['plannedDate'] ?? i['planned_date'] ?? i['actualDate'] ?? i['actual_date'] ?? ''}';
       return d.isNotEmpty && d.compareTo(start) >= 0 && d.compareTo(end) <= 0;
     }).toList();
 
@@ -206,8 +206,8 @@ class AnnualReport {
     } else {
       for (final m in meds) {
         b.writeln(
-          '· ${m['drugName'] ?? ''} ${m['dosage'] ?? ''} '
-          '(${m['startDate']} ~ ${m['endDate'] ?? '至今'}) ${m['status'] ?? ''}',
+          '· ${m['drugName'] ?? m['drug_name'] ?? ''} ${m['dosage'] ?? ''} '
+          '(${m['startDate'] ?? m['start_date']} ~ ${m['endDate'] ?? m['end_date'] ?? '至今'}) ${m['status'] ?? ''}',
         );
       }
     }

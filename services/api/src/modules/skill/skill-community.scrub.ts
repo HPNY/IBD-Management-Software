@@ -66,6 +66,9 @@ function scanValueErrors(label: string, value: unknown, errors: string[]) {
   }
   if (value && typeof value === "object") {
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (FORBIDDEN_KEY_RE.test(k)) {
+        errors.push(`${label} 禁止字段：${k}`);
+      }
       scanValueErrors(`${label}.${k}`, v, errors);
     }
   }
@@ -175,7 +178,24 @@ export function scrubSkillContent(raw: unknown): ScrubResult {
       hospital: (hospital as string).trim(),
       reportType: (reportType as string).trim(),
       version: (version as string).trim(),
-      dateExtraction: dateExtraction ?? { primary: "" },
+      // 仅保留 dateExtraction 的 primary/fallback 字符串，剥离其它键
+      dateExtraction: {
+        primary:
+          typeof (dateExtraction as { primary?: unknown } | undefined)
+            ?.primary === "string"
+            ? String(
+                (dateExtraction as { primary: string }).primary,
+              ).slice(0, 200)
+            : "",
+        ...((dateExtraction as { fallback?: unknown } | undefined)?.fallback &&
+        typeof (dateExtraction as { fallback?: unknown }).fallback === "string"
+          ? {
+              fallback: String(
+                (dateExtraction as { fallback: string }).fallback,
+              ).slice(0, 200),
+            }
+          : {}),
+      },
       items,
       source: "community",
     },

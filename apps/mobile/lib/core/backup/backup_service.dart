@@ -19,6 +19,10 @@ class BackupService {
   final meds = MedicationRepository();
   final injections = InjectionRepository();
   final symptoms = SymptomRepository();
+  final bathroom = BathroomRepository();
+  final surveys = QualitySurveyRepository();
+  final food = FoodRepository();
+  final drugReviews = DrugReviewRepository();
 
   Future<void> savePassphrase(String pass) async {
     final sp = await SharedPreferences.getInstance();
@@ -40,6 +44,10 @@ class BackupService {
       'medications': await meds.listAll(),
       'injections': await injections.listAll(),
       'symptoms': await symptoms.listAll(),
+      'bathroom': await bathroom.listAll(),
+      'surveys': await surveys.listAll(),
+      'foodLogs': await food.listAll(),
+      'drugReviews': await drugReviews.listAll(),
       'localSkillCount': skillCount,
     };
   }

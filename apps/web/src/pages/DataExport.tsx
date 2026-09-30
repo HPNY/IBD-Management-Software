@@ -125,8 +125,12 @@ export default function DataExport() {
     const data = collect();
     const w = window.open("", "_blank");
     if (!w) return;
+    const safe = JSON.stringify(data, null, 2)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
     w.document.write(
-      `<html><head><title>IBDers 就诊摘要</title></head><body><h1>IBDers 就诊摘要</h1><pre>${JSON.stringify(data, null, 2)}</pre></body></html>`,
+      `<html><head><title>IBDers 就诊摘要</title></head><body><h1>IBDers 就诊摘要</h1><pre>${safe}</pre></body></html>`,
     );
     w.document.close();
     w.print();

@@ -53,7 +53,7 @@ export class MedicationService {
   ) {}
 
   async list(userId: string, patientId?: string): Promise<MedicationEntity[]> {
-    const pid = patientId || (await this.patients.ensurePatientForUser(userId)).id;
+    const pid = await this.patients.resolveOwnedPatientId(userId, patientId);
     return this.meds.find({
       where: { patientId: pid },
       order: { startDate: "DESC" },

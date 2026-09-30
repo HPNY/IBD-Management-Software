@@ -29,7 +29,8 @@ Map<String, dynamic>? latestLabItem(
     if (items is! List) continue;
     for (final raw in items) {
       if (raw is! Map) continue;
-      if ('${raw['nameNorm'] ?? ''}' == nameNorm) {
+      final n = '${raw['nameNorm'] ?? raw['name_norm'] ?? ''}';
+      if (n == nameNorm) {
         return Map<String, dynamic>.from(raw);
       }
     }

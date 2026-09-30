@@ -28,8 +28,13 @@ class LabRepository {
         await txn.insert('lab_items', {
           'id': const Uuid().v4(),
           'lab_id': labId,
-          'name_norm': it['nameNorm'] ?? it['name'] ?? '',
-          'name_raw': it['nameRaw'] ?? it['name_norm'] ?? it['name'] ?? '',
+          // 兼容 camelCase（录入）与 snake_case（备份回写）
+          'name_norm': it['nameNorm'] ?? it['name_norm'] ?? it['name'] ?? '',
+          'name_raw': it['nameRaw'] ??
+              it['name_raw'] ??
+              it['name_norm'] ??
+              it['name'] ??
+              '',
           'value': it['value'],
           'unit': it['unit'],
           'ref_min': it['refMin'] ?? it['ref_min'],

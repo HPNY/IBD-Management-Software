@@ -1,11 +1,13 @@
-import { Body, Controller, Get, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../../auth/current-user.decorator";
+import { RequireScope } from "../../auth/scope.guard";
 import type { JwtUser } from "../../auth/types";
 import { CreateReminderDto, ReminderService } from "./reminder.service";
 
 @ApiTags("reminder")
 @ApiBearerAuth()
+@UseGuards(RequireScope("full"))
 @Controller("reminders")
 export class ReminderController {
   constructor(private readonly reminders: ReminderService) {}

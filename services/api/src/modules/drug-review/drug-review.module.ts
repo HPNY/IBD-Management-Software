@@ -143,7 +143,13 @@ export class DrugReviewController {
   constructor(private readonly svc: DrugReviewService) {}
 
   private hashOf(req: { user?: JwtUser }): string {
-    return req.user?.appUserId ?? req.user?.userId ?? "anon";
+    const raw = req.user?.appUserId ?? req.user?.userId ?? "anon";
+    let h = 2166136261;
+    for (var i = 0; i < raw.length; i++) {
+      h ^= raw.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0).toString(16).padStart(8, "0");
   }
 
   @Post()

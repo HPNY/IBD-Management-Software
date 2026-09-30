@@ -77,7 +77,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
     for (final lab in _labRows) {
       final items = lab['items'];
       if (items is List &&
-          items.any((e) => e is Map && '${e['nameNorm']}' == nameNorm)) {
+          items.any((e) => e is Map && '${e['nameNorm'] ?? e['name_norm']}' == nameNorm)) {
         date = '${lab['date']}';
         break;
       }
@@ -297,7 +297,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          '${m['drugName'] ?? ''} '
+                                          '${(m['drugName'] ?? m['drug_name']) ?? ''} '
                                           '${m['dosage'] ?? ''}',
                                           style: const TextStyle(
                                             fontWeight: FontWeight.w700,

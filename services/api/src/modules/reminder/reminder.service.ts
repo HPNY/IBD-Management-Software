@@ -34,13 +34,13 @@ export class ReminderService {
   ) {}
 
   async list(userId: string, patientId?: string): Promise<ReminderRuleEntity[]> {
-    const pid = patientId || (await this.patients.ensurePatientForUser(userId)).id;
+    const pid = await this.patients.resolveOwnedPatientId(userId, patientId);
     return this.rules.find({ where: { patientId: pid } });
   }
 
   async create(userId: string, dto: CreateReminderDto): Promise<ReminderRuleEntity> {
     const patientId =
-      dto.patientId || (await this.patients.ensurePatientForUser(userId)).id;
+      await this.patients.resolveOwnedPatientId(userId, dto.patientId);
     const { patient: _p, createdAt: _c, updatedAt: _u, ...rest } =
       dto as ReminderRuleEntity;
     return this.rules.save(
@@ -53,7 +53,7 @@ export class ReminderService {
    * 客户端拉取后做本地通知；也可被定时任务写入推送队列。
    */
   async due(userId: string, patientId?: string): Promise<DueReminder[]> {
-    const pid = patientId || (await this.patients.ensurePatientForUser(userId)).id;
+    const pid = await this.patients.resolveOwnedPatientId(userId, patientId);
     const rules = await this.rules.find({ where: { patientId: pid } });
     const injRule = rules.find((r) => r.kind === "injection" && r.enabled !== false);
     const leadDays = injRule?.leadDays ?? 3;

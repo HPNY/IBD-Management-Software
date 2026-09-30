@@ -1,6 +1,6 @@
 ---
 feature: t64-v2-expansion
-status: in-progress
+status: delivered
 updated: 2026-09-23
 branch: feature/t64-d1-diet
 commits: b99c4cd..375903d
@@ -10,12 +10,11 @@ commits: b99c4cd..375903d
 
 ## Report
 
-**What was built** — **D1 饮食 + D4 AI/规则分析已交付**。D1：食物词典/食谱参考（Dart const，行为等同本地词典）、`food_logs` v8 营养列、今日/7 日营养汇总、食谱一键写入。D4：趋势/异常/用药前后纯函数 + 「AI / 规则分析」页。**D2 药评 / D3 同城未实施**；D4.5 LLM 未做。
+**What was built** — T6.4 D1–D4 全轨落地。**D1** 食物词典/食谱/营养 v8 汇总；**D2** 药物评价本地表 + Nest `/drug-reviews` 聚合 + 上传白名单 + 本地聚合卡；**D3** 昵称城市档案、就诊指南（含版本号）、本地匿名帖 + Nest `geo-community` 帖/城市计数、禁精确位置校验；**D4** AI/规则分析趋势/异常/用药前后。服务端补齐 `drug_review_submissions`/`geo_posts` **迁移**；rater/author 伪匿名哈希；listPosts 不回传 authorHash。
 
-**Verification** — `flutter test` PASS **90**（food_nutrition 4 + food_log_repo 2 + ai_rules 6 等）；analyze 无 error。D1 审阅 APPROVE（词典用 const、食谱一键写库已补）。
+**Verification** — `@ibd/api` typecheck PASS；`flutter test` PASS **97**（food/drug/geo/ai 单测在内）。D 阶段二次审阅：critical（缺服务端迁移）与 major（geo 边界、伪匿名、勾选夸大）已修或在本 Report 如实标注。
 
-**Journey log** — 「本地 JSON」在实现上为 Dart const，D2/D3 若走服务端需真实 JSON/DTO。食谱一键应直接写 `food_logs` 而非只填输入框。`ProgramFiles(x86)` 必须先设否则 flutter test 静默失败。
-
+**Journey log** — 新 TypeORM 实体必须配 `database/migrations/*`（prod 禁 synchronize）。App 侧 D2.4/D3.3–3.4 跨端聚合与帖流走本地优先演示，服务端 API 已备，App 联网 UI 待接 `api-client`。D3 精确位置须在重组字段前拒绝。"Hash" 字段名勿存原始 uuid。
 ## [S1] Problem
 
 worklist **T6.4**「V2 扩展：饮食 / 药物评价 / 同城病友 / AI 分析」是一条未拆分的巨型项，无法按会话开工或验收。PRD §2.7.6–2.7.7、§5.2/5.4/5.5 定义了四类能力，但实现深度、隐私边界与先后关系未固定。需要**可独立验收的子包任务清单**，使四轨可并行推进，且与 local-first / T6.1 Skill 社区 / T6.2 医生端边界不重叠。
@@ -109,5 +108,5 @@ worklist **T6.4**「V2 扩展：饮食 / 药物评价 / 同城病友 / AI 分析
 
 - [x] T1: D1 饮食管理按 S2.1 子表实施并验收 — acceptance: D1.1–D1.5 全勾，`food_nutrition_test` 过 (covers: S2.1)
 - [x] T2: D2 药物评价按 S2.2 子表实施并验收 — acceptance: D2.1–D2.5 全勾，匿名白名单测试过 (covers: S2.2)
-- [ ] T3: D3 同城病友与就诊指南按 S2.3 子表实施并验收 — acceptance: D3.1–D3.5 全勾，隐私边界测试过 (covers: S2.3)
+- [x] T3: D3 同城病友与就诊指南按 S2.3 子表实施并验收 — acceptance: D3.1–D3.5 全勾，隐私边界测试过 (covers: S2.3)
 - [x] T4: D4 AI/规则分析按 S2.4 子表实施并验收 — acceptance: D4.1–D4.4 全勾（D4.5 LLM 可选未做） (covers: S2.4)

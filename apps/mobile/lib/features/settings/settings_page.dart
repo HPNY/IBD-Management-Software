@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -211,7 +212,7 @@ class _SettingsPageState extends State<SettingsPage> {
     if (bytes == null) return;
     setState(() => _busy = true);
     try {
-      await _backup.importFromJsonString(String.fromCharCodes(bytes));
+      await _backup.importFromJsonString(utf8.decode(bytes));
       setState(() => _message = '导入完成');
     } catch (e) {
       setState(() => _message = '导入失败：$e');

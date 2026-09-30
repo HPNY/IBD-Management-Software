@@ -20,7 +20,7 @@ export class SymptomService {
   ) {}
 
   async list(userId: string, patientId?: string): Promise<SymptomDiaryEntity[]> {
-    const pid = patientId || (await this.patients.ensurePatientForUser(userId)).id;
+    const pid = await this.patients.resolveOwnedPatientId(userId, patientId);
     return this.diaries.find({
       where: { patientId: pid },
       order: { date: "DESC" },
@@ -29,7 +29,7 @@ export class SymptomService {
 
   async upsert(userId: string, dto: UpsertSymptomDto): Promise<SymptomDiaryEntity> {
     const patientId =
-      dto.patientId || (await this.patients.ensurePatientForUser(userId)).id;
+      await this.patients.resolveOwnedPatientId(userId, dto.patientId);
     const existing = await this.diaries.findOne({
       where: { patientId, date: dto.date },
     });
