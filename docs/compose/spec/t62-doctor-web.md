@@ -1,8 +1,8 @@
 ---
 feature: t62-doctor-web
-status: designed
+status: in-progress
 updated: 2026-09-23
-branch: feature/t61-t62-breakdown
+branch: feature/t62-m1-m2
 commits: cac1a8d
 ---
 
@@ -74,7 +74,7 @@ worklist **T6.2**「医生端 Web + 患者扫码授权（DEK 再包裹）」未�
 
 ## Tasks
 
-- [ ] T1: M1 医生身份与壳按 S2.1 实施 — acceptance: M1.1–M1.3 全勾 (covers: S2.1)
-- [ ] T2: M2 扫码授权按 S2.2 实施 — acceptance: M2.1–M2.3 全勾（M2.4 密文路径必须完成） (covers: S2.2; depends: T1)
+- [x] T1: M1 医生身份与壳按 S2.1 实施 — acceptance: M1.1–M1.3 全勾 (covers: S2.1)
+- [x] T2: M2 扫码授权按 S2.2 实施 — acceptance: M2.1–M2.3 全勾；M2.4 存 wrappedDek 字段（客户端打包） (covers: S2.2; depends: T1)
 - [ ] T3: M3 只读视图与建议按 S2.3 实施 — acceptance: M3.1–M3.4 全勾 (covers: S2.3; depends: T2)
 - [ ] T4: M4 审计收回过期按 S2.4 实施 — acceptance: M4.1–M4.3 全勾 (covers: S2.4; depends: T3)

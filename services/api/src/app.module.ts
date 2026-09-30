@@ -13,6 +13,7 @@ import { ParseModule } from "./modules/parse/parse.module";
 import { SkillModule } from "./modules/skill/skill.module";
 import { DrugReviewModule } from "./modules/drug-review/drug-review.module";
 import { GeoCommunityModule } from "./modules/geo-community/geo-community.module";
+import { DoctorModule } from "./modules/doctor/doctor.module";
 import { ReminderModule } from "./modules/reminder/reminder.module";
 import { SyncModule } from "./modules/sync/sync.module";
 import { PushModule } from "./modules/push/push.module";
@@ -39,6 +40,7 @@ const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
     SkillModule,
     DrugReviewModule,
     GeoCommunityModule,
+    DoctorModule,
     ReminderModule,
     SyncModule,
     PushModule,
