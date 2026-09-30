@@ -319,9 +319,30 @@ export default function App() {
       {detail && (
         <div className="card">
           <h2>患者详情</h2>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => {
+              const text =
+                typeof detail.summaryText === "string"
+                  ? detail.summaryText
+                  : JSON.stringify(detail, null, 2);
+              void navigator.clipboard.writeText(text);
+              setMsg("摘要已复制");
+            }}
+          >
+            复制摘要
+          </button>
           <pre style={{ whiteSpace: "pre-wrap" }}>
             {JSON.stringify(detail, null, 2)}
           </pre>
+          {Array.isArray(detail.notes) && detail.notes.length > 0 && (
+            <ul>
+              {(detail.notes as Array<{ content: string }>).map((n, i) => (
+                <li key={i}>{n.content}</li>
+              ))}
+            </ul>
+          )}
           <input
             placeholder="医学建议（如：建议下次复查钙卫蛋白）"
             value={noteText}

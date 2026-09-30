@@ -9,6 +9,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -76,6 +77,12 @@ export class DoctorAuditLogEntity {
   createdAt: Date;
 }
 
+/** M3.4：require 字段是否在授权 scope 内。 */
+export function scopeAllows(granted: string[], require?: string): boolean {
+  if (!require) return true;
+  return granted.includes(require);
+}
+
 @Injectable()
 export class DoctorDataService {
   constructor(
@@ -135,23 +142,33 @@ export class DoctorDataService {
         patientId: g.patientId,
         scope: g.scope,
         expiresAt: g.expiresAt,
-        ibdType: p?.ibdType ?? null,
+        // 诊断类型仅在 summary 授权时展示
+        ...(g.scope.includes("summary")
+          ? { ibdType: p?.ibdType ?? null }
+          : {}),
       });
     }
     return out;
   }
 
-  /** M3.1/M3.4：详情按 scope 过滤。 */
-  async detail(doctorId: string, grantId: string) {
+  /** M3.1/M3.4：详情按 scope 过滤；require 字段不在授权内则 403。 */
+  async detail(doctorId: string, grantId: string, require?: string) {
     const g = await this.requireActiveGrant(doctorId, grantId);
     const scope = new Set(g.scope);
+    if (!scopeAllows(g.scope, require)) {
+      throw new ForbiddenException(`scope ${require} not granted`);
+    }
     const patient = await this.patients.findOne({ where: { id: g.patientId } });
     const payload: Record<string, unknown> = {
       grantId: g.id,
       scope: g.scope,
       expiresAt: g.expiresAt,
+      // ibdType 仅在 summary 范围披露，避免越权泄露诊断
       patient: patient
-        ? { id: patient.id, ibdType: patient.ibdType }
+        ? {
+            id: patient.id,
+            ...(scope.has("summary") ? { ibdType: patient.ibdType } : {}),
+          }
         : null,
     };
     if (scope.has("labs")) {
@@ -187,14 +204,48 @@ export class DoctorDataService {
       const labs = await this.labs.find({
         where: { patientId: g.patientId },
         order: { date: "DESC" },
-        take: 3,
+        take: 5,
       });
+      const diaries = await this.diaries.find({
+        where: { patientId: g.patientId },
+        order: { date: "DESC" },
+        take: 7,
+      });
+      const labLines = labs.map((l) => {
+        const items = (l.items ?? [])
+          .slice(0, 6)
+          .map(
+            (i: {
+              nameNorm?: string;
+              name?: string;
+              value?: unknown;
+              unit?: string | null;
+            }) =>
+              `${i.nameNorm ?? i.name ?? ""}=${i.value ?? ""}${i.unit ?? ""}`,
+          )
+          .join("；");
+        return `${l.date} ${l.hospital ?? ""} ${items}`;
+      });
+      const diaryLines = diaries.map(
+        (d) =>
+          `${d.date} 疼痛${d.painLevel ?? "-"} 腹泻${d.diarrheaCount ?? "-"} 便血${d.bloodyStool ?? "-"}`,
+      );
       payload["summaryText"] = [
         "病程摘要（自动生成，仅供参考）",
-        `检验近 ${labs.length} 次：${labs.map((l) => l.date).join("、") || "无"}`,
+        `诊断类型：${patient?.ibdType ?? "未填"}`,
+        "近次检验：",
+        ...labLines,
+        "近 7 日日记：",
+        ...diaryLines,
         `授权范围：${g.scope.join("/")}`,
       ].join("\n");
+      payload["ibdType"] = patient?.ibdType ?? null;
     }
+    // M3.3：医生可见本人写过的建议
+    payload["notes"] = await this.notes.find({
+      where: { grantId: g.id },
+      order: { createdAt: "DESC" },
+    });
     await this.audit(doctorId, g.patientId, "view", g.id);
     return payload;
   }
@@ -270,8 +321,12 @@ export class DoctorDataController {
   }
 
   @Get("grants/:id")
-  detail(@Param("id") id: string, @Req() req: { user?: JwtUser }) {
-    return this.data.detail(this.doctorId(req), id);
+  detail(
+    @Param("id") id: string,
+    @Req() req: { user?: JwtUser },
+    @Query("require") require?: string,
+  ) {
+    return this.data.detail(this.doctorId(req), id, require);
   }
 
   @Post("grants/:id/notes")
