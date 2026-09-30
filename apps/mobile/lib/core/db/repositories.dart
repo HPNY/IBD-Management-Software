@@ -611,6 +611,61 @@ class FoodRepository {
   }
 }
 
+/// D2：药物评价（本地表 drug_reviews，可匿名上传）。
+class DrugReviewRepository {
+  DrugReviewRepository({Database? database}) : _dbOverride = database;
+
+  final Database? _dbOverride;
+  Future<Database> get _db async =>
+      _dbOverride ?? await LocalDb.instance.database;
+
+  Future<String> insert({
+    required String drugName,
+    required int efficacy,
+    required int seSideEffect,
+    String? ibdType,
+    String? sideEffectTypes,
+    bool? stillUsing,
+    String? comment,
+  }) async {
+    final db = await _db;
+    final id = const Uuid().v4();
+    await db.insert('drug_reviews', {
+      'id': id,
+      'drug_name': drugName,
+      'ibd_type': ibdType,
+      'efficacy': efficacy,
+      'se_side_effect': seSideEffect,
+      'side_effect_types': sideEffectTypes,
+      'still_using': stillUsing == null ? null : (stillUsing ? 1 : 0),
+      'comment': comment,
+      'uploaded': 0,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    return id;
+  }
+
+  Future<List<Map<String, dynamic>>> listAll() async {
+    final db = await _db;
+    return db.query('drug_reviews', orderBy: 'created_at DESC');
+  }
+
+  Future<void> delete(String id) async {
+    final db = await _db;
+    await db.delete('drug_reviews', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> markUploaded(String id) async {
+    final db = await _db;
+    await db.update(
+      'drug_reviews',
+      {'uploaded': 1},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+}
+
 /// 生活质量/心理量表（本地，v3）
 class QualitySurveyRepository {
   QualitySurveyRepository({Database? database}) : _dbOverride = database;

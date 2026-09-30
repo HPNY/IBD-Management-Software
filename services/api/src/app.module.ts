@@ -11,6 +11,7 @@ import { InjectionModule } from "./modules/injection/injection.module";
 import { SymptomModule } from "./modules/symptom/symptom.module";
 import { ParseModule } from "./modules/parse/parse.module";
 import { SkillModule } from "./modules/skill/skill.module";
+import { DrugReviewModule } from "./modules/drug-review/drug-review.module";
 import { ReminderModule } from "./modules/reminder/reminder.module";
 import { SyncModule } from "./modules/sync/sync.module";
 import { PushModule } from "./modules/push/push.module";
@@ -35,6 +36,7 @@ const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
     SymptomModule,
     ParseModule,
     SkillModule,
+    DrugReviewModule,
     ReminderModule,
     SyncModule,
     PushModule,

@@ -38,7 +38,7 @@ class LocalDb {
       final db = await openDatabase(
         path,
         password: password,
-        version: 8,
+        version: 9,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
         },
@@ -358,6 +358,26 @@ class LocalDb {
       // D1：营养粗记可空列
       await _addColumnIfMissing(db, 'food_logs', 'calories', 'REAL');
       await _addColumnIfMissing(db, 'food_logs', 'protein_g', 'REAL');
+    }
+    if (from < 9) {
+      // D2：药物评价（本地，可匿名上云）
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS drug_reviews (
+          id TEXT PRIMARY KEY,
+          drug_name TEXT NOT NULL,
+          ibd_type TEXT,
+          efficacy INTEGER NOT NULL,
+          se_side_effect INTEGER NOT NULL,
+          side_effect_types TEXT,
+          still_using INTEGER,
+          comment TEXT,
+          uploaded INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_drug_reviews_drug ON drug_reviews (drug_name)',
+      );
     }
   }
 
