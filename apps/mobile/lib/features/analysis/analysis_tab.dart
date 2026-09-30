@@ -4,6 +4,7 @@ import '../../core/ui/theme.dart';
 import 'clinical_pages.dart';
 import 'export_page.dart';
 import 'flare_page.dart';
+import 'food_stool_page.dart';
 import 'survey_page.dart';
 import 'annual_report_page.dart';
 import 'timeline_page.dart';
@@ -59,6 +60,16 @@ class AnalysisTab extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const BathroomPage()),
+            ),
+          ),
+          _NavCard(
+            icon: Icons.restaurant_menu_rounded,
+            title: '食物与排便',
+            subtitle: '食物标签日志 · 腹泻/便血关联观察（G6）',
+            color: const Color(0xFFEA580C),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FoodStoolPage()),
             ),
           ),
           _NavCard(
