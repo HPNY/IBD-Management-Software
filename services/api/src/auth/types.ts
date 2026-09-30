@@ -14,4 +14,7 @@ export interface JwtUser {
     | "doctor"
     | "doctor_grant";
   appUserId?: string;
+  /** 医生端（M1） */
+  role?: string;
+  doctorId?: string;
 }

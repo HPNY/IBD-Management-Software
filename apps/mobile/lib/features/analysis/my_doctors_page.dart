@@ -15,8 +15,11 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
   final _codeCtrl = TextEditingController();
   final _dekCtrl = TextEditingController();
   bool _useWrappedDek = false;
+  final Set<String> _picked = {'labs', 'symptoms'};
   final List<Map<String, String>> _grants = [];
   bool _busy = false;
+
+  static const _allScopes = ['labs', 'symptoms', 'alerts', 'summary'];
 
   @override
   void dispose() {
@@ -28,11 +31,17 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
   void _confirmLocal() {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty) return;
-    // 本地演示：确认后进入列表；生产应调 POST /doctor-grants/confirm
+    if (_picked.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请至少勾选一个授权范围')),
+      );
+      return;
+    }
+    // 本地骨架：确认后进入列表；生产应 POST /doctor-grants/confirm
     setState(() {
       _grants.insert(0, {
         'code': code,
-        'scope': 'labs,symptoms',
+        'scope': _picked.join(','),
         'status': 'confirmed',
         'expires': DateTime.now()
             .add(const Duration(hours: 24))
@@ -41,7 +50,7 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
       _codeCtrl.clear();
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('已确认授权（本机演示；生产走 API）')),
+      SnackBar(content: Text('已确认范围 ${_picked.join('/')}（本机演示）')),
     );
   }
 
@@ -73,6 +82,27 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
               isDense: true,
             ),
           ),
+          const SizedBox(height: 8),
+          const Text('授权范围（未勾选不可确认）',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final s in _allScopes)
+                FilterChip(
+                  label: Text(s, style: const TextStyle(fontSize: 12)),
+                  selected: _picked.contains(s),
+                  onSelected: (sel) => setState(() {
+                    if (sel) {
+                      _picked.add(s);
+                    } else {
+                      _picked.remove(s);
+                    }
+                  }),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
           SwitchListTile(
             dense: true,
             title: const Text('附带 DEK 再包裹密文（可选）'),

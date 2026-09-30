@@ -176,17 +176,29 @@ export class DoctorGrantService {
   async confirm(
     userId: string,
     code: string,
-    opts: { wrappedDek?: string } = {},
+    opts: { wrappedDek?: string; scope?: string[] } = {},
   ) {
     const row = await this.grants.findOne({ where: { code } });
     if (!row) throw new NotFoundException("grant not found");
+    if (row.confirmed) {
+      // 防劫持：已绑定的码不可被其他患者重复确认
+      throw new ForbiddenException("grant already confirmed");
+    }
     if (row.revokedAt) throw new ForbiddenException("grant revoked");
     if (row.expiresAt.getTime() < Date.now()) {
       throw new ForbiddenException("grant expired");
     }
     const patient = await this.patients.findOne({ where: { userId } });
     if (!patient) throw new NotFoundException("patient not found");
+    // M2.2：未勾选范围不可确认
+    const picked = (opts.scope ?? row.scope).filter((s): s is GrantScopeKey =>
+      VALID_SCOPES.includes(s as GrantScopeKey),
+    );
+    if (picked.length === 0) {
+      throw new BadRequestException("scope required to confirm");
+    }
     row.patientId = patient.id;
+    row.scope = picked;
     row.confirmed = true;
     // M2.4：仅存再包裹后的 DEK 密文，不落明文
     if (opts.wrappedDek) {

@@ -1,13 +1,18 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
+  Headers,
   Param,
   Post,
   Req,
+  UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { Public } from "../../auth/public.decorator";
 import { RequireScope } from "../../auth/scope.guard";
 import type { JwtUser } from "../../auth/types";
 import {
@@ -21,6 +26,7 @@ import {
 export class DoctorController {
   constructor(private readonly auth: DoctorAuthService) {}
 
+  @Public()
   @Post("register")
   register(
     @Body()
@@ -35,6 +41,7 @@ export class DoctorController {
     return this.auth.register(body);
   }
 
+  @Public()
   @Post("login")
   login(@Body() body: { email: string; password: string }) {
     return this.auth.login(body.email, body.password);
@@ -43,16 +50,36 @@ export class DoctorController {
   @ApiBearerAuth()
   @UseGuards(RequireScope("doctor"))
   @Get("me")
-  me(@Req() req: { user?: DoctorJwt }) {
-    return this.auth.me(req.user?.doctorId ?? req.user?.userId ?? "");
+  async me(@Req() req: { user?: DoctorJwt & JwtUser }) {
+    const d = await this.auth.me(
+      (req.user as { doctorId?: string })?.doctorId ??
+        req.user?.userId ??
+        "",
+    );
+    if (!d) return null;
+    // 不回传 passwordHash
+    return {
+      id: d.id,
+      name: d.name,
+      email: d.email,
+      hospital: d.hospital,
+      licenseNo: d.licenseNo,
+      reviewStatus: d.reviewStatus,
+    };
   }
 
-  /** 人工审核（占位；生产应加管理端）。 */
+  /** 人工审核：需管理令牌（避免任意用户批准医生）。 */
+  @Public()
   @Post(":id/approve")
   approve(
     @Param("id") id: string,
     @Body() body: { status: "approved" | "rejected" },
+    @Headers("x-admin-token") adminToken?: string,
   ) {
+    const expect = process.env.DOCTOR_ADMIN_TOKEN || "dev-doctor-admin";
+    if (!adminToken || adminToken !== expect) {
+      throw new UnauthorizedException("admin token required");
+    }
     return this.auth.approve(id, body.status);
   }
 }
@@ -81,11 +108,12 @@ export class DoctorGrantController {
   @UseGuards(RequireScope("full", "doctor_grant"))
   @Post("confirm")
   confirm(
-    @Body() body: { code: string; wrappedDek?: string },
+    @Body() body: { code: string; wrappedDek?: string; scope?: string[] },
     @Req() req: { user?: JwtUser },
   ) {
     return this.grants.confirm(req.user?.userId ?? "", body.code, {
       wrappedDek: body.wrappedDek,
+      scope: body.scope,
     });
   }
 
