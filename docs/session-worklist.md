@@ -50,7 +50,7 @@
 
 | ID | 任务 | 状态 | 验收标准 |
 |----|------|------|----------|
-| T6.1 | Skill 社区（匿名模板发布 / 评分 / 协作更新） | 待办 | 已拆解 C1–C4 · 见 [t61-skill-community](compose/spec/t61-skill-community.md) |
+| T6.1 | Skill 社区（匿名模板发布 / 评分 / 协作更新） | 进行中 | 已拆解 C1–C4 · 见 [t61-skill-community](compose/spec/t61-skill-community.md) · 社区 API + Web 页实施中 |
 | T6.2 | 医生端 Web + 患者扫码授权（DEK 再包裹） | 待办 | 已拆解 M1–M4 · 见 [t62-doctor-web](compose/spec/t62-doctor-web.md) |
 | T6.3 | 年度报告（PRD V1.5） | 已完成 | 按年生成概览/用药 + 分享导出 |
 | T6.4 | V2 扩展：饮食 / 药物评价 / 同城病友 / AI 分析 | 待办 | 已拆解为四轨子包 D1–D4 · 见 [t64-v2-expansion](compose/spec/t64-v2-expansion.md) |

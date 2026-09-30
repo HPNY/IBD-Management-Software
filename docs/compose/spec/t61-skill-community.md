@@ -1,9 +1,9 @@
 ---
 feature: t61-skill-community
-status: designed
+status: in-progress
 updated: 2026-09-23
-branch: feature/t61-t62-breakdown
-commits: cac1a8d
+branch: feature/t61-skill-community
+commits:
 ---
 
 # T6.1 Skill 社区拆解：匿名模板发布 / 评分 / 协作更新

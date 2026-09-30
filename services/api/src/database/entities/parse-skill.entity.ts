@@ -56,6 +56,10 @@ export class ParseSkillVersionEntity {
   @Column({ type: "varchar", length: 64 })
   version: string;
 
+  /** 协作更新时指向父版本号（T6.1 C4.1） */
+  @Column({ type: "varchar", length: 64, nullable: true })
+  parentVersion: string | null;
+
   /** 完整 Skill JSON（date_extraction / items / special_rules） */
   @Column({ type: "jsonb" })
   content: Record<string, unknown>;
