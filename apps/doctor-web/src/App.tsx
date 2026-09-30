@@ -37,6 +37,11 @@ export default function App() {
   const [me, setMe] = useState<Me | null>(null);
   const [msg, setMsg] = useState("");
   const [scope, setScope] = useState<string[]>(["labs", "symptoms"]);
+  const [patients, setPatients] = useState<
+    Array<{ grantId: string; patientId: string; scope: string[]; expiresAt: string }>
+  >([]);
+  const [detail, setDetail] = useState<Record<string, unknown> | null>(null);
+  const [noteText, setNoteText] = useState("");
   const [qr, setQr] = useState<{ code: string; qrPayload: string; expiresAt: string } | null>(
     null,
   );
@@ -87,6 +92,48 @@ export default function App() {
       localStorage.setItem("doctor_token", r.accessToken);
       setToken(r.accessToken);
       setMe(r.doctor);
+    } catch (e) {
+      setMsg(String(e));
+    }
+  };
+
+  const loadPatients = async () => {
+    if (!token) return;
+    try {
+      const r = await api<
+        Array<{ grantId: string; patientId: string; scope: string[]; expiresAt: string }>
+      >(`/doctor-data/patients`, { token });
+      setPatients(r);
+      setMsg("");
+    } catch (e) {
+      setMsg(String(e));
+    }
+  };
+
+  const openDetail = async (grantId: string) => {
+    if (!token) return;
+    try {
+      const d = await api<Record<string, unknown>>(
+        `/doctor-data/grants/${grantId}`,
+        { token },
+      );
+      setDetail(d);
+    } catch (e) {
+      setMsg(String(e));
+    }
+  };
+
+  const addNote = async (grantId: string) => {
+    if (!token || !noteText.trim()) return;
+    try {
+      await api(`/doctor-data/grants/${grantId}/notes`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({ content: noteText }),
+      });
+      setNoteText("");
+      setMsg("已写入医学建议（患者可见）");
+      await openDetail(grantId);
     } catch (e) {
       setMsg(String(e));
     }
@@ -248,9 +295,46 @@ export default function App() {
       )}
 
       <div className="card">
-        <h2>授权患者列表</h2>
-        <p className="muted">M3 将展示已确认 Grant 的病程只读视图。</p>
+        <h2>授权患者列表（M3）</h2>
+        <button type="button" onClick={() => void loadPatients()}>
+          刷新列表
+        </button>
+        <ul>
+          {patients.map((p) => (
+            <li key={p.grantId}>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => void openDetail(p.grantId)}
+              >
+                {p.patientId.slice(0, 8)} · {p.scope.join("/")}
+              </button>
+            </li>
+          ))}
+          {patients.length === 0 && (
+            <li className="muted">暂无已确认授权</li>
+          )}
+        </ul>
       </div>
+      {detail && (
+        <div className="card">
+          <h2>患者详情</h2>
+          <pre style={{ whiteSpace: "pre-wrap" }}>
+            {JSON.stringify(detail, null, 2)}
+          </pre>
+          <input
+            placeholder="医学建议（如：建议下次复查钙卫蛋白）"
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => void addNote(String(detail.grantId))}
+          >
+            保存建议
+          </button>
+        </div>
+      )}
     </div>
   );
 }

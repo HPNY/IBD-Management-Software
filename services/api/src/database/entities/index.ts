@@ -2,6 +2,7 @@ export { AdverseEventEntity } from "./adverse-event.entity";
 export { DeviceEntity } from "./device.entity";
 export { DeviceTokenEntity } from "./device-token.entity";
 export { DoctorEntity, DoctorGrantEntity } from "./doctor.entity";
+export { DoctorNoteEntity, DoctorAuditLogEntity } from "../../modules/doctor/doctor-data.module";
 export type { GrantScopeKey, DoctorReviewStatus } from "./doctor.entity";
 export { DrugReviewSubmissionEntity } from "./drug-review.entity";
 export { GeoPostEntity } from "./geo-post.entity";
@@ -26,6 +27,7 @@ import { AdverseEventEntity } from "./adverse-event.entity";
 import { DeviceEntity } from "./device.entity";
 import { DeviceTokenEntity } from "./device-token.entity";
 import { DoctorEntity, DoctorGrantEntity } from "./doctor.entity";
+import { DoctorNoteEntity, DoctorAuditLogEntity } from "../../modules/doctor/doctor-data.module";
 import { DrugReviewSubmissionEntity } from "./drug-review.entity";
 import { GeoPostEntity } from "./geo-post.entity";
 import { InjectionEntity } from "./injection.entity";
@@ -51,6 +53,8 @@ export const entities = [
   DeviceTokenEntity,
   DoctorEntity,
   DoctorGrantEntity,
+  DoctorNoteEntity,
+  DoctorAuditLogEntity,
   PatientEntity,
   LabResultEntity,
   LabItemEntity,

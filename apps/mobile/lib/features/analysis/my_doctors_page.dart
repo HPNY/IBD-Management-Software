@@ -17,6 +17,17 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
   bool _useWrappedDek = false;
   final Set<String> _picked = {'labs', 'symptoms'};
   final List<Map<String, String>> _grants = [];
+  final List<Map<String, String>> _notes = [
+    {
+      'content': '（示例）建议下次复查钙卫蛋白',
+      'date': '2026-09-01',
+      'doctor': '示例医生',
+    },
+  ];
+  final List<Map<String, String>> _audits = [
+    {'action': 'view', 'at': '2026-09-01 10:00'},
+    {'action': 'note', 'at': '2026-09-01 10:05'},
+  ];
   bool _busy = false;
 
   static const _allScopes = ['labs', 'symptoms', 'alerts', 'summary'];
@@ -151,9 +162,39 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
               ),
             );
           }),
+          const SizedBox(height: 20),
+          const Text('医生建议（M3）',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          const SizedBox(height: 8),
+          if (_notes.isEmpty)
+            const Text('暂无建议',
+                style: TextStyle(color: IbdColors.textSecondary)),
+          ..._notes.map(
+            (n) => Card(
+              child: ListTile(
+                dense: true,
+                title: Text(n['content'] ?? ''),
+                subtitle: Text('${n['date'] ?? ''}${n['doctor'] != null ? ' · ${n['doctor']}' : ''}'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text('授权审计（M4）',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          const SizedBox(height: 8),
+          if (_audits.isEmpty)
+            const Text('暂无审计记录',
+                style: TextStyle(color: IbdColors.textSecondary)),
+          ..._audits.map(
+            (a) => ListTile(
+              dense: true,
+              title: Text('${a['action']}'),
+              subtitle: Text('${a['at']}'),
+            ),
+          ),
           const SizedBox(height: 12),
           const Text(
-            '本页为 M2 本地交互骨架；接后端后替换为 /doctor-grants API。',
+            '本页为 M2/M3 本地交互骨架；接后端后替换为 /doctor-grants 与 /doctor-patient API。',
             style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
           ),
         ],
