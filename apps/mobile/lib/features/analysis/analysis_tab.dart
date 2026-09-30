@@ -6,6 +6,7 @@ import 'export_page.dart';
 import 'flare_page.dart';
 import 'food_stool_page.dart';
 import 'ai_rules_page.dart';
+import 'drug_review_page.dart';
 import 'survey_page.dart';
 import 'annual_report_page.dart';
 import 'timeline_page.dart';
@@ -101,6 +102,16 @@ class AnalysisTab extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const AiRulesPage()),
+            ),
+          ),
+          _NavCard(
+            icon: Icons.rate_review_rounded,
+            title: '药物评价',
+            subtitle: '疗效/副作用主观评价 · 匿名不含病历（D2）',
+            color: const Color(0xFF0369A1),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DrugReviewPage()),
             ),
           ),
           _NavCard(
