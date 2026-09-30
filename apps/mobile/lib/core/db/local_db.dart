@@ -38,7 +38,7 @@ class LocalDb {
       final db = await openDatabase(
         path,
         password: password,
-        version: 6,
+        version: 7,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
         },
@@ -338,6 +338,21 @@ class LocalDb {
       await _addColumnIfMissing(db, 'symptom_diaries', 'night_wakes', 'INTEGER');
       await _addColumnIfMissing(db, 'symptom_diaries', 'stress_level', 'INTEGER');
       await _addColumnIfMissing(db, 'symptom_diaries', 'stress_source', 'TEXT');
+    }
+    if (from < 7) {
+      // G6：食物标签日志（关联分析入口）
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS food_logs (
+          id TEXT PRIMARY KEY,
+          date TEXT NOT NULL,
+          meal TEXT,
+          foods TEXT NOT NULL,
+          created_at TEXT
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_food_logs_date ON food_logs (date)',
+      );
     }
   }
 

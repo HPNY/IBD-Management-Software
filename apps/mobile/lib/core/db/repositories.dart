@@ -571,6 +571,42 @@ class TimelineRepository {
   }
 }
 
+/// G6：食物标签日志（本地 v7 food_logs）。
+class FoodRepository {
+  FoodRepository({Database? database}) : _dbOverride = database;
+
+  final Database? _dbOverride;
+  Future<Database> get _db async =>
+      _dbOverride ?? await LocalDb.instance.database;
+
+  Future<String> insert({
+    required String date,
+    required String foods,
+    String? meal,
+  }) async {
+    final db = await _db;
+    final id = const Uuid().v4();
+    await db.insert('food_logs', {
+      'id': id,
+      'date': date,
+      'meal': meal,
+      'foods': foods,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    return id;
+  }
+
+  Future<List<Map<String, dynamic>>> listAll() async {
+    final db = await _db;
+    return db.query('food_logs', orderBy: 'date DESC, created_at DESC');
+  }
+
+  Future<void> delete(String id) async {
+    final db = await _db;
+    await db.delete('food_logs', where: 'id = ?', whereArgs: [id]);
+  }
+}
+
 /// 生活质量/心理量表（本地，v3）
 class QualitySurveyRepository {
   QualitySurveyRepository({Database? database}) : _dbOverride = database;
