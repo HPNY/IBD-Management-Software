@@ -102,6 +102,7 @@
 | 2026-09 | T9a | 已完成 | CI 修复：pnpm-lock 同步（frozen-lockfile 失败根因）· `37bf276` |
 | 2026-09 | G1–G5 | 已完成 | prd-v15-gaps：库 v6 / 打卡补全+热力+模板 / 活动度卡 / 年报同比 / Web Excel+Skill 表单 |
 | 2026-09 | T2.7 | 已完成 | web tsc 归零；根因 api-client 重复方法已清 |
+| 2026-09 | docs-align | 已完成 | 文档对齐：local-first status→delivered + Phase 勾选；architecture T6 回勾；prd-gap-audit T3 标注由 prd-v15-gaps 接管 |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 

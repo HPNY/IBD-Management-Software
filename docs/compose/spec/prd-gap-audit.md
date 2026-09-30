@@ -3,7 +3,7 @@ feature: prd-gap-audit
 status: delivered
 updated: 2026-09-23
 branch: feature/prd-gap-audit
-commits:
+commits: 6daed89..66820d8
 ---
 
 # PRD × 当前代码差距审阅
@@ -83,5 +83,5 @@ T2.1–2.5 推送/真机、T3.3 微信模板、T6.1 Skill 社区、T6.2 医生�
 
 - [x] T1: 将 G1–G6 写入 session-worklist — acceptance: 清单含 6 条待办且 ID/验收齐全 (covers: S2.3)
 - [x] T2: 文档注明 C1–C4 矛盾/部分差异 — acceptance: 本 spec [S2.2] 即为权威对照，README 不改 PRD 正文 (covers: S2.2)
-- [ ] T3: （后续）按清单实现 G1–G5 — acceptance: 对应 PRD 锚点主路径可验收 (covers: S2.3; depends: T1)
+- [x] T3: （后续）按清单实现 G1–G5 — acceptance: 对应 PRD 锚点主路径可验收 — **已由 `feature/prd-v15-gaps` 交付并合入 main**（G6/G7 仍待办，见 worklist） (covers: S2.3; depends: T1)
 

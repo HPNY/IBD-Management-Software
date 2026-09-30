@@ -1,9 +1,9 @@
 ---
 feature: architecture-techstack
 status: delivered
-updated: 2026-09-12
+updated: 2026-09-23
 branch: feature/architecture-techstack
-commits: 600b66e..592fbea
+commits: 600b66e..1fc5a33
 ---
 
 # IBDers（IBD 病程管理系统）：架构分析与技术栈分析
@@ -384,4 +384,4 @@ ibd-management/
 - [x] T3: 产出 AI 解析与多端同步设计 — acceptance: 双引擎流程、降级路径、冲突策略写清 (covers: S2)
 - [x] T4: 产出技术栈定稿与取舍 — acceptance: 每域有唯一推荐、备选与否决原因 (covers: S2b; depends: T2)
 - [x] T5: 给出 monorepo 结构与里程碑落地顺序 — acceptance: MVP/V1/V2 能力与模块可对齐 (covers: S2b, S2)
-- [x] T6: （后续）按 MVP 范围初始化 monorepo 与 Nest/Flutter/Parse Worker 骨架 — acceptance: 空壳可 docker compose 起 API 与 parse-worker（covers: S2b; depends: T2, T4）
+- [x] T6: （后续）按 MVP 范围初始化 monorepo 与 Nest/Flutter/Parse Worker 骨架 — acceptance: monorepo 骨架在 main；`pnpm --filter @ibd/api build` + `GET /health` 200 已验证；本机无 Docker 时 `docker compose up` 未实跑（ENV，见 Report）（covers: S2b; depends: T2, T4）
