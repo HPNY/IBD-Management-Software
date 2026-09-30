@@ -3,18 +3,18 @@ feature: t64-v2-expansion
 status: in-progress
 updated: 2026-09-23
 branch: feature/t64-d1-diet
-commits:
+commits: b99c4cd..375903d
 ---
 
 # T6.4 V2 扩展拆解：饮食 / 药物评价 / 同城病友 / AI 分析
 
 ## Report
 
-**What was built** — **D4 AI/规则分析已交付**（D4.1–D4.4）：`ai_rules.dart` 纯函数（趋势方向/摘要、连续升高、便血连续、排便突增、用药前后对比）；分析 Tab「AI / 规则分析」入口页聚合三类卡片与免责声明；本地规则、不推送云端。**D4.5 LLM 总结未做**（可选，默认关）。D1 饮食 / D2 药评 / D3 同城 **未实施**。
+**What was built** — **D1 饮食 + D4 AI/规则分析已交付**。D1：食物词典/食谱参考（Dart const，行为等同本地词典）、`food_logs` v8 营养列、今日/7 日营养汇总、食谱一键写入。D4：趋势/异常/用药前后纯函数 + 「AI / 规则分析」页。**D2 药评 / D3 同城未实施**；D4.5 LLM 未做。
 
-**Verification** — `flutter test` PASS **86**（含 `ai_rules_test` 6）；`flutter analyze --no-fatal-infos` PASS（7 pre-existing infos）。独立审阅 **APPROVE** 无 critical；遗留：排便/疼痛趋势卡、用药详情页对比卡、日历窗口均值（现为点数窗口）— 记入 Journey，不挡 D4 验收。
+**Verification** — `flutter test` PASS **90**（food_nutrition 4 + food_log_repo 2 + ai_rules 6 等）；analyze 无 error。D1 审阅 APPROVE（词典用 const、食谱一键写库已补）。
 
-**Journey log** — D4 纯本地规则即可满足 PRD §5.2 主路径，LLM 后置。`seriesByName` 按 `name_norm` LIKE 中文规范名。`listAll` 日记为 date DESC，分析前需反转。avg30/avg90 为末 N 点均值而非日历 30/90 日；缺失日记日按 0 计入排便突增基线可能偏保守。
+**Journey log** — 「本地 JSON」在实现上为 Dart const，D2/D3 若走服务端需真实 JSON/DTO。食谱一键应直接写 `food_logs` 而非只填输入框。`ProgramFiles(x86)` 必须先设否则 flutter test 静默失败。
 
 ## [S1] Problem
 

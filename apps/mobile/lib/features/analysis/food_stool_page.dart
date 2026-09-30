@@ -292,17 +292,14 @@ class _FoodStoolPageState extends State<FoodStoolPage> {
                           const SizedBox(height: 6),
                           TextButton(
                             onPressed: () {
-                              setState(
-                                () => _tagCtrl.text =
-                                    mergeFoodTags(_tagCtrl.text, r.tags),
-                              );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('已并入输入框：${r.title}'),
-                                ),
-                              );
+                              final merged =
+                                  mergeFoodTags(_tagCtrl.text, r.tags);
+                              _tagCtrl.text = merged;
+                              // D1.4：一键写入当日 food_logs
+                              void _write() => _add(overrideFoods: merged);
+                              _write();
                             },
-                            child: const Text('一键记入今日标签'),
+                            child: const Text('一键记入今日'),
                           ),
                         ],
                       ),
