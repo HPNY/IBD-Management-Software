@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/db/repositories.dart';
+import '../../core/survey/sf36_scoring.dart';
 import '../../core/survey/survey_kit.dart';
 import '../../core/ui/theme.dart';
 
@@ -42,28 +43,41 @@ class _SurveyPageState extends State<SurveyPage> {
 
   int get _total => _scores.fold(0, (a, b) => a + b);
 
+  Sf36DomainResult? get _sf36Domains =>
+      _kind == 'SF36' && _scores.length == 36 ? Sf36Scoring.scoreAll(_scores) : null;
+
   Future<void> _save() async {
     final n = DateTime.now();
     final date =
         '${n.year.toString().padLeft(4, '0')}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
     final band = SurveyKit.interpret(_kind, _total);
+    final domains = _sf36Domains;
+    final detail = <String, dynamic>{
+      'band': band,
+      'scores': _scores,
+      'labels': [
+        for (var i = 0; i < _scores.length; i++)
+          SurveyKit.optionLabel(_kind, _scores[i]),
+      ],
+    };
+    if (domains != null) {
+      detail['scoring'] = 'v1-parallel';
+      detail['domains'] = domains.domains;
+      detail['stdAverage'] = domains.stdAverage;
+    }
     await _repo.save(
       date: date,
       kind: _kind,
       total: _total,
-      detail: {
-        'band': band,
-        'scores': _scores,
-        'labels': [
-          for (var i = 0; i < _scores.length; i++)
-            SurveyKit.optionLabel(_kind, _scores[i]),
-        ],
-      },
+      detail: detail,
     );
     await _loadHistory();
     if (mounted) {
+      final msg = domains == null
+          ? '已保存：${SurveyKit.kindTitle(_kind)} $_total 分 · $band'
+          : '已保存：SF-36 · 简化 $_total 分 · 8 维均分 ${domains.stdAverage}';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已保存：${SurveyKit.kindTitle(_kind)} $_total 分 · $band')),
+        SnackBar(content: Text(msg)),
       );
     }
   }
@@ -74,6 +88,7 @@ class _SurveyPageState extends State<SurveyPage> {
     final options = SurveyKit.optionsFor(_kind);
     final band = SurveyKit.interpret(_kind, _total);
     final intro = SurveyKit.introFor(_kind);
+    final domainResult = _sf36Domains;
 
     return Scaffold(
       backgroundColor: IbdColors.bg,
@@ -121,12 +136,40 @@ class _SurveyPageState extends State<SurveyPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '当前合计 $_total 分 · $band',
+                  domainResult == null
+                      ? '当前合计 $_total 分 · $band'
+                      : '简化合计 $_total 分 · $band',
                   style: const TextStyle(
                     color: IbdColors.textPrimary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                if (domainResult != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '标准 8 维均分 ${domainResult.stdAverage} · 分越高越好',
+                    style: const TextStyle(
+                      color: IbdColors.primaryDark,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final e in domainResult.domains.entries)
+                        Chip(
+                          visualDensity: VisualDensity.compact,
+                          label: Text(
+                            '${sf36DomainLabels[e.key] ?? e.key} ${e.value}',
+                            style: const TextStyle(fontSize: 11.5),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -228,11 +271,30 @@ class _SurveyPageState extends State<SurveyPage> {
                 RegExp(r'"band":\s*"([^"]+)"').firstMatch(raw);
             final bandH = m?.group(1) ?? '';
             final title = SurveyKit.kindTitle('${h['kind']}');
+            final stdAvgM = RegExp(r'"stdAverage"\s*:\s*(\d+)').firstMatch(raw);
+            final domainsM = RegExp(r'"domains"\s*:\s*\{([^}]+)\}').firstMatch(raw);
+            var subtitle = '${h['date']}${bandH.isEmpty ? '' : ' · $bandH'}';
+            var titleSuffix = ' · ${h['total']} 分';
+            if (stdAvgM != null && domainsM != null) {
+              titleSuffix = ' · 简化 ${h['total']} · 均分 ${stdAvgM.group(1)}';
+              final pairs = <MapEntry<String, int>>[];
+              for (final pm
+                  in RegExp(r'"(\w+)"\s*:\s*(\d+)').allMatches(domainsM.group(1)!)) {
+                final id = pm.group(1)!;
+                if (!sf36DomainLabels.containsKey(id)) continue;
+                pairs.add(MapEntry(id, int.parse(pm.group(2)!)));
+              }
+              pairs.sort((a, b) => a.value.compareTo(b.value));
+              final weak = pairs.take(2).map(
+                    (e) => '${sf36DomainLabels[e.key]} ${e.value}',
+                  );
+              if (weak.isNotEmpty) subtitle = '$subtitle · 较低：${weak.join(' · ')}';
+            }
             return Card(
               child: ListTile(
                 dense: true,
-                title: Text('$title · ${h['total']} 分'),
-                subtitle: Text('${h['date']}${bandH.isEmpty ? '' : ' · $bandH'}'),
+                title: Text('$title$titleSuffix'),
+                subtitle: Text(subtitle),
               ),
             );
           }),
