@@ -109,6 +109,8 @@ class IbdApiClient {
           return _client.post(uri, headers: h, body: encoded);
         case 'PUT':
           return _client.put(uri, headers: h, body: encoded);
+        case 'PATCH':
+          return _client.patch(uri, headers: h, body: encoded);
         default:
           throw ArgumentError('unsupported $method');
       }
@@ -331,6 +333,42 @@ class IbdApiClient {
     final res = await _send('POST', config.uri('/api/v1/medications'), body: body);
     _ensureOk(res, 'createMedication');
     return _json(res);
+  }
+
+  Future<Map<String, dynamic>> drugReviewSummary(String drug) async {
+    final res = await _send(
+      'GET',
+      config.uri('/api/v1/drug-reviews/summary?drug=${Uri.encodeComponent(drug)}'),
+    );
+    _ensureOk(res, 'drugReviewSummary');
+    return _json(res) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> confirmDoctorGrant(
+    String code, {
+    List<String>? scope,
+    String? wrappedDek,
+  }) async {
+    final res = await _send(
+      'POST',
+      config.uri('/api/v1/doctor-grants/confirm'),
+      body: {
+        'code': code,
+        if (scope != null) 'scope': scope,
+        if (wrappedDek != null) 'wrappedDek': wrappedDek,
+      },
+    );
+    _ensureOk(res, 'confirmDoctorGrant');
+    return _json(res) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> revokeDoctorGrant(String grantId) async {
+    final res = await _send(
+      'POST',
+      config.uri('/api/v1/doctor-grants/$grantId/revoke'),
+    );
+    _ensureOk(res, 'revokeDoctorGrant');
+    return _json(res) as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> updateMedication(

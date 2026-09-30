@@ -14,6 +14,7 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { InjectRepository, TypeOrmModule } from "@nestjs/typeorm";
+import { createHash } from "node:crypto";
 import { Repository } from "typeorm";
 import { GeoPostEntity } from "../../database/entities";
 import { RequireScope } from "../../auth/scope.guard";
@@ -30,14 +31,9 @@ const BANNED_LOCATION_KEYS = new Set([
   "coords",
 ]);
 
-/** 稳定伪匿名哈希（非密码学强度，仅避免回传原始 uuid）。 */
+/** SHA-256 截断伪匿名（C 组：降低碰撞/枚举风险）。 */
 export function pseudoHash(id: string): string {
-  let h = 2166136261;
-  for (var i = 0; i < id.length; i++) {
-    h ^= id.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return (h >>> 0).toString(16).padStart(8, "0");
+  return createHash("sha256").update(id).digest("hex").slice(0, 16);
 }
 
 /** D3.5：禁止精确位置键。 */

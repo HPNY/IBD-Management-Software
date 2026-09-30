@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../core/api/api_config.dart';
+import '../../core/api/ibd_api_client.dart';
+import '../../core/auth/auth_session.dart';
+import '../../core/identity/local_identity.dart';
 import '../../core/db/repositories.dart';
 import '../../core/drug/drug_review_model.dart';
 import '../../core/ui/theme.dart';
@@ -50,6 +55,26 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
 
   Future<void> _loadSummary(String drug) async {
     if (drug.isEmpty) return;
+    // C 组 T5：优先社区聚合 API，失败回落本地
+    try {
+      final identity = context.read<LocalIdentity>();
+      final session = AuthSession.parseSession('', identity.uuid);
+      final api = IbdApiClient(ApiConfig.dev(), session);
+      final remote = await api.drugReviewSummary(drug);
+      if (!mounted) return;
+      setState(() {
+        _summary = {
+          'drugName': remote['drugName'] ?? drug,
+          'avgEfficacy': remote['avgEfficacy'] ?? 0,
+          'count': remote['count'] ?? 0,
+          'seDist': remote['seDist'] ?? const [0, 0, 0, 0],
+          'source': 'community',
+        };
+      });
+      return;
+    } catch (_) {
+      // 离线或未配置后端：本地聚合
+    }
     final all = _rows
         .map(
           (r) => DrugReview(
@@ -62,12 +87,19 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
         )
         .toList();
     final agg = aggregateLocal(drug, all);
+    if (!mounted) return;
     setState(() {
       _summary = {
         'drugName': agg.drugName,
         'avgEfficacy': agg.avgEfficacy,
         'count': agg.count,
-        'seDist': [agg.seDist[0] ?? 0, agg.seDist[1] ?? 0, agg.seDist[2] ?? 0, agg.seDist[3] ?? 0],
+        'seDist': [
+          agg.seDist[0] ?? 0,
+          agg.seDist[1] ?? 0,
+          agg.seDist[2] ?? 0,
+          agg.seDist[3] ?? 0,
+        ],
+        'source': 'local',
       };
     });
   }

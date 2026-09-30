@@ -12,6 +12,7 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { InjectRepository, TypeOrmModule } from "@nestjs/typeorm";
+import { createHash } from "node:crypto";
 import { Repository } from "typeorm";
 import {
   DrugReviewSubmissionEntity,
@@ -144,12 +145,7 @@ export class DrugReviewController {
 
   private hashOf(req: { user?: JwtUser }): string {
     const raw = req.user?.appUserId ?? req.user?.userId ?? "anon";
-    let h = 2166136261;
-    for (var i = 0; i < raw.length; i++) {
-      h ^= raw.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return (h >>> 0).toString(16).padStart(8, "0");
+    return createHash("sha256").update(raw).digest("hex").slice(0, 16);
   }
 
   @Post()
