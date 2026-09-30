@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/api/ibd_api_client.dart';
 import '../../core/ui/theme.dart';
 
 /// M1.3/M2.2：我的医生（授权码确认 / 列表 / 收回）。

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/api/ibd_api_client.dart';
 import '../../core/db/repositories.dart';
 import '../../core/drug/drug_review_model.dart';
 import '../../core/ui/theme.dart';

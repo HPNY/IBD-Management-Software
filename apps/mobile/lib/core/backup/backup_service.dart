@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,7 +14,14 @@ class BackupService {
   BackupService(this.appUserId);
 
   final String appUserId;
-  static const _kPass = 'ibd_backup_passphrase';
+  static const _kPass = 'ibd_backup_passphrase_v2';
+  static const _legacyPass = 'ibd_backup_passphrase';
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+  );
 
   final labs = LabRepository();
   final meds = MedicationRepository();
@@ -25,13 +33,21 @@ class BackupService {
   final drugReviews = DrugReviewRepository();
 
   Future<void> savePassphrase(String pass) async {
-    final sp = await SharedPreferences.getInstance();
-    await sp.setString(_kPass, pass);
+    await _storage.write(key: _kPass, value: pass);
   }
 
   Future<String?> loadPassphrase() async {
+    final secure = await _storage.read(key: _kPass);
+    if (secure != null && secure.isNotEmpty) return secure;
+    // 迁移旧明文并删除
     final sp = await SharedPreferences.getInstance();
-    return sp.getString(_kPass);
+    final legacy = sp.getString(_legacyPass);
+    if (legacy != null && legacy.isNotEmpty) {
+      await _storage.write(key: _kPass, value: legacy);
+      await sp.remove(_legacyPass);
+      return legacy;
+    }
+    return null;
   }
 
   Future<Map<String, dynamic>> exportAll() async {

@@ -11,6 +11,12 @@ interface FileTask {
 }
 
 /** 批量 PDF 解析：presign → PUT → enqueue → 轮询 → confirm（用完即删） */
+function randomHex(): string {
+  const a = new Uint8Array(16);
+  crypto.getRandomValues(a);
+  return Array.from(a, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export default function ParseBatch() {
   const [tasks, setTasks] = useState<FileTask[]>([]);
   const [hospital, setHospital] = useState("");
@@ -36,7 +42,7 @@ export default function ParseBatch() {
     const uid =
       localStorage.getItem("ibd_web_uid") ??
       (() => {
-        const u = `web-${Date.now().toString(16)}`;
+        const u = `web-${randomHex()}`;
         localStorage.setItem("ibd_web_uid", u);
         return u;
       })();
