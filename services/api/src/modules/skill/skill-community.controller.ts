@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { createHash } from "node:crypto";
 import { RequireScope } from "../../auth/scope.guard";
 import type { JwtUser } from "../../auth/types";
 import {
@@ -26,7 +27,8 @@ export class SkillCommunityController {
 
   private hashOf(req: { user?: JwtUser }): string {
     // 匿名：仅 appUserId，不暴露手机号
-    return req.user?.appUserId ?? req.user?.userId ?? "anon";
+    const raw = req.user?.appUserId ?? req.user?.userId ?? "anon";
+    return createHash("sha256").update(raw).digest("hex").slice(0, 16);
   }
 
   @Post("skills")

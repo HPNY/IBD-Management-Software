@@ -34,6 +34,8 @@ class BackupService {
 
   Future<void> savePassphrase(String pass) async {
     await _storage.write(key: _kPass, value: pass);
+    final sp = await SharedPreferences.getInstance();
+    await sp.remove(_legacyPass);
   }
 
   Future<String?> loadPassphrase() async {

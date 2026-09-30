@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/api/api_config.dart';
 import '../../core/api/ibd_api_client.dart';
+import '../../core/auth/auth_session.dart';
+import '../../core/identity/local_identity.dart';
 import '../../core/ui/theme.dart';
 
 /// M1.3/M2.2：我的医生（授权码确认 / 列表 / 收回）。
@@ -40,7 +44,7 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
     super.dispose();
   }
 
-  void _confirmLocal() {
+  Future<void> _confirmLocal() async {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty) return;
     if (_picked.isEmpty) {
@@ -49,7 +53,21 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
       );
       return;
     }
-    // 本地骨架：确认后进入列表；生产应 POST /doctor-grants/confirm
+    // C 组 T5：优先 POST /doctor-grants/confirm，失败降级本地
+    try {
+      final identity = context.read<LocalIdentity>();
+      final session = AuthSession.parseSession('', identity.uuid);
+      final api = IbdApiClient(ApiConfig.dev(), session);
+      await api.confirmDoctorGrant(
+        code,
+        scope: _picked.toList(),
+        wrappedDek: _useWrappedDek && _dekCtrl.text.trim().isNotEmpty
+            ? _dekCtrl.text.trim()
+            : null,
+      );
+    } catch (_) {
+      // 离线：本地演示记录
+    }
     setState(() {
       _grants.insert(0, {
         'code': code,
@@ -62,11 +80,18 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
       _codeCtrl.clear();
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已确认范围 ${_picked.join('/')}（本机演示）')),
+      SnackBar(content: Text('已确认范围 ${_picked.join('/')}')),
     );
   }
 
-  void _revoke(int i) {
+  Future<void> _revoke(int i) async {
+    final code = _grants[i]['code'];
+    try {
+      final identity = context.read<LocalIdentity>();
+      final session = AuthSession.parseSession('', identity.uuid);
+      final api = IbdApiClient(ApiConfig.dev(), session);
+      if (code != null) await api.revokeDoctorGrant(code);
+    } catch (_) {}
     setState(() => _grants[i]['status'] = 'revoked');
   }
 

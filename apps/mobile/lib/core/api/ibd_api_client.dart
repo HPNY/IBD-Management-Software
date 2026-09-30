@@ -344,6 +344,33 @@ class IbdApiClient {
     return _json(res) as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> confirmDoctorGrant(
+    String code, {
+    List<String>? scope,
+    String? wrappedDek,
+  }) async {
+    final res = await _send(
+      'POST',
+      config.uri('/api/v1/doctor-grants/confirm'),
+      body: {
+        'code': code,
+        if (scope != null) 'scope': scope,
+        if (wrappedDek != null) 'wrappedDek': wrappedDek,
+      },
+    );
+    _ensureOk(res, 'confirmDoctorGrant');
+    return _json(res) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> revokeDoctorGrant(String grantId) async {
+    final res = await _send(
+      'POST',
+      config.uri('/api/v1/doctor-grants/$grantId/revoke'),
+    );
+    _ensureOk(res, 'revokeDoctorGrant');
+    return _json(res) as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> updateMedication(
       String id, Map<String, dynamic> body) async {
     final res = await _send('PATCH', config.uri('/api/v1/medications/$id'),

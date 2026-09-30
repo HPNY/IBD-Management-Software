@@ -44,6 +44,11 @@ class TokenStore {
     if (tokens.phone != null) {
       await _storage.write(key: _kPhone, value: tokens.phone);
     }
+    // 保存时也清除旧明文，避免再登录残留
+    final sp = await SharedPreferences.getInstance();
+    for (final k in _legacy.keys) {
+      await sp.remove(k);
+    }
   }
 
   Future<AuthTokens?> load() async {
