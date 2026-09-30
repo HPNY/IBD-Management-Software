@@ -50,6 +50,16 @@ export class SymptomDiaryEntity {
   @Column({ type: "varchar", length: 16, nullable: true })
   overallFeeling: "better" | "same" | "worse" | null;
 
+  /** G2 排便细项（对齐 App 本地库，供摘要） */
+  @Column({ type: "int", nullable: true })
+  bowelCount: number | null;
+
+  @Column({ type: "boolean", nullable: true })
+  urgency: boolean | null;
+
+  @Column({ type: "boolean", nullable: true })
+  mucus: boolean | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

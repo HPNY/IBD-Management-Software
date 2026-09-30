@@ -10,6 +10,8 @@ commits: 7977c5c..49cc957 cac1a8d
 
 ## Report
 
+**Amendment (M3.2 全量摘要)** — `visit-summary.ts` 对齐 App `VisitSummaryPage._build`：当前用药 / 最近检验 / 近期注射 / 症状行；doctor-data summary 走 `buildVisitSummaryText`。
+
 **What was built** — T6.2 权威拆解：四阶段子包 M1–M4（医生身份与壳、患者扫码授权、只读病程视图+建议、审计/收回/过期）。固定 DEK/AK 再包裹与「可收回、可过期、审计日志」契约（architecture S2.3.5 / PRD §4.2.5 / §5.1）。本 spec 只拆解不实施。
 
 **Verification** — 对照 PRD §4.2.5、§5.1、architecture DoctorGrant；worklist T6.2 已指向本 spec。无代码变更。
