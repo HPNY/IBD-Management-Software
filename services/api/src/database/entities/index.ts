@@ -13,6 +13,7 @@ export {
 } from "./parse-skill.entity";
 export { RefreshTokenEntity } from "./refresh-token.entity";
 export { ReminderRuleEntity } from "./reminder-rule.entity";
+export { SkillRatingEntity } from "./skill-rating.entity";
 export { SymptomDiaryEntity } from "./symptom-diary.entity";
 export { SyncSnapshotEntity } from "./sync-snapshot.entity";
 export { UserEntity } from "./user.entity";
@@ -32,6 +33,7 @@ import {
 } from "./parse-skill.entity";
 import { RefreshTokenEntity } from "./refresh-token.entity";
 import { ReminderRuleEntity } from "./reminder-rule.entity";
+import { SkillRatingEntity } from "./skill-rating.entity";
 import { SymptomDiaryEntity } from "./symptom-diary.entity";
 import { SyncSnapshotEntity } from "./sync-snapshot.entity";
 import { UserEntity } from "./user.entity";
@@ -52,5 +54,6 @@ export const entities = [
   RefreshTokenEntity,
   ParseSkillEntity,
   ParseSkillVersionEntity,
+  SkillRatingEntity,
   SyncSnapshotEntity,
 ];

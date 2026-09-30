@@ -98,6 +98,79 @@ export class IbdApiClient {
     });
   }
 
+  /** 短时 Skill 社区会话（匿名发布/评分） */
+  communitySession(): Promise<{ accessToken: string; expiresAt?: string }> {
+    return this.request("POST", "/api/v1/auth/community-session", {
+      appUserId: this.appUserId,
+    });
+  }
+
+  /** T6.1 社区：发布 Skill（服务端脱敏） */
+  publishCommunitySkill(skill: unknown): Promise<{
+    skillId: string;
+    versionId: string;
+    version: string;
+    created: boolean;
+  }> {
+    return this.request("POST", "/api/v1/skill-community/skills", { skill });
+  }
+
+  searchCommunitySkills(q?: string): Promise<
+    Array<{
+      id: string;
+      hospital: string;
+      reportType: string;
+      currentVersion: string | null;
+      usageCount: number;
+      ratingAvg: number | null;
+      ratingCount: number;
+      composite: number;
+    }>
+  > {
+    const qs = q ? `?q=${encodeURIComponent(q)}` : "";
+    return this.request("GET", `/api/v1/skill-community/skills${qs}`);
+  }
+
+  communitySkillDetail(id: string): Promise<{
+    versions: Array<{
+      id: string;
+      version: string;
+      parentVersion: string | null;
+      itemCount: number;
+      usageCount: number;
+    }>;
+  }> {
+    return this.request("GET", `/api/v1/skill-community/skills/${id}`);
+  }
+
+  communitySkillContent(id: string): Promise<{
+    hospital: string;
+    reportType: string;
+    version: string;
+    dateExtraction: { primary: string; fallback?: string };
+    items: Array<{
+      name: string;
+      alias?: string;
+      pattern: string;
+      multiline?: boolean;
+      unit?: string;
+      refRange?: [number, number];
+    }>;
+    parentVersion: string | null;
+  }> {
+    return this.request("GET", `/api/v1/skill-community/skills/${id}/content`);
+  }
+
+  rateCommunitySkill(
+    id: string,
+    input: { score: number; comment?: string },
+  ): Promise<unknown> {
+    return this.request("POST", `/api/v1/skill-community/skills/${id}/ratings`, {
+      score: input.score,
+      comment: input.comment,
+    });
+  }
+
   presign(input: {
     filename: string;
     contentType?: string;

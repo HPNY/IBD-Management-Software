@@ -1,20 +1,20 @@
 ---
 feature: t61-skill-community
-status: designed
+status: delivered
 updated: 2026-09-23
-branch: feature/t61-t62-breakdown
-commits: cac1a8d
+branch: feature/t61-skill-community
+commits: faefcdc..d3adb8e
 ---
 
 # T6.1 Skill 社区拆解：匿名模板发布 / 评分 / 协作更新
 
 ## Report
 
-**What was built** — T6.1 权威拆解：Skill 社区四阶段子包 C1–C4（本地候选→发布→浏览评分→协作升版），每阶段 3–5 个可验收任务。固定「只收 Skill JSON、不收原始报告」隐私契约；与 G5 Web Skill 表单、T6.2 医生端边界对齐。本 spec 只拆解不实施。
+**What was built** — Skill 社区全链路：服务端 `skill-community`（匿名 `community` 会话、发布脱敏白名单、不可变版本追加、评分 upsert、协作升版 `parentVersion`、综合分排序）；Web `/skill-community`（搜索 Top、详情版本、评分、导入本地 Skill、从本地模板匿名发布）；`skill_ratings` 迁移与 `parentVersion` 列。解析确认后自动 Skill 沿用既有 `upsertFromConfirmed`。
 
-**Verification** — 对照 PRD §5.3、architecture S2.3.4 ParseSkill 版本化、local-first C 类；worklist T6.1 已指向本 spec。无代码变更。
+**Verification** — `pnpm --filter @ibd/api typecheck` PASS；`@ibd/web` typecheck PASS；`smoke:skill-community` PASS（含 alias/日期字段 PII 拒绝）。首轮审阅 REQUEST_CHANGES（鉴权/脱敏/createdById/排序等 critical）→ 修复 `d3adb8e` → 复审 **APPROVE** 无新 critical。
 
-**Journey log** — 解析确认后自动生成 Skill 的链路在 parse-worker/`ParseSkill` 已有雏形；社区层补齐「匿名发布、评分、协作版本」。积分/荣誉可后置，不挡 MVP。
+**Journey log** — `createdById` 只能写 users.id UUID，匿名 appUserId 必须置 null（FK）。社区 scope 需要像 parse-session 一样有签发端点，否则 Web 一律 401。服务端 scrub 必须扫 alias/unit/dateExtraction 等非 name 字段。综合分排序在 take(50) 后内存排序，量级大时需下沉 SQL。
 
 ## [S1] Problem
 
@@ -73,7 +73,7 @@ worklist **T6.1**「Skill 社区（匿名模板发布 / 评分 / 协作更新）
 
 ## Tasks
 
-- [ ] T1: C1 本地候选与发布草稿按 S2.1 实施 — acceptance: C1.1–C1.3 全勾 (covers: S2.1)
-- [ ] T2: C2 发布 API 按 S2.2 实施 — acceptance: C2.1–C2.3 全勾 (covers: S2.2; depends: T1)
-- [ ] T3: C3 浏览评分使用按 S2.3 实施 — acceptance: C3.1–C3.4 全勾 (covers: S2.3; depends: T2)
-- [ ] T4: C4 协作与优选按 S2.4 实施 — acceptance: C4.1–C4.2 全勾（C4.3 可选） (covers: S2.4; depends: T3)
+- [x] T1: C1 本地候选与发布草稿按 S2.1 实施 — acceptance: C1.1–C1.3 全勾 (covers: S2.1)
+- [x] T2: C2 发布 API 按 S2.2 实施 — acceptance: C2.1–C2.3 全勾 (covers: S2.2; depends: T1)
+- [x] T3: C3 浏览评分使用按 S2.3 实施 — acceptance: C3.1–C3.4 全勾 (covers: S2.3; depends: T2)
+- [x] T4: C4 协作与优选按 S2.4 实施 — acceptance: C4.1–C4.2 全勾（C4.3 积分可选未做） (covers: S2.4; depends: T3)

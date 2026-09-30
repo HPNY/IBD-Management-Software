@@ -3,6 +3,7 @@ import ParseBatch from "./pages/ParseBatch";
 import Trends from "./pages/Trends";
 import ClinicalEdit from "./pages/ClinicalEdit";
 import DataExport from "./pages/DataExport";
+import SkillCommunity from "./pages/SkillCommunity";
 import Skills from "./pages/Skills";
 
 const tabs = [
@@ -11,6 +12,7 @@ const tabs = [
   { to: "/clinical", label: "检查/手术" },
   { to: "/export", label: "数据导出" },
   { to: "/skills", label: "Skill 模板" },
+  { to: "/skill-community", label: "Skill 社区" },
 ];
 
 export default function App() {
@@ -49,6 +51,7 @@ export default function App() {
           <Route path="/clinical" element={<ClinicalEdit />} />
           <Route path="/export" element={<DataExport />} />
           <Route path="/skills" element={<Skills />} />
+          <Route path="/skill-community" element={<SkillCommunity />} />
         </Routes>
       </main>
     </div>

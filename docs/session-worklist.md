@@ -50,7 +50,7 @@
 
 | ID | 任务 | 状态 | 验收标准 |
 |----|------|------|----------|
-| T6.1 | Skill 社区（匿名模板发布 / 评分 / 协作更新） | 待办 | 已拆解 C1–C4 · 见 [t61-skill-community](compose/spec/t61-skill-community.md) |
+| T6.1 | Skill 社区（匿名模板发布 / 评分 / 协作更新） | 已完成 | C1–C4：community 会话 + 发布脱敏 + 评分 + 协作升版 + Web 入口 · 见 [t61-skill-community](compose/spec/t61-skill-community.md) |
 | T6.2 | 医生端 Web + 患者扫码授权（DEK 再包裹） | 待办 | 已拆解 M1–M4 · 见 [t62-doctor-web](compose/spec/t62-doctor-web.md) |
 | T6.3 | 年度报告（PRD V1.5） | 已完成 | 按年生成概览/用药 + 分享导出 |
 | T6.4 | V2 扩展：饮食 / 药物评价 / 同城病友 / AI 分析 | 待办 | 已拆解为四轨子包 D1–D4 · 见 [t64-v2-expansion](compose/spec/t64-v2-expansion.md) |
@@ -107,6 +107,7 @@
 | 2026-09 | D-group | 已完成 | 8 维趋势卡（sf36_trend + 量表页）；无网冒烟自动化代理 offline_smoke_test |
 | 2026-09 | G6 | 已完成 | 食物日志 v7 + 食物×排便关联分析入口（观察用，非因果） |
 | 2026-09 | t61/t62-breakdown | 已完成 | T6.1 拆 C1–C4、T6.2 拆 M1–M4；worklist 指向两份 spec |
+| 2026-09 | T6.1 | 已完成 | Skill 社区 C1–C4（脱敏/发布/评分/协作/Web）· 审阅修 critical 后 APPROVE |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 

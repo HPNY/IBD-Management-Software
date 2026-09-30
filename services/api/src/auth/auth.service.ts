@@ -201,6 +201,28 @@ export class AuthService {
     };
   }
 
+  /** Skill 社区短时会话（scope=community）：匿名发布/评分，无登录墙 */
+  async issueCommunitySession(input: { appUserId: string; deviceId?: string }) {
+    const user = await this.ensureSessionUser(input.appUserId);
+    const accessToken = this.jwt.sign(
+      {
+        userId: user.id,
+        phone: null,
+        deviceId: input.deviceId,
+        scope: "community",
+        appUserId: input.appUserId,
+      } satisfies JwtUser,
+      { expiresIn: "30m" },
+    );
+    return {
+      accessToken,
+      expiresIn: "30m",
+      tokenType: "Bearer",
+      scope: "community",
+      appUserId: input.appUserId,
+    };
+  }
+
   /** 将 app_user_uuid 映射为 users 行（openid 存 uuid，非真实微信）。 */
   private async ensureSessionUser(appUserId: string): Promise<UserEntity> {
     if (!appUserId || appUserId.length < 8) {
