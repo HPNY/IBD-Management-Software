@@ -17,6 +17,9 @@ class GeoProfile {
       };
 }
 
+/// 就诊指南数据版本（结构变更时 +1）。
+const kCityGuideVersion = 1;
+
 class CityGuide {
   const CityGuide({
     required this.city,

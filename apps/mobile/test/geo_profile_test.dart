@@ -21,7 +21,8 @@ void main() {
     );
   });
 
-  test('guidesForCity 按城市过滤', () {
+  test('guidesForCity 按城市过滤；数据结构有版本号', () {
+    expect(kCityGuideVersion, greaterThanOrEqualTo(1));
     expect(guidesForCity('北京').length, 2);
     expect(guidesForCity('火星'), isEmpty);
   });

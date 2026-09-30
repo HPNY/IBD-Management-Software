@@ -23,6 +23,8 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
 
   final _drugCtrl = TextEditingController();
   final _commentCtrl = TextEditingController();
+  final _searchCtrl = TextEditingController();
+  Map<String, dynamic>? _summary;
   String _ibdType = 'CD';
   int _efficacy = 3;
   int _se = 0;
@@ -42,7 +44,32 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
   void dispose() {
     _drugCtrl.dispose();
     _commentCtrl.dispose();
+    _searchCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadSummary(String drug) async {
+    if (drug.isEmpty) return;
+    final all = _rows
+        .map(
+          (r) => DrugReview(
+            drugName: '${r['drug_name']}',
+            ibdType: '${r['ibd_type'] ?? 'unknown'}',
+            efficacy: (r['efficacy'] as num?)?.toInt() ?? 0,
+            seSideEffect: (r['se_side_effect'] as num?)?.toInt() ?? 0,
+            comment: r['comment'] as String?,
+          ),
+        )
+        .toList();
+    final agg = aggregateLocal(drug, all);
+    setState(() {
+      _summary = {
+        'drugName': agg.drugName,
+        'avgEfficacy': agg.avgEfficacy,
+        'count': agg.count,
+        'seDist': [agg.seDist[0] ?? 0, agg.seDist[1] ?? 0, agg.seDist[2] ?? 0, agg.seDist[3] ?? 0],
+      };
+    });
   }
 
   Future<void> _load() async {
@@ -209,6 +236,41 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
                 ),
                 const SizedBox(height: 8),
                 FilledButton(onPressed: _save, child: const Text('保存评价')),
+                const SizedBox(height: 20),
+                const Text('社区聚合（需联网）',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchCtrl,
+                        decoration: const InputDecoration(
+                          labelText: '查药品社区评价',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      onPressed: () => _loadSummary(_searchCtrl.text.trim()),
+                      child: const Text('查询'),
+                    ),
+                  ],
+                ),
+                if (_summary != null)
+                  Card(
+                    child: ListTile(
+                      title: Text(
+                        '${_summary!['drugName']} · 均分 ${_summary!['avgEfficacy']}'
+                        '（${_summary!['count']} 条）',
+                      ),
+                      subtitle: Text(
+                        '副作用分布：${(_summary!['seDist'] as List?)?.join('/') ?? '—'}',
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 20),
                 const Text('我的评价',
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),

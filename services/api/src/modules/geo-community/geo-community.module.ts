@@ -30,6 +30,16 @@ const BANNED_LOCATION_KEYS = new Set([
   "coords",
 ]);
 
+/** 稳定伪匿名哈希（非密码学强度，仅避免回传原始 uuid）。 */
+export function pseudoHash(id: string): string {
+  let h = 2166136261;
+  for (var i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
 /** D3.5：禁止精确位置键。 */
 export function assertNoPreciseLocation(obj: Record<string, unknown>): void {
   for (const k of Object.keys(obj)) {
@@ -62,11 +72,19 @@ export class GeoCommunityService {
   }
 
   async listPosts(city: string) {
-    return this.posts.find({
+    const rows = await this.posts.find({
       where: { city },
       order: { createdAt: "DESC" },
       take: 50,
     });
+    // 不回传 authorHash（避免伪匿名 ID 泄露）
+    return rows.map((r) => ({
+      id: r.id,
+      city: r.city,
+      nickname: r.nickname,
+      content: r.content,
+      createdAt: r.createdAt,
+    }));
   }
 
   async createPost(input: {
@@ -74,7 +92,12 @@ export class GeoCommunityService {
     nickname: string;
     content: string;
     authorHash: string;
+    rawBody?: Record<string, unknown>;
   }) {
+    // D3.5：在重组字段前检查客户端原始键，拒绝精确位置
+    if (input.rawBody) {
+      assertNoPreciseLocation(input.rawBody);
+    }
     assertNoPreciseLocation(input as unknown as Record<string, unknown>);
     if (!input.city.trim() || !input.content.trim()) {
       throw new BadRequestException("city and content required");
@@ -110,7 +133,9 @@ export class GeoCommunityController {
   constructor(private readonly svc: GeoCommunityService) {}
 
   private hashOf(req: { user?: JwtUser }): string {
-    return req.user?.appUserId ?? req.user?.userId ?? "anon";
+    // 伪匿名：对 appUserId 做稳定短哈希，不存/不回传原始 uuid
+    const raw = req.user?.appUserId ?? req.user?.userId ?? "anon";
+    return pseudoHash(raw);
   }
 
   @Get("cities")
@@ -126,14 +151,15 @@ export class GeoCommunityController {
 
   @Post("posts")
   create(
-    @Body() body: { city: string; nickname?: string; content: string },
+    @Body() body: Record<string, unknown>,
     @Req() req: { user?: JwtUser },
   ) {
     return this.svc.createPost({
-      city: body.city,
-      nickname: body.nickname ?? "匿名",
-      content: body.content,
+      city: String(body.city ?? ""),
+      nickname: body.nickname != null ? String(body.nickname) : "匿名",
+      content: String(body.content ?? ""),
       authorHash: this.hashOf(req),
+      rawBody: body,
     });
   }
 

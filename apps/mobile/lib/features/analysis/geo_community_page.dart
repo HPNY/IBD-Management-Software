@@ -14,10 +14,12 @@ class GeoCommunityPage extends StatefulWidget {
 
 class _GeoCommunityPageState extends State<GeoCommunityPage> {
   final _nickCtrl = TextEditingController();
+  final _postCtrl = TextEditingController();
   String _city = '北京';
   String? _savedNick;
   String? _savedCity;
   bool _inited = false;
+  final List<String> _localPosts = [];
 
   @override
   void initState() {
@@ -28,6 +30,7 @@ class _GeoCommunityPageState extends State<GeoCommunityPage> {
   @override
   void dispose() {
     _nickCtrl.dispose();
+    _postCtrl.dispose();
     super.dispose();
   }
 
@@ -134,8 +137,53 @@ class _GeoCommunityPageState extends State<GeoCommunityPage> {
             ),
           ),
           const SizedBox(height: 12),
+          Text(
+            '同城匿名帖 · ${_savedCity ?? _city}（公开匿名，勿写病历）',
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _postCtrl,
+                  decoration: const InputDecoration(
+                    hintText: '发一条匿名帖…',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: () {
+                  final t = _postCtrl.text.trim();
+                  if (t.isEmpty) return;
+                  setState(() {
+                    _localPosts.insert(0, t);
+                    _postCtrl.clear();
+                  });
+                },
+                child: const Text('发帖'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (_localPosts.isEmpty)
+            const Text('暂无本地帖',
+                style: TextStyle(color: IbdColors.textSecondary)),
+          ..._localPosts.map(
+            (p) => Card(
+              child: ListTile(
+                dense: true,
+                title: Text(p, style: const TextStyle(fontSize: 13)),
+                subtitle: Text('${_savedNick ?? '匿名'} · ${_savedCity ?? _city}'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           const Text(
-            '同城病友计数/匿名帖需联网服务端；本页先提供档案与指南（D3.1–D3.2）。',
+            '同城计数/跨端帖需联网服务端；本页含 D3.1–D3.2 档案指南与本地匿名帖演示。',
             style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
           ),
         ],
