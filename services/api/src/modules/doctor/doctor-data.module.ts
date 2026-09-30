@@ -20,6 +20,7 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  IsNull,
   PrimaryGeneratedColumn,
   Repository,
 } from "typeorm";
@@ -219,14 +220,24 @@ export class DoctorDataService {
         take: 7,
       });
       const medRows = await this.meds.find({
-        where: { patientId: g.patientId },
+        where: [
+          { patientId: g.patientId, status: "active" },
+          { patientId: g.patientId, status: "paused" },
+        ],
         order: { startDate: "DESC" },
         take: 10,
       });
+      const now = new Date();
+      const in21 = new Date(now.getTime() + 21 * 24 * 3600 * 1000);
       const injRows = await this.injections.find({
-        where: { patientId: g.patientId },
-        order: { plannedDate: "DESC" },
+        where: { patientId: g.patientId, actualDate: IsNull() },
+        order: { plannedDate: "ASC" },
         take: 5,
+      });
+      const pendingInj = injRows.filter((i) => {
+        if (i.actualDate) return false;
+        const d = i.plannedDate ? new Date(i.plannedDate) : null;
+        return !d || d.getTime() <= in21.getTime();
       });
       const summaryText = buildVisitSummaryText({
         meds: medRows.map((m) => ({
@@ -243,7 +254,7 @@ export class DoctorDataService {
             unit: i.unit,
           })),
         })),
-        injections: injRows.map((i) => ({
+        injections: pendingInj.map((i) => ({
           drug: i.drug,
           plannedDate: i.plannedDate,
           dose: i.dose,
