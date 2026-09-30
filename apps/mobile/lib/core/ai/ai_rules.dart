@@ -11,14 +11,24 @@ class MetricTrend {
     this.last,
     this.avg30,
     this.avg90,
+    this.avg30Days,
+    this.avg90Days,
   });
 
   final String name;
   final TrendDirection direction;
   final int points;
   final double? last;
+
+  /// 末 N 点均值（无日期时的回退）
   final double? avg30;
   final double? avg90;
+
+  /// 近 30/90 **日历日**均值（有日期序列时）
+  final double? avg30Days;
+  final double? avg90Days;
+
+  bool get hasCalendarWindow => avg30Days != null || avg90Days != null;
 
   String get label => switch (direction) {
         TrendDirection.rising => '升高',
@@ -83,9 +93,12 @@ TrendDirection trendDirection(List<double> values) {
 }
 
 /// 按日期升序的数值点 → 趋势摘要。
+/// [dates] 可选 `yyyy-MM-dd` 与 values 对齐；提供时计算近 30/90 日历日均值。
 MetricTrend summarizeSeries({
   required String name,
   required List<double> values,
+  List<String>? dates,
+  DateTime? asOf,
 }) {
   final dir = trendDirection(values);
   double? avgLast(int n) {
@@ -95,6 +108,27 @@ MetricTrend summarizeSeries({
     return slice.reduce((a, b) => a + b) / slice.length;
   }
 
+  double? avgDays(int days) {
+    if (dates == null || dates.length != values.length || values.isEmpty) {
+      return null;
+    }
+    final ref = asOf ?? DateTime.now();
+    final start = DateTime(ref.year, ref.month, ref.day)
+        .subtract(Duration(days: days - 1));
+    var sum = 0.0;
+    var n = 0;
+    for (var i = 0; i < values.length; i++) {
+      final d = DateTime.tryParse(dates[i]);
+      if (d == null) continue;
+      final day = DateTime(d.year, d.month, d.day);
+      if (!day.isBefore(start) && !day.isAfter(DateTime(ref.year, ref.month, ref.day))) {
+        sum += values[i];
+        n++;
+      }
+    }
+    return n == 0 ? null : sum / n;
+  }
+
   return MetricTrend(
     name: name,
     direction: dir,
@@ -102,6 +136,8 @@ MetricTrend summarizeSeries({
     last: values.isEmpty ? null : values.last,
     avg30: avgLast(30),
     avg90: avgLast(90),
+    avg30Days: avgDays(30),
+    avg90Days: avgDays(90),
   );
 }
 
