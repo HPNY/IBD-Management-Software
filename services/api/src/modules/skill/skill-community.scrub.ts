@@ -51,11 +51,22 @@ const ALLOWED_ITEM_KEYS = new Set([
 ]);
 
 function scanValueErrors(label: string, value: unknown, errors: string[]) {
-  if (typeof value !== "string") return;
-  for (const re of PII_VALUE_RES) {
-    if (re.test(value)) {
-      errors.push(`${label} 可能含可识别病历/身份信息`);
-      return;
+  if (typeof value === "string") {
+    for (const re of PII_VALUE_RES) {
+      if (re.test(value)) {
+        errors.push(`${label} 可能含可识别病历/身份信息`);
+        return;
+      }
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((v, i) => scanValueErrors(`${label}[${i}]`, v, errors));
+    return;
+  }
+  if (value && typeof value === "object") {
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      scanValueErrors(`${label}.${k}`, v, errors);
     }
   }
 }
@@ -96,6 +107,12 @@ export function scrubSkillContent(raw: unknown): ScrubResult {
 
   scanValueErrors("hospital", hospital, errors);
   scanValueErrors("reportType", reportType, errors);
+  // 其余字段全部值扫描（alias/unit/dateExtraction 等）
+  for (const [k, v] of Object.entries(src)) {
+    if (k === "items") continue;
+    if (k === "hospital" || k === "reportType" || k === "version") continue;
+    scanValueErrors(k, v, errors);
+  }
 
   const items: Record<string, unknown>[] = [];
   if (Array.isArray(itemsRaw)) {
@@ -124,6 +141,10 @@ export function scrubSkillContent(raw: unknown): ScrubResult {
       }
       scanValueErrors(`items[${idx}].name`, name, errors);
       scanValueErrors(`items[${idx}].pattern`, pattern, errors);
+      for (const [ik, iv] of Object.entries(row)) {
+        if (ik === "name" || ik === "pattern") continue;
+        scanValueErrors(`items[${idx}].${ik}`, iv, errors);
+      }
       const cleanedItem: Record<string, unknown> = {
         name: typeof name === "string" ? name.trim() : name,
         pattern: typeof pattern === "string" ? pattern.trim() : pattern,

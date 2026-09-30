@@ -52,6 +52,26 @@ function run() {
   const extra = { ...good, reportText: "原始报告" };
   assert.equal(scrubSkillContent(extra).ok, false);
 
+  // alias 中的病案号
+  const badAlias = {
+    ...good,
+    items: [
+      {
+        name: "血红蛋白",
+        pattern: "血红蛋白\\s+([\\d.]+)",
+        alias: "病案号:123456",
+      },
+    ],
+  };
+  assert.equal(scrubSkillContent(badAlias).ok, false, "alias PII must fail");
+
+  // dateExtraction 中的手机
+  const badDate = {
+    ...good,
+    dateExtraction: { primary: "联系13800138000" },
+  };
+  assert.equal(scrubSkillContent(badDate).ok, false, "date PII must fail");
+
   console.log("skill-community-scrub-smoke PASS");
 }
 

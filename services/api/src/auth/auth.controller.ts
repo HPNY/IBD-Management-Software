@@ -79,6 +79,17 @@ export class AuthController {
     return this.auth.issuePushSession(body) as Promise<unknown>;
   }
 
+  /** Skill 社区短时会话（无登录墙） */
+  @Public()
+  @Post("community-session")
+  communitySession(
+    @Body() body: { appUserId: string; deviceId?: string },
+    @Req() req: Request,
+  ) {
+    this.throttleMint(req, body.appUserId);
+    return this.auth.issueCommunitySession(body) as Promise<unknown>;
+  }
+
   @ApiBearerAuth()
   @Get("me")
   me(@CurrentUser() user: JwtUser) {

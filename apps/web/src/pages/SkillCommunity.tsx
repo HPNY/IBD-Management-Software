@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ParseSkill, ParseSkillItemRule } from "@ibd/domain-types";
+import { createClient, type IbdApiClient } from "@ibd/api-client";
 
 const STORAGE_KEY = "ibd_web_skills";
 
@@ -39,23 +40,11 @@ function localScrubErrors(skill: ParseSkill): string[] {
   return errors;
 }
 
-const apiBase =
-  (import.meta as { env?: { VITE_API_BASE?: string } }).env?.VITE_API_BASE ??
-  "http://127.0.0.1:3000/api/v1";
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${apiBase}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+function makeClient(): IbdApiClient {
+  return createClient({
+    baseUrl: import.meta.env.VITE_IBD_API_BASE ?? "",
+    appUserId: localStorage.getItem("ibd_app_user_uuid") ?? undefined,
   });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`${res.status} ${body}`);
-  }
-  return (await res.json()) as T;
 }
 
 /** T6.1：Skill 社区（匿名发布 / 浏览 / 评分 / 协作）。 */
@@ -77,27 +66,32 @@ export default function SkillCommunity() {
     }[];
   } | null>(null);
 
+  const ensureAuth = useCallback(async (api: IbdApiClient) => {
+    const s = await api.communitySession();
+    api.setToken(s.accessToken);
+    return api;
+  }, []);
+
   const refresh = useCallback(async () => {
     setBusy(true);
     try {
-      const data = await api<CommunitySummary[]>(
-        `/skill-community/skills${q ? `?q=${encodeURIComponent(q)}` : ""}`,
-      );
+      const api = await ensureAuth(makeClient());
+      const data = await api.searchCommunitySkills(q || undefined);
       setList(data);
       setMsg("");
     } catch (e) {
-      setMsg(`社区加载失败（可离线仅用本地模板）：${e}`);
+      setMsg(`社区加载失败：${e}`);
       setList([]);
     } finally {
       setBusy(false);
     }
-  }, [q]);
+  }, [q, ensureAuth]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  const localSkills = useMemo(() => loadLocal(), [msg, selected]);
+  const localSkills = useMemo(() => loadLocal(), [msg]);
 
   const publishLocal = async (skill: ParseSkill) => {
     const errs = localScrubErrors(skill);
@@ -107,6 +101,7 @@ export default function SkillCommunity() {
     }
     setBusy(true);
     try {
+      const api = await ensureAuth(makeClient());
       const payload = {
         hospital: skill.hospital,
         reportType: skill.reportType,
@@ -121,10 +116,7 @@ export default function SkillCommunity() {
           ...(it.multiline !== undefined ? { multiline: it.multiline } : {}),
         })),
       };
-      await api("/skill-community/skills", {
-        method: "POST",
-        body: JSON.stringify({ skill: payload }),
-      });
+      await api.publishCommunitySkill(payload);
       setMsg(`已发布：${skill.hospital} · ${skill.reportType}`);
       await refresh();
     } catch (e) {
@@ -134,44 +126,37 @@ export default function SkillCommunity() {
     }
   };
 
-  const importSelected = () => {
-    if (!selected) return;
+  const importSkill = async (s: CommunitySummary) => {
     setBusy(true);
-    void (async () => {
-      try {
-        const content = await api<{
-          hospital: string;
-          reportType: string;
-          version: string;
-          dateExtraction: ParseSkill["dateExtraction"];
-          items: ParseSkillItemRule[];
-        }>(`/skill-community/skills/${selected.id}/content`);
-        const imported: ParseSkill = {
-          hospital: content.hospital,
-          reportType: content.reportType,
-          version: content.version,
-          dateExtraction: content.dateExtraction ?? { primary: "" },
-          items: content.items ?? [],
-        };
-        const next = loadLocal();
-        next.push(imported);
-        persistLocal(next);
-        setMsg(`已导入本地：${imported.hospital} · ${imported.reportType}`);
-      } catch (e) {
-        setMsg(`导入失败：${e}`);
-      } finally {
-        setBusy(false);
-      }
-    })();
+    try {
+      const api = await ensureAuth(makeClient());
+      const content = await api.communitySkillContent(s.id);
+      const imported: ParseSkill = {
+        hospital: content.hospital,
+        reportType: content.reportType,
+        version: content.version,
+        dateExtraction: content.dateExtraction ?? { primary: "" },
+        items: content.items ?? [],
+      };
+      const next = loadLocal();
+      next.push(imported);
+      persistLocal(next);
+      setMsg(`已导入本地 Skill 模板：${imported.hospital} · ${imported.reportType}`);
+    } catch (e) {
+      setMsg(`导入失败：${e}`);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const submitRating = async () => {
     if (!selected) return;
     setBusy(true);
     try {
-      await api(`/skill-community/skills/${selected.id}/ratings`, {
-        method: "POST",
-        body: JSON.stringify({ score, comment: comment || undefined }),
+      const api = await ensureAuth(makeClient());
+      await api.rateCommunitySkill(selected.id, {
+        score,
+        comment: comment || undefined,
       });
       setMsg("已评分");
       setComment("");
@@ -186,15 +171,8 @@ export default function SkillCommunity() {
   const loadDetail = async (s: CommunitySummary) => {
     setSelected(s);
     try {
-      const d = await api<{
-        versions: {
-          id: string;
-          version: string;
-          parentVersion: string | null;
-          itemCount: number;
-          usageCount: number;
-        }[];
-      }>(`/skill-community/skills/${s.id}`);
+      const api = await ensureAuth(makeClient());
+      const d = await api.communitySkillDetail(s.id);
       setDetail(d);
     } catch (e) {
       setMsg(String(e));
@@ -205,7 +183,7 @@ export default function SkillCommunity() {
     <div style={{ padding: 24, maxWidth: 880, margin: "0 auto" }}>
       <h1>Skill 社区</h1>
       <p style={{ color: "#64748B", fontSize: 13 }}>
-        匿名分享医院报告解析模板（仅 Skill 规则 JSON，不含原始病历/报告）。发布前会做脱敏检查。
+        匿名分享医院报告解析模板（仅 Skill 规则 JSON，不含原始病历/报告）。发布前会做脱敏检查；列表按综合分排序。
       </p>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
@@ -226,12 +204,12 @@ export default function SkillCommunity() {
         </div>
       )}
 
-      <h2 style={{ fontSize: 16 }}>社区模板</h2>
+      <h2 style={{ fontSize: 16 }}>社区模板（综合分 Top）</h2>
       {list.length === 0 && (
         <div className="msg">暂无社区模板（可从下方本地模板发布）</div>
       )}
       <ul style={{ listStyle: "none", padding: 0 }}>
-        {list.map((s) => (
+        {list.map((s, idx) => (
           <li
             key={s.id}
             style={{
@@ -242,6 +220,7 @@ export default function SkillCommunity() {
             }}
           >
             <div style={{ fontWeight: 700 }}>
+              {idx === 0 && list.length > 1 ? "★ Top · " : ""}
               {s.hospital} · {s.reportType}
             </div>
             <div style={{ fontSize: 12.5, color: "#64748B" }}>
@@ -252,7 +231,7 @@ export default function SkillCommunity() {
               <button type="button" onClick={() => void loadDetail(s)}>
                 详情
               </button>
-              <button type="button" onClick={importSelected}>
+              <button type="button" onClick={() => void importSkill(s)} disabled={busy}>
                 导入本地
               </button>
             </div>
@@ -288,7 +267,7 @@ export default function SkillCommunity() {
             <input
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="短评（可选，≤500 字）"
+              placeholder="短评（可选，≤500 字，勿含病历）"
               style={{ flex: 1, padding: 6, borderRadius: 8, border: "1px solid #CBD5E1" }}
             />
             <button type="button" onClick={() => void submitRating()} disabled={busy}>

@@ -33,6 +33,37 @@ function nextCollabVersion(current: string | null): string {
   return `${parts[0] || 1}.${(parts[1] || 0) + 1}.${parts[2] || 0}`;
 }
 
+/** createdById 只接受 users.id UUID；匿名 appUserId 不得写入 FK 列。 */
+function asUserUuid(id: string | null | undefined): string | null {
+  if (!id) return null;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    id,
+  )
+    ? id
+    : null;
+}
+
+function assertCleanComment(comment: string | undefined, errors: string[]) {
+  if (!comment) return;
+  scanText(comment, errors);
+}
+
+function scanText(text: string, errors: string[]) {
+  const patterns = [
+    /\b\d{17}[\dXx]\b/,
+    /\b1[3-9]\d{9}\b/,
+    /病[案历]号[:：\s]*\d+/,
+    /住院号[:：\s]*\d+/,
+    /\b[A-Z]{1,3}\d{8,}\b/,
+  ];
+  for (const re of patterns) {
+    if (re.test(text)) {
+      errors.push("comment 可能含可识别病历/身份信息");
+      return;
+    }
+  }
+}
+
 /** T6.1 Skill 社区：匿名发布 / 浏览 / 评分 / 协作升版。 */
 @Injectable()
 export class SkillCommunityService {
@@ -73,7 +104,7 @@ export class SkillCommunityService {
         this.skills.create({
           hospital: cleaned.hospital,
           reportType: cleaned.reportType,
-          createdById: input.raterHash ?? null,
+          createdById: asUserUuid(input.raterHash),
           currentVersion: null,
         }),
       );
@@ -97,7 +128,7 @@ export class SkillCommunityService {
         content: content as unknown as Record<string, unknown>,
         source: "community",
         sharedToCommunity: true,
-        createdById: input.raterHash ?? null,
+        createdById: asUserUuid(input.raterHash),
       }),
     );
     await this.skills.save({ ...skill, currentVersion: version });
@@ -133,7 +164,10 @@ export class SkillCommunityService {
     }
     qb.orderBy("s.updatedAt", "DESC").take(50);
     const skills = await qb.getMany();
-    return Promise.all(skills.map((s) => this.decorate(s)));
+    const rows = await Promise.all(skills.map((s) => this.decorate(s)));
+    // C4.2：按综合分降序（均分×20 + 使用量 + 评分数）
+    rows.sort((a, b) => b.composite - a.composite);
+    return rows;
   }
 
   async getDetail(skillId: string) {
@@ -193,6 +227,14 @@ export class SkillCommunityService {
     if (input.comment && input.comment.length > 500) {
       throw new BadRequestException("comment too long");
     }
+    const commentErrors: string[] = [];
+    assertCleanComment(input.comment, commentErrors);
+    if (commentErrors.length) {
+      throw new BadRequestException({
+        message: "comment rejected",
+        errors: commentErrors,
+      });
+    }
     let row = await this.ratings.findOne({
       where: { skillId: input.skillId, raterHash: input.raterHash },
     });
@@ -251,7 +293,7 @@ export class SkillCommunityService {
         content: content as unknown as Record<string, unknown>,
         source: "community",
         sharedToCommunity: true,
-        createdById: input.raterHash ?? null,
+        createdById: asUserUuid(input.raterHash),
       }),
     );
     await this.skills.save({ ...skill, currentVersion: version });
