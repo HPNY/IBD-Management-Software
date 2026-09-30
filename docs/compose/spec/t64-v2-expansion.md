@@ -2,8 +2,8 @@
 feature: t64-v2-expansion
 status: in-progress
 updated: 2026-09-23
-branch: feature/t64-d4-ai
-commits: e9c1462..34f70b5
+branch: feature/t64-d1-diet
+commits:
 ---
 
 # T6.4 V2 扩展拆解：饮食 / 药物评价 / 同城病友 / AI 分析
@@ -107,7 +107,7 @@ worklist **T6.4**「V2 扩展：饮食 / 药物评价 / 同城病友 / AI 分析
 
 > 下列为四轨总控任务；实现细节以 S2.1–S2.4 子表 ID 为准。实施会话应按 `D1.x` / `D2.x`… 勾选，并回写 worklist。
 
-- [ ] T1: D1 饮食管理按 S2.1 子表实施并验收 — acceptance: D1.1–D1.5 全勾，`food_nutrition_test` 过 (covers: S2.1)
+- [x] T1: D1 饮食管理按 S2.1 子表实施并验收 — acceptance: D1.1–D1.5 全勾，`food_nutrition_test` 过 (covers: S2.1)
 - [ ] T2: D2 药物评价按 S2.2 子表实施并验收 — acceptance: D2.1–D2.5 全勾，匿名白名单测试过 (covers: S2.2)
 - [ ] T3: D3 同城病友与就诊指南按 S2.3 子表实施并验收 — acceptance: D3.1–D3.5 全勾，隐私边界测试过 (covers: S2.3)
 - [x] T4: D4 AI/规则分析按 S2.4 子表实施并验收 — acceptance: D4.1–D4.4 全勾（D4.5 LLM 可选未做） (covers: S2.4)

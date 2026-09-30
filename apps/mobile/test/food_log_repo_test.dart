@@ -23,6 +23,8 @@ void main() {
               date TEXT NOT NULL,
               meal TEXT,
               foods TEXT NOT NULL,
+              calories REAL,
+              protein_g REAL,
               created_at TEXT
             )
           ''');
