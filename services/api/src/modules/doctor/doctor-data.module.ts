@@ -25,12 +25,15 @@ import {
 } from "typeorm";
 import {
   DoctorGrantEntity,
+  InjectionEntity,
   LabResultEntity,
+  MedicationEntity,
   PatientEntity,
   SymptomDiaryEntity,
 } from "../../database/entities";
 import { RequireScope } from "../../auth/scope.guard";
 import type { JwtUser } from "../../auth/types";
+import { buildVisitSummaryText } from "./visit-summary";
 
 @Entity("doctor_notes")
 export class DoctorNoteEntity {
@@ -94,6 +97,10 @@ export class DoctorDataService {
     private readonly labs: Repository<LabResultEntity>,
     @InjectRepository(SymptomDiaryEntity)
     private readonly diaries: Repository<SymptomDiaryEntity>,
+    @InjectRepository(MedicationEntity)
+    private readonly meds: Repository<MedicationEntity>,
+    @InjectRepository(InjectionEntity)
+    private readonly injections: Repository<InjectionEntity>,
     @InjectRepository(DoctorNoteEntity)
     private readonly notes: Repository<DoctorNoteEntity>,
     @InjectRepository(DoctorAuditLogEntity)
@@ -201,44 +208,62 @@ export class DoctorDataService {
       };
     }
     if (scope.has("summary")) {
-      const labs = await this.labs.find({
+      const labRows = await this.labs.find({
         where: { patientId: g.patientId },
         order: { date: "DESC" },
         take: 5,
       });
-      const diaries = await this.diaries.find({
+      const diaryRows = await this.diaries.find({
         where: { patientId: g.patientId },
         order: { date: "DESC" },
         take: 7,
       });
-      const labLines = labs.map((l) => {
-        const items = (l.items ?? [])
-          .slice(0, 6)
-          .map(
-            (i: {
-              nameNorm?: string;
-              name?: string;
-              value?: unknown;
-              unit?: string | null;
-            }) =>
-              `${i.nameNorm ?? i.name ?? ""}=${i.value ?? ""}${i.unit ?? ""}`,
-          )
-          .join("；");
-        return `${l.date} ${l.hospital ?? ""} ${items}`;
+      const medRows = await this.meds.find({
+        where: { patientId: g.patientId },
+        order: { startDate: "DESC" },
+        take: 10,
       });
-      const diaryLines = diaries.map(
-        (d) =>
-          `${d.date} 疼痛${d.painLevel ?? "-"} 腹泻${d.diarrheaCount ?? "-"} 便血${d.bloodyStool ?? "-"}`,
-      );
-      payload["summaryText"] = [
-        "病程摘要（自动生成，仅供参考）",
-        `诊断类型：${patient?.ibdType ?? "未填"}`,
-        "近次检验：",
-        ...labLines,
-        "近 7 日日记：",
-        ...diaryLines,
-        `授权范围：${g.scope.join("/")}`,
-      ].join("\n");
+      const injRows = await this.injections.find({
+        where: { patientId: g.patientId },
+        order: { plannedDate: "DESC" },
+        take: 5,
+      });
+      const summaryText = buildVisitSummaryText({
+        meds: medRows.map((m) => ({
+          drugName: m.drugName,
+          dosage: m.dosage,
+          frequency: m.frequency,
+          status: m.status,
+        })),
+        labs: labRows.map((l) => ({
+          date: l.date,
+          items: (l.items ?? []).map((i) => ({
+            nameNorm: i.nameNorm,
+            value: i.value,
+            unit: i.unit,
+          })),
+        })),
+        injections: injRows.map((i) => ({
+          drug: i.drug,
+          plannedDate: i.plannedDate,
+          dose: i.dose,
+        })),
+        symptoms: diaryRows.map((d) => {
+          const raw = d as unknown as Record<string, unknown>;
+          return {
+            date: d.date,
+            painLevel: d.painLevel,
+            diarrheaCount: d.diarrheaCount,
+            bowelCount: (raw["bowelCount"] ?? raw["bowel_count"]) as number | null,
+            stoolType: d.stoolType,
+            bloodyStool: d.bloodyStool,
+            urgency: (raw["urgency"] ?? 0) as number | boolean | null,
+            mucus: (raw["mucus"] ?? 0) as number | boolean | null,
+          };
+        }),
+        ibdType: patient?.ibdType ?? null,
+      });
+      payload["summaryText"] = summaryText;
       payload["ibdType"] = patient?.ibdType ?? null;
     }
     // M3.3：医生可见本人写过的建议
@@ -374,6 +399,8 @@ export class DoctorPatientController {
       PatientEntity,
       LabResultEntity,
       SymptomDiaryEntity,
+      MedicationEntity,
+      InjectionEntity,
       DoctorNoteEntity,
       DoctorAuditLogEntity,
     ]),
