@@ -227,3 +227,10 @@ Actions：https://github.com/HPNY/IBD-Management-Software/actions
 ## 许可与贡献
 
 个人医疗数据项目；默认本地、最小上传。欢迎 Issue / PR。
+
+
+## 许可证 / License
+
+本项目采用 **GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later)**。详见 [LICENSE](LICENSE)。
+
+This project is licensed under **LGPL-3.0-or-later**. See [LICENSE](LICENSE).

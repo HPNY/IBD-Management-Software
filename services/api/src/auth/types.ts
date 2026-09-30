@@ -10,6 +10,11 @@ export interface JwtUser {
     | "push_register"
     | "community"
     | "drug_review"
-    | "geo_community";
+    | "geo_community"
+    | "doctor"
+    | "doctor_grant";
   appUserId?: string;
+  /** 医生端（M1） */
+  role?: string;
+  doctorId?: string;
 }

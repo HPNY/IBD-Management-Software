@@ -34,12 +34,15 @@ export class JwtAuthGuard implements CanActivate {
     const token = header.slice("Bearer ".length).trim();
     try {
       const payload = this.jwt.verify<JwtUser>(token);
+      const extra = payload as unknown as Record<string, unknown>;
       req.user = {
         userId: payload.userId,
         phone: payload.phone ?? null,
         deviceId: payload.deviceId,
         scope: payload.scope ?? "full",
         appUserId: payload.appUserId,
+        ...(extra.doctorId ? { doctorId: String(extra.doctorId) } : {}),
+        ...(extra.role ? { role: String(extra.role) } : {}),
       };
       return true;
     } catch {

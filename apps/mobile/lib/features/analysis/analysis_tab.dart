@@ -8,6 +8,7 @@ import 'food_stool_page.dart';
 import 'ai_rules_page.dart';
 import 'drug_review_page.dart';
 import 'geo_community_page.dart';
+import 'my_doctors_page.dart';
 import 'survey_page.dart';
 import 'annual_report_page.dart';
 import 'timeline_page.dart';
@@ -123,6 +124,16 @@ class AnalysisTab extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const GeoCommunityPage()),
+            ),
+          ),
+          _NavCard(
+            icon: Icons.medical_services_rounded,
+            title: '我的医生',
+            subtitle: '扫码授权 · 可收回可过期（T6.2）',
+            color: const Color(0xFFB45309),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MyDoctorsPage()),
             ),
           ),
           _NavCard(

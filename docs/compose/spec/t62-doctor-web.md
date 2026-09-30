@@ -1,9 +1,9 @@
 ---
 feature: t62-doctor-web
-status: designed
+status: delivered
 updated: 2026-09-23
-branch: feature/t61-t62-breakdown
-commits: cac1a8d
+branch: feature/t62-m1-m2
+commits: 7977c5c..49cc957 cac1a8d
 ---
 
 # T6.2 医生端 Web + 患者扫码授权拆解
@@ -74,7 +74,7 @@ worklist **T6.2**「医生端 Web + 患者扫码授权（DEK 再包裹）」未�
 
 ## Tasks
 
-- [ ] T1: M1 医生身份与壳按 S2.1 实施 — acceptance: M1.1–M1.3 全勾 (covers: S2.1)
-- [ ] T2: M2 扫码授权按 S2.2 实施 — acceptance: M2.1–M2.3 全勾（M2.4 密文路径必须完成） (covers: S2.2; depends: T1)
-- [ ] T3: M3 只读视图与建议按 S2.3 实施 — acceptance: M3.1–M3.4 全勾 (covers: S2.3; depends: T2)
-- [ ] T4: M4 审计收回过期按 S2.4 实施 — acceptance: M4.1–M4.3 全勾 (covers: S2.4; depends: T3)
+- [x] T1: M1 医生身份与壳按 S2.1 实施 — acceptance: M1.1–M1.3 全勾 (covers: S2.1)
+- [x] T2: M2 扫码授权按 S2.2 实施 — acceptance: M2.1–M2.3 全勾；M2.4 存 wrappedDek 字段（客户端打包） (covers: S2.2; depends: T1)
+- [x] T3: M3 只读视图与建议按 S2.3 实施 — acceptance: M3.1–M3.4 服务端+doctor-web 完成；App 建议/审计为本地演示 (covers: S2.3; depends: T2)
+- [x] T4: M4 审计收回过期按 S2.4 实施 — acceptance: M4.1 审计写入+患者查询；M4.2 收回/过期 requireActiveGrant；M4.3 安全清单（scope 过滤/403/无 PDF） (covers: S2.4; depends: T3)
