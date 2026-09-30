@@ -7,6 +7,7 @@ import 'flare_page.dart';
 import 'food_stool_page.dart';
 import 'ai_rules_page.dart';
 import 'drug_review_page.dart';
+import 'geo_community_page.dart';
 import 'survey_page.dart';
 import 'annual_report_page.dart';
 import 'timeline_page.dart';
@@ -112,6 +113,16 @@ class AnalysisTab extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const DrugReviewPage()),
+            ),
+          ),
+          _NavCard(
+            icon: Icons.location_city_rounded,
+            title: '同城病友 · 就诊指南',
+            subtitle: '昵称+城市匿名 · 专科医院参考（D3）',
+            color: const Color(0xFF0F766E),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const GeoCommunityPage()),
             ),
           ),
           _NavCard(

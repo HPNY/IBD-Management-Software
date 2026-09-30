@@ -109,5 +109,5 @@ worklist **T6.4**「V2 扩展：饮食 / 药物评价 / 同城病友 / AI 分析
 
 - [x] T1: D1 饮食管理按 S2.1 子表实施并验收 — acceptance: D1.1–D1.5 全勾，`food_nutrition_test` 过 (covers: S2.1)
 - [x] T2: D2 药物评价按 S2.2 子表实施并验收 — acceptance: D2.1–D2.5 全勾，匿名白名单测试过 (covers: S2.2)
-- [ ] T3: D3 同城病友与就诊指南按 S2.3 子表实施并验收 — acceptance: D3.1–D3.5 全勾，隐私边界测试过 (covers: S2.3)
+- [x] T3: D3 同城病友与就诊指南按 S2.3 子表实施并验收 — acceptance: D3.1–D3.5 全勾，隐私边界测试过 (covers: S2.3)
 - [x] T4: D4 AI/规则分析按 S2.4 子表实施并验收 — acceptance: D4.1–D4.4 全勾（D4.5 LLM 可选未做） (covers: S2.4)

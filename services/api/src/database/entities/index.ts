@@ -1,6 +1,8 @@
 export { AdverseEventEntity } from "./adverse-event.entity";
 export { DeviceEntity } from "./device.entity";
 export { DeviceTokenEntity } from "./device-token.entity";
+export { DrugReviewSubmissionEntity } from "./drug-review.entity";
+export { GeoPostEntity } from "./geo-post.entity";
 export { InjectionEntity } from "./injection.entity";
 export { LabItemEntity } from "./lab-item.entity";
 export { LabResultEntity } from "./lab-result.entity";
@@ -14,7 +16,6 @@ export {
 export { RefreshTokenEntity } from "./refresh-token.entity";
 export { ReminderRuleEntity } from "./reminder-rule.entity";
 export { SkillRatingEntity } from "./skill-rating.entity";
-export { DrugReviewSubmissionEntity } from "./drug-review.entity";
 export { SymptomDiaryEntity } from "./symptom-diary.entity";
 export { SyncSnapshotEntity } from "./sync-snapshot.entity";
 export { UserEntity } from "./user.entity";
@@ -22,6 +23,8 @@ export { UserEntity } from "./user.entity";
 import { AdverseEventEntity } from "./adverse-event.entity";
 import { DeviceEntity } from "./device.entity";
 import { DeviceTokenEntity } from "./device-token.entity";
+import { DrugReviewSubmissionEntity } from "./drug-review.entity";
+import { GeoPostEntity } from "./geo-post.entity";
 import { InjectionEntity } from "./injection.entity";
 import { LabItemEntity } from "./lab-item.entity";
 import { LabResultEntity } from "./lab-result.entity";
@@ -35,7 +38,6 @@ import {
 import { RefreshTokenEntity } from "./refresh-token.entity";
 import { ReminderRuleEntity } from "./reminder-rule.entity";
 import { SkillRatingEntity } from "./skill-rating.entity";
-import { DrugReviewSubmissionEntity } from "./drug-review.entity";
 import { SymptomDiaryEntity } from "./symptom-diary.entity";
 import { SyncSnapshotEntity } from "./sync-snapshot.entity";
 import { UserEntity } from "./user.entity";
@@ -58,5 +60,6 @@ export const entities = [
   ParseSkillVersionEntity,
   SkillRatingEntity,
   DrugReviewSubmissionEntity,
+  GeoPostEntity,
   SyncSnapshotEntity,
 ];
