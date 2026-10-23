@@ -228,7 +228,7 @@ export class DoctorGrantService {
       id: r.id,
       doctorId: r.doctorId,
       scope: r.scope,
-      code: r.code,
+      code: r.confirmed ? null : r.code, // M3：确认后不再回传原始 QR 密钥（脱敏）
       expiresAt: r.expiresAt,
       revokedAt: r.revokedAt,
       confirmed: r.confirmed,

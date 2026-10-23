@@ -62,6 +62,29 @@ def load_skill(hospital: str, report_type: str) -> dict[str, Any] | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _is_unsafe_pattern(p: str) -> bool:
+    """M5 ReDoS 防护：拒绝长度过长或含灾难性回溯结构的正则。"""
+    if not isinstance(p, str) or len(p) > 200:
+        return True
+    # 拒绝嵌套量词（如 (a+)+、(a*)*、(a+)*）等经典灾难性回溯结构
+    if re.search(r"\([^)]*[+*][^)]*\)\s*[+*{]", p):
+        return True
+    # 拒绝过多量词（>10 个 * / + / {n,}），降低回溯爆炸风险
+    if len(re.findall(r"[+*]|\{\d+,?\d*\}", p)) > 10:
+        return True
+    return False
+
+
+def safe_re_search(pattern: str, text: str):
+    """M5：安全 re.search，拒绝危险正则后才执行，避免灾难性回溯 DoS。"""
+    if _is_unsafe_pattern(pattern):
+        return None
+    try:
+        return re.search(pattern, text)
+    except re.error:
+        return None
+
+
 def skill_parse(skill: dict[str, Any], text: str) -> SkillParseResult:
     if not text:
         return SkillParseResult()
@@ -72,7 +95,7 @@ def skill_parse(skill: dict[str, Any], text: str) -> SkillParseResult:
         pattern = date_rules.get(key)
         if not pattern:
             continue
-        m = re.search(pattern, text)
+        m = safe_re_search(pattern, text)
         if m:
             date = _normalize_date(m.group(0))
             if not date and m.groups():
@@ -81,7 +104,7 @@ def skill_parse(skill: dict[str, Any], text: str) -> SkillParseResult:
 
     items: list[ParsedItem] = []
     for rule in skill.get("items") or []:
-        m = re.search(rule["pattern"], text)
+        m = safe_re_search(rule["pattern"], text)
         if not m:
             continue
         raw = m.group(1) if m.groups() else m.group(0)
