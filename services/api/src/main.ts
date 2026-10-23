@@ -9,17 +9,25 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, { rawBody: true });
   app.setGlobalPrefix("api/v1", { exclude: ["health"] });
-  app.enableCors({ origin: true });
-
-  const config = new DocumentBuilder()
-    .setTitle("IBDers IBD API")
-    .setVersion("0.1.0")
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup("docs", app, document);
-
   const isProd = (process.env.NODE_ENV ?? "").toLowerCase() === "production";
+  // H1：CORS 收敛为显式白名单（CORS_ORIGINS 逗号分隔）；未配置则仅同源，不再反射任意 Origin。
+  const corsOrigins = (process.env.CORS_ORIGINS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  app.enableCors({ origin: corsOrigins.length ? corsOrigins : false });
+
+  // H1：Swagger 仅在非生产挂载，生产不暴露 API 文档面。
+  if (!isProd) {
+    const config = new DocumentBuilder()
+      .setTitle("IBDers IBD API")
+      .setVersion("0.1.0")
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup("docs", app, document);
+  }
+
   // 生产默认不自动迁移；需显式 RUN_MIGRATIONS=true（或独立 Job）
   const runMigrations =
     process.env.RUN_MIGRATIONS === "true" ||

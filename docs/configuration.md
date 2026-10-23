@@ -18,6 +18,7 @@
 | `JWT_ACCESS_TTL` | string | `15m` | 否 | Access Token 有效期 |
 | `JWT_REFRESH_TTL_DAYS` | number | `30` | 否 | Refresh 有效期（天） |
 | `DEV_SMS_CODE` | string | `123456` | 开发用 | **仅 development**；production 使用默认/过短 → 拒绝启动 |
+| `ENABLE_DEV_SMS_LOGIN` | bool | `false` | 否 | H2：开发短信登录显式开关；**production 禁止 true**（env-guard）；e2e/开发需显式开启 |
 
 ---
 
@@ -52,6 +53,7 @@
 | `STORAGE_LOCAL_DIR` | path | `var/uploads`（本机） | local 必填 | **见下方双场景** |
 | `STORAGE_SECRET` | string | `dev-storage-secret` | 生产必填 | production 默认值 → 拒绝启动 |
 | `PUBLIC_BASE_URL` | URL | `http://localhost:3000` | 生产必填 | 预签名/上传基址；production 禁止 localhost |
+| `CORS_ORIGINS` | string | 空 | 否 | H1：CORS 显式白名单（逗号分隔）；空则仅同源，不反射任意 Origin |
 | `S3_ENDPOINT` | URL | — | s3 时 | MinIO/OSS |
 | `S3_BUCKET` | string | `ibd-uploads` | s3 时 | |
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | string | — | s3 时 | compose 从 `MINIO_ROOT_*` 注入 |

@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from .ai_engine import ai_parse
@@ -84,6 +84,9 @@ def run_pipeline(
 def fetch_object_bytes(data: dict[str, Any]) -> bytes | None:
     """按 storage.driver 取直传对象。"""
     object_key = data.get("objectKey") or ""
+    # H8 加固：拒绝 URL（SSRF）、绝对路径与穿越段；仅允许相对 uploads/ 形状的对象键。
+    if object_key.startswith(("http://", "https://")) or os.path.isabs(object_key) or "\\" in object_key or ".." in object_key.split("/"):
+        raise ValueError(f"unsafe objectKey rejected: {object_key[:64]}")
     if not object_key:
         return None
 
@@ -226,7 +229,12 @@ async def parse_pdf(
     hospital: str = "",
     report_type: str = "",
 ) -> ParseResult:
-    raw = await file.read()
+    # H7 加固：限制上传大小 + 校验 PDF 魔数，拒绝非 PDF 与超大文件。
+    raw = await file.read(20 * 1024 * 1024 + 1)
+    if len(raw) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="file too large (>20MB)")
+    if not raw.startswith(b"%PDF"):
+        raise HTTPException(status_code=415, detail="not a PDF")
     return run_pipeline(
         raw_pdf=raw,
         text=None,

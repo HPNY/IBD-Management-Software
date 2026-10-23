@@ -43,6 +43,14 @@ def _normalize_date(raw: str | None) -> str | None:
 
 
 def load_skill(hospital: str, report_type: str) -> dict[str, Any] | None:
+    # H7 加固：hospital/report_type 只允许安全字符，拒绝路径穿越与分隔符。
+    import re as _re
+    _safe = _re.compile(r"^[A-Za-z0-9\u4e00-\u9fff_-]{1,64}$")
+    if not _safe.match(hospital or "") or not _safe.match(report_type or ""):
+        return None
+    _target = (SKILL_DIR / f"{hospital}__{report_type}.json").resolve()
+    if _target.parent != SKILL_DIR.resolve():
+        return None
     path = SKILL_DIR / f"{hospital}__{report_type}.json"
     if not path.exists():
         # 兜底：目录内任一匹配 hospital 字段的 skill

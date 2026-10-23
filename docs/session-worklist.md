@@ -132,6 +132,7 @@
 | R0.6 | 修复 miniapp 既有 wx 类型错误（审查 M1） | 已完成 | 装 miniprogram-api-typings + tsconfig types 引入 + 
 | R0.7 | README 英文化（英文为主 + 中文切换链接） | 已完成 | `README.md` 改为英文主版（含 `简体中文` 切换链接）；原中文版移至 `README.zh-CN.md`（含 `English` 切换链接）；session-worklist 锚点改指 zh 版；两版对齐（补 SF-36、CI 表述更准确）；审阅并修正 docs 夸大实现 |
 | R0.8 | 安全审查修复轮2（H3 依赖治本 + C1 文件穿越 + C2 文档诚实） | 进行中 | H3 xlsx→exceljs（消无补丁 critical）；C1 resolveSafe 加固 + meta IDOR 形状校验（8 穿越向量全拦）；C2 PRD 虚假 AES-256/PIPL 声明如实修正；后续 H1-H8/M 待办 |
+| R0.9 | 安全加固（H1 CORS/Swagger + H5 端口/Redis + H6 compose 默认 + H7 parse 穿越/大小 + H8 SSRF） | 已完成 | H1 CORS 白名单+Swagger 生产禁用；H5 端口绑 127.0.0.1+Redis requirepass；H6 NODE_ENV 强制/DEV_SMS 无默认；H7 load_skill 白名单+uploads 大小/PDF 魔数；H8 拒 URL/绝对路径 objectKey；py_compile+回归全过；余 H2 限流/H3 会话绑定/H4 审核角色/M 待办 |
 equestSubscribeMessage 参数按微信语义断言（规避 Taro 类型 entityIds 支付宝必填缺陷）；miniapp typecheck 15 error→0；全仓 5 包 typecheck 全绿 |
 | T4.2b | PC Web 批量解析接真上传（presign/enqueue/confirm） | 已完成 | 真 API：presign→PUT→enqueue→轮询→confirm(deleteSource) |
 | T2.6 | `GET /parse/jobs/:id` 补归属校验（getForUser） | 已完成 | 他人 jobId 返回 404 · tsc 通过 |
