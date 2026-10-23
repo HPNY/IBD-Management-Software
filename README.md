@@ -1,97 +1,101 @@
 # IBDers
 
-IBD（克罗恩病 / 溃疡性结肠炎）患者全病程自我管理应用。
+**English** | [简体中文](README.zh-CN.md)
 
-**版本**：[v0.1.0](https://github.com/HPNY/IBD-Management-Software/releases/tag/v0.1.0) · **CI**：`main` 全绿  
+A full-disease-course self-management app for IBD (Crohn's disease / ulcerative colitis) patients.
 
-**设计原则：医疗数据默认只存在你自己的手机上；未明确授权前不上传服务器。**
+**Version**: [v0.1.0](https://github.com/HPNY/IBD-Management-Software/releases/tag/v0.1.0) · **CI**: smoke/E2E green on `main` (not device-verified)
 
-| 文档 | 说明 |
+**Design principle: medical data stays on your own phone by default; nothing is uploaded to a server without explicit consent.**
+
+| Document | Description |
 |------|------|
-| [PRD](docs/IBD病程管理程序PRD.md) | 产品需求 |
-| [架构分析](docs/compose/spec/architecture-techstack.md) | 技术栈与系统设计 |
-| [本地优先改造](docs/compose/spec/local-first.md) | 隐私架构与分期 |
-| [系统推送隐私边界](docs/push-privacy.md) | 本地通知保底 · 远程 opt-in · payload 白名单 |
-| [设备联调清单](docs/device-test-checklist.md) | AVD / 真机验收 |
-| [配置加固清单](docs/config-hardening-checklist.md) | 环境、密钥、依赖、CI |
-| [配置说明](docs/configuration.md) | 全部环境变量与 `STORAGE_LOCAL_DIR` |
-| [会话工作清单](docs/session-worklist.md) | 未完成项 backlog · 状态强制同步 |
+| [PRD](docs/IBD-Disease-Course-Management-PRD.md) | Product requirements ([中文](docs/IBD病程管理程序PRD.md)) |
+| [Architecture analysis](docs/compose/spec/architecture-techstack.md) | Tech stack & system design |
+| [Local-first rework](docs/compose/spec/local-first.md) | Privacy architecture & phasing |
+| [Push privacy boundary](docs/push-privacy.md) | Local notify baseline · remote opt-in · payload allowlist |
+| [Device test checklist](docs/device-test-checklist.md) | AVD / real-device acceptance |
+| [Config hardening checklist](docs/config-hardening-checklist.md) | Env, secrets, deps, CI |
+| [Configuration](docs/configuration.md) | All env vars & `STORAGE_LOCAL_DIR` |
+| [Session worklist](docs/session-worklist.md) | Open backlog · mandatory status sync |
 
 ---
 
-## 架构一览
+## Architecture at a glance
 
 ```text
-┌─────────────────────────────────────────────┐
-│  Flutter App（个人终端）                      │
-│  · app_user_uuid（本机生成，无强制登录）       │
-│  · SQLCipher 加密本地库（Keystore 密钥）       │
-│  · 病程数据全部本机读写；注射用本地通知        │
-└───────────────┬─────────────────────────────┘
-                │ 仅在用户明确同意时
+┌─────────────────────────────────────────────────────┐
+│  Flutter App (personal terminal)                     │
+│  · app_user_uuid (locally generated, no forced login) │
+│  · SQLCipher-encrypted local DB (Keystore key)        │
+│  · All course data read/written locally; injections   │
+│    use local notifications                            │
+└───────────────┬─────────────────────────────────────┘
+                │ only with explicit user consent
                 ▼
      ┌──────────────────────────────┐
-     │  可选云端能力                   │
-     │  ① 单次 PDF 解析 parse-session │
-     │  ② 端到端密文备份 / 同步         │
-     │  ③ Skill 模板（无病历明文）      │
-     │  ④ 系统推送（opt-in·通用文案）   │
+     │  Optional cloud capabilities  │
+     │  ① one-shot PDF parse-session │
+     │  ② E2E ciphertext backup/sync │
+     │  ③ Skill templates (no PHI)   │
+     │  ④ system push (opt-in ·      │
+     │     generic copy)             │
      └──────────────────────────────┘
 ```
 
-| 模式 | 行为 |
-|------|------|
-| 默认 | 病程只在本机；无账号、无上传 |
-| 解析 | 弹窗同意 → 短时 `parse-session` → 上传本次文件 → 结果写回本机 |
-| 同步 | 设置中开启 + 备份口令 → AES-GCM 密文快照 → 服务端不可解密 |
-| 推送 | 设置中开启 → 令牌只绑 `appUserId` → 通用提醒文案；可随时注销 |
-| 换机 | 同 `appUserId` + 口令恢复；或导出/导入 JSON |
-| 删云 | 一键删除云端密文副本 |
+| Mode | Behavior |
+|------|----------|
+| Default | Course data stays local; no account, no upload |
+| Parse | Consent dialog → short-lived `parse-session` → upload this file → result written back locally |
+| Sync | Enabled in settings + backup passphrase → AES-GCM ciphertext snapshot → server cannot decrypt |
+| Push | Enabled in settings → token bound only to `appUserId` → generic reminder copy; revocable anytime |
+| Device migration | Restore with same `appUserId` + passphrase; or export/import JSON |
+| Delete cloud | One-tap delete of the cloud ciphertext copy |
 
 ---
 
-## 仓库结构
+## Repository layout
 
-| 路径 | 说明 |
+| Path | Description |
 |------|------|
-| `apps/mobile` | Flutter 主应用（本地优先，v0.1 功能见下） |
-| `services/api` | NestJS：解析队列、密文同步、可选账号 |
-| `services/parse-worker` | Python：Skill 模板 + LLM 兜底 |
-| `packages/domain-types` | 共享领域类型 |
-| `.github/workflows` | CI（smoke / E2E / flutter analyze） |
-| `apps/miniapp` / `apps/web` / `apps/doctor-web` | 后续端（占位） |
+| `apps/mobile` | Flutter main app (local-first, v0.1 features below) |
+| `services/api` | NestJS: parse queue, ciphertext sync, optional accounts |
+| `services/parse-worker` | Python: Skill templates + LLM fallback |
+| `packages/domain-types` | Shared domain types |
+| `.github/workflows` | CI (smoke / E2E / flutter analyze) |
+| `apps/miniapp` / `apps/web` / `apps/doctor-web` | Later clients (scaffolding) |
 
 ---
 
-## App 功能（v0.1 · 本地优先）
+## App features (v0.1 · local-first)
 
-| 模块 | 能力 |
+| Module | Capabilities |
 |------|------|
-| **首页** | 仪表盘：今日管理、快捷入口、本机统计 |
-| **打卡** | 症状日记：腹痛/排便次数/腹泻/Bristol/便血三级/紧迫感/黏液/恶心/疲劳/整体感受；保存后自动同步排便细表历史 |
-| **注射** | 协议排期（Skyrizi 等）、时间轴、本地提醒、「今天已打」 |
-| **分析** | 指标趋势 · 病程时间线 · 检查/手术 · 排便细表（含打卡同步记录）· 就诊摘要 · **发作预警** · **量表**（PHQ-9/IBDQ/MiniQoL） · **数据导出 CSV** · 系统通知测试 |
-| **我的** | 应用 UUID、SQLCipher 状态、云同步/备份/导出、系统推送（opt-in）、AI 与提醒说明 |
-| **检验** | 统一「录入检验」：套餐手填大项/小项；或同意上传报告解析，结果填入同一表单确认后写入本机 |
-| **用药** | 当前方案、切换链、停药原因（可加密）、历史 |
+| **Home** | Dashboard: today's management, quick actions, local stats |
+| **Check-in** | Symptom diary: pain / bowel count / diarrhea / Bristol / 3-level blood / urgency / mucus / nausea / fatigue / overall feeling; saving auto-syncs detailed bowel history |
+| **Injection** | Protocol scheduling (e.g. Skyrizi), timeline, local reminders, "done today" |
+| **Analysis** | Indicator trends · course timeline · exam/surgery · detailed bowel records (incl. check-in-synced) · visit summary · **flare warning** · **surveys** (PHQ-9 / IBDQ / MiniQoL / SF-36) · **CSV export** · system notification test |
+| **Me** | App UUID, SQLCipher status, cloud sync/backup/export, system push (opt-in), AI & reminder notes |
+| **Labs** | Unified "enter lab result": panel manual entry (major/minor items); or consent to upload a report for parsing, result fills the same form, confirm to write locally |
+| **Medication** | Current regimen, switch chain, stop reasons (encryptable), history |
 
-底部导航：`首页 · 打卡 · 注射 · 分析 · 我的`
+Bottom navigation: `Home · Check-in · Injection · Analysis · Me`
 
-### 运行 App
+### Run the app
 
 ```bash
-# 模拟器 API 基址：http://10.0.2.2:3000
+# Emulator API base: http://10.0.2.2:3000
 cd apps/mobile
 pwsh ./bootstrap.ps1
 flutter run --dart-define=IBD_API_BASE=http://10.0.2.2:3000
-# 真机：http://<电脑局域网IP>:3000
+# Real device: http://<your-LAN-IP>:3000
 ```
 
-断网可完成：录入检验、用药、注射排期、症状打卡、分析页浏览。
+Offline-capable: entering lab results, medication, injection schedules, symptom check-in, browsing the analysis page.
 
 ---
 
-## 可选后端（解析 / 同步）
+## Optional backend (parse / sync)
 
 ```bash
 pnpm install
@@ -100,62 +104,62 @@ pnpm --filter @ibd/api build
 export DATABASE_URL=postgres://ibd:ibd@127.0.0.1:5433/ibd
 export REDIS_URL=redis://127.0.0.1:6380
 export STORAGE_DRIVER=local
-export STORAGE_LOCAL_DIR=var/uploads   # API 与 Worker 必须一致
-export PUBLIC_BASE_URL=http://<电脑IP>:3000
+export STORAGE_LOCAL_DIR=var/uploads   # API and Worker must match
+export PUBLIC_BASE_URL=http://<your-LAN-IP>:3000
 export RUN_MIGRATIONS=true
-export STORAGE_SECRET=<非默认>
-export JWT_SECRET=<非默认>
+export STORAGE_SECRET=<non-default>
+export JWT_SECRET=<non-default>
 
 pnpm --filter @ibd/api migration:run
 node services/api/dist/main.js
 
-# 另开：parse-worker
+# In another terminal: parse-worker
 cd services/parse-worker
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.lock
 PORT=8081 python -m app.main
 ```
 
-一键（Windows）：
+One-shot (Windows):
 
 ```powershell
-pwsh ./scripts/dev.ps1           # 本机 Postgres/Redis
-pwsh ./scripts/dev.ps1 -Docker   # 需先复制 .env.example → .env
+pwsh ./scripts/dev.ps1           # local Postgres/Redis
+pwsh ./scripts/dev.ps1 -Docker   # copy .env.example → .env first
 ```
 
-或 `make dev` / `make dev-local`。变量说明：[docs/configuration.md](docs/configuration.md)。
+Or `make dev` / `make dev-local`. Variable reference: [docs/configuration.md](docs/configuration.md).
 
-| 服务 | 地址 |
+| Service | Address |
 |------|------|
 | API | `http://localhost:3000` · Swagger `/docs` |
 | Worker | `:8081` |
-| 队列 | BullMQ `parse` |
+| Queue | BullMQ `parse` |
 
-### 关键 API（摘要）
+### Key APIs (summary)
 
-| 能力 | 接口 |
+| Capability | Endpoint |
 |------|------|
-| 解析/同步/推送短会话 | `POST /api/v1/auth/parse-session` · `sync-session` · `push-session` `{ appUserId }` |
-| 密文同步 | `POST/GET/DELETE /api/v1/sync/ciphertext*` |
-| 系统推送 | `POST/DELETE/GET /api/v1/push/devices` · `POST /api/v1/push/notify`（通用文案；未配 `FCM_*` 则 dry-run） |
-| 解析 | `POST /api/v1/parse/jobs` · `POST /:id/confirm`（Skill 入库） |
-| 直传 | `POST /api/v1/files/presign` → `PUT uploadUrl` |
-| 可选账号关联（非登录） | `POST /api/v1/auth/login`（为关联手机号预留；开发验证码 `123456`，**勿用于生产**） |
-| 用药/注射 | Swagger：切换链、协议排期、到期提醒 |
+| Parse/sync/push short session | `POST /api/v1/auth/parse-session` · `sync-session` · `push-session` `{ appUserId }` |
+| Ciphertext sync | `POST/GET/DELETE /api/v1/sync/ciphertext*` |
+| System push | `POST/DELETE/GET /api/v1/push/devices` · `POST /api/v1/push/notify` (generic copy; dry-run without `FCM_*`) |
+| Parse | `POST /api/v1/parse/jobs` · `POST /:id/confirm` (persist Skill) |
+| Direct upload | `POST /api/v1/files/presign` → `PUT uploadUrl` |
+| Optional account link (not a login wall) | `POST /api/v1/auth/login` (reserved for phone linking; dev code `123456`, **never for production**) |
+| Medication / injection | Swagger: switch chain, protocol scheduling, due reminders |
 
-### LLM（可选）
+### LLM (optional)
 
-未配置时：Skill 未命中 → 建议手动录入。配置后走 OpenAI 兼容 API。
+Without configuration: Skill miss → suggest manual entry. With configuration: uses an OpenAI-compatible API.
 
-| 环境变量 | 说明 |
+| Env var | Description |
 |----------|------|
-| `LLM_API_BASE` | 兼容网关 |
+| `LLM_API_BASE` | Compatible gateway |
 | `LLM_API_KEY` | Key |
-| `LLM_MODEL` | 默认 `gpt-4o-mini` |
+| `LLM_MODEL` | Default `gpt-4o-mini` |
 
 ---
 
-## 验证与 CI
+## Verification & CI
 
 ```bash
 pnpm --filter @ibd/api smoke:env
@@ -167,70 +171,70 @@ pnpm --filter @ibd/api e2e:fullstack
 pnpm --filter @ibd/api e2e:injection
 pnpm --filter @ibd/api e2e:medication
 cd services/parse-worker && python -m app.tests.test_ai_engine
-# 备份 + 解析链路
+cd services/parse-worker && python -m app.tests.test_lab_data_consistency
+# Backup + parse chain
 node services/api/scripts/e2e-backup-ai.mjs
 ```
 
-| Workflow | 内容 |
-|----------|------|
-| `ci.yml` | Node/pnpm build + typecheck + smoke · Python AI 单测 · `flutter analyze`（info 不阻塞） |
-| `ci-fullstack.yml` | Postgres+Redis + `scripts/ci-fullstack.sh`：e2e fullstack / injection / medication / backup-ai |
+| Workflow | Contents |
+|----------|----------|
+| `ci.yml` | Node/pnpm build + typecheck + smoke · Python AI unit tests · lab-data consistency guard · full `flutter test` · `flutter analyze` (blocks on warnings/errors) |
+| `ci-fullstack.yml` | Postgres+Redis + `scripts/ci-fullstack.sh`: e2e fullstack / injection / medication / backup-ai |
 
-Actions：https://github.com/HPNY/IBD-Management-Software/actions  
-
----
-
-## 安全说明
-
-- 本地库 **SQLCipher**，密钥在 Android Keystore / iOS Keychain  
-- 云备份 AES-GCM + PBKDF2（备份口令 + appUserId），服务端仅 cipher / nonce / mac  
-- 解析上传必须用户点「同意」；`parse-session` 约 30 分钟过期  
-- 系统推送 opt-in：令牌只绑 `app_user_uuid`；payload 仅通用文案，无药品/剂量/病历（[边界说明](docs/push-privacy.md)）  
-- 卸载重装会丢本机密钥 → 先导出 JSON 或上传加密快照  
-- 生产环境：`DEV_SMS_CODE` / 默认密钥 / `DB_SYNC=true` / `PUBLIC_BASE_URL` 含 localhost → **拒绝启动**（见 `env-guard`）
+Actions: https://github.com/HPNY/IBD-Management-Software/actions
 
 ---
 
-## 里程碑
+## Security notes
 
-| 标签 | 内容 |
+- Local DB **SQLCipher**, key in Android Keystore / iOS Keychain
+- Cloud backup AES-GCM + PBKDF2 (backup passphrase + appUserId); server holds only cipher / nonce / mac
+- Parse upload requires the user to tap "consent"; `parse-session` expires in ~30 minutes
+- System push is opt-in: token bound only to `app_user_uuid`; payload is generic copy, no drug/dose/PHI ([boundary notes](docs/push-privacy.md))
+- Uninstall + reinstall loses the local key → export JSON or upload an encrypted snapshot first
+- Production refuses to start with `DEV_SMS_CODE` / default secrets / `DB_SYNC=true` / `PUBLIC_BASE_URL` containing localhost (see `env-guard`)
+
+---
+
+## Milestones
+
+| Tag | Contents |
 |------|------|
-| **v0.1.0** | 本地优先 MVP：检验/用药/注射/打卡、SQLCipher、解析+Skill、密文同步、UI 仪表盘与五 Tab、分析页（趋势/时间线/检查手术/排便/摘要/发作预警）、CI 全绿 |
+| **v0.1.0** | Local-first MVP: labs/medication/injection/check-in, SQLCipher, parse+Skill, ciphertext sync, dashboard UI & five tabs, analysis page (trends/timeline/exams & surgery/bowel/summary/flare warning), smoke/E2E green (not device-verified) |
 
-后续未完成项见 **[会话工作清单](docs/session-worklist.md)**（真机验收、推送真发、微信小程序、PC Web、解析后删原件、医生端等）。配置加固已清零（[配置加固清单](docs/config-hardening-checklist.md)）。系统推送（本地保底 + FCM opt-in）见 [push-privacy](docs/push-privacy.md)。
+Open items are tracked in the **[session worklist](docs/session-worklist.md)** (real-device acceptance, real push, WeChat mini program, PC Web, delete source after parse, doctor client, etc.). Config hardening is complete ([checklist](docs/config-hardening-checklist.md)). System push (local baseline + FCM opt-in) is described in [push-privacy](docs/push-privacy.md).
 
-### 工作清单状态规则
+### Worklist status rules
 
-**每开始一项工作，必须先把 [docs/session-worklist.md](docs/session-worklist.md) 中对应项改为 `进行中`；完成后改为 `已完成`；受阻改为 `阻塞` 并写明原因。**
+**Whenever work starts, the corresponding item in [docs/session-worklist.md](docs/session-worklist.md) must first be set to `进行中` (in progress); on completion set it to `已完成` (done); if blocked set `阻塞` (blocked) and state the reason.**
 
-- 状态只改任务面板、不改清单文件 → 视为未遵守。
-- 新增未完成项时，须同步写入清单（补 ID、任务、验收标准、状态 `待办`）。
-- **任何新增工作（功能、bugfix、审阅遗留、文档、排查记录）都必须一并写入 [docs/session-worklist.md](docs/session-worklist.md)**，含 ID / 任务 / 状态 / 验收；避免切换会话后丢失。工作面板有而清单无 → 视为未遵守。
-- 交付收尾时核对清单与实现一致，禁止留下「代码已做、清单未勾」或相反。
+- Changing only the task board but not the checklist file is treated as non-compliance.
+- Any new open item must also be written to the checklist (add ID, task, acceptance criteria, status `待办`).
+- **Any new work (feature, bugfix, review leftovers, docs, triage notes) must be written into [docs/session-worklist.md](docs/session-worklist.md)** with ID / task / status / acceptance; this avoids losing context across sessions. A board item without a checklist entry is treated as non-compliance.
+- At delivery wrap-up, reconcile the checklist against the implementation; leaving "code done but checklist unchecked" (or the reverse) is forbidden.
 
-### 二次验证规则（强制）
+### Secondary verification rules (mandatory)
 
-**每次编写完代码，必须二次验证是否存在 bug，通过后才算完成。** 未验证不得把清单/任务标为「已完成」。
+**After writing code, a second pass to check for bugs is required before the item may be marked done.** Do not mark checklist/task as done without verification.
 
-最低验证清单：
+Minimum verification checklist:
 
-1. **编译/静态检查**：`tsc` / `flutter analyze` / 对应构建命令零错误
-2. **重复与截断**：多次编辑同一文件后，确认无重复块、语法截断（引号/括号配对）
-3. **安全**：新接口/删除/上传路径有归属校验（防 IDOR）；不引入 OWASP Top 10
-4. **一致性**：调用方签名与实现一致；清单/文档与真实行为一致
-5. **回归点**：改动波及的入口至少跑通主路径（或说明无法运行的阻塞项）
+1. **Compile / static analysis**: `tsc` / `flutter analyze` / the corresponding build command passes with zero errors
+2. **Duplication & truncation**: after editing the same file multiple times, confirm no duplicated blocks or truncated syntax (matching quotes/brackets)
+3. **Security**: new endpoints / deletes / upload paths have ownership checks (anti-IDOR); no OWASP Top 10 introduced
+4. **Consistency**: caller signatures match the implementation; checklist/docs match real behavior
+5. **Regression points**: run the main path for every entry touched (or state the blocking reason it cannot run)
 
-验证发现的问题**当场修复**再复验；无法立即修的必须记入 [session-worklist](docs/session-worklist.md)。
+Any issue found during verification must be **fixed on the spot** and re-verified; anything not immediately fixable must be recorded in [session-worklist](docs/session-worklist.md).
 
 ---
 
-## 许可与贡献
+## License & contributions
 
-个人医疗数据项目；默认本地、最小上传。欢迎 Issue / PR。
+A personal medical-data project; local by default, minimal upload. Issues / PRs welcome.
 
+## License
 
-## 许可证 / License
+This project is licensed under **GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later)**. See [LICENSE](LICENSE).
 
 本项目采用 **GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later)**。详见 [LICENSE](LICENSE)。
-
-This project is licensed under **LGPL-3.0-or-later**. See [LICENSE](LICENSE).

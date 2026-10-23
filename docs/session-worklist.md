@@ -1,8 +1,8 @@
 # 会话工作清单（Backlog）
 
-> **状态硬性要求**：每开始一项工作，必须先把本清单对应项改为 `进行中`；完成后改为 `已完成`；受阻改为 `阻塞` 并写明原因。禁止只改任务面板、不改本文件。同步规则见 [README · 工作清单](../README.md#工作清单状态规则)。
+> **状态硬性要求**：每开始一项工作，必须先把本清单对应项改为 `进行中`；完成后改为 `已完成`；受阻改为 `阻塞` 并写明原因。禁止只改任务面板、不改本文件。同步规则见 [README · 工作清单](../README.zh-CN.md#工作清单状态规则)。
 >
-> **二次验证规则**：每次写完代码必须二次验 bug，通过后才可标「已完成」。见 [README · 二次验证规则](../README.md#二次验证规则强制)。
+> **二次验证规则**：每次写完代码必须二次验 bug，通过后才可标「已完成」。见 [README · 二次验证规则](../README.zh-CN.md#二次验证规则强制)。
 
 **状态取值**：`待办` · `进行中` · `阻塞` · `已完成` · `已取消`
 
@@ -115,6 +115,7 @@
 | 2026-10 | R0.1–R0.3 | 已完成 | 代码审查修复：CI 全量 flutter test；patients IDOR + 医生审核 token 收紧；检验数据源收敛 + 一致性守卫 |
 | 2026-10 | R0.4/R0.5 | 已完成 | 装 git/node20/pnpm9/python3.12 工具链跑通全链路验证；清 5 处既有 analyze warning（含 my_doctors_page 未用 import） |
 | 2026-10 | R0.6 | 已完成 | miniapp wx 类型错误清零：miniprogram-api-typings + tsconfig types + requestSubscribeMessage 断言；全仓 typecheck 5 包全绿 |
+| 2026-10 | R0.7 | 已完成 | README 英文化：英文为主 README.md + 中文 README.zh-CN.md 互链；两版对齐 |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 
@@ -128,7 +129,9 @@
 | R0.3 | 检验套餐数据单一数据源（app.js/domain-types/lab_panels.dart 三处重复） | 已完成 | Dart 加 `kCoreLabNames`、`latestCore()` 复用；app.js exportDart 输出权威 `kCoreLabNames` + 转义修复；新增跨副本一致性守卫 `test_lab_data_consistency.py` 挂 CI（正/负向均已验证） |
 | R0.4 | 本地全链路验证（装 git/node/pnpm/python3.12 工具链） | 已完成 | build:api + typecheck（@ibd/api 等 4 包零 error）· flutter test 98 全过 · flutter analyze 0 warning/0 error · parse-worker 一致性守卫 + test_ai_engine ALL_PASS |
 | R0.5 | 清理既有 analyze warning（避免 CI 卡既有问题） | 已完成 | 删 `ibd_api_client.dart` 4 处冗余 cast + `my_doctors_page.dart` 未用 import；analyze warning 16→0；my_doctors_page 未用 import 已补 |
-| R0.6 | 修复 miniapp 既有 wx 类型错误（审查 M1） | 已完成 | 装 miniprogram-api-typings + tsconfig types 引入 + equestSubscribeMessage 参数按微信语义断言（规避 Taro 类型 entityIds 支付宝必填缺陷）；miniapp typecheck 15 error→0；全仓 5 包 typecheck 全绿 |
+| R0.6 | 修复 miniapp 既有 wx 类型错误（审查 M1） | 已完成 | 装 miniprogram-api-typings + tsconfig types 引入 + 
+| R0.7 | README 英文化（英文为主 + 中文切换链接） | 已完成 | `README.md` 改为英文主版（含 `简体中文` 切换链接）；原中文版移至 `README.zh-CN.md`（含 `English` 切换链接）；session-worklist 锚点改指 zh 版；两版对齐（补 SF-36、CI 表述更准确）；审阅并修正 docs 夸大实现 |
+equestSubscribeMessage 参数按微信语义断言（规避 Taro 类型 entityIds 支付宝必填缺陷）；miniapp typecheck 15 error→0；全仓 5 包 typecheck 全绿 |
 | T4.2b | PC Web 批量解析接真上传（presign/enqueue/confirm） | 已完成 | 真 API：presign→PUT→enqueue→轮询→confirm(deleteSource) |
 | T2.6 | `GET /parse/jobs/:id` 补归属校验（getForUser） | 已完成 | 他人 jobId 返回 404 · tsc 通过 |
 | T2.7 | Web 装依赖后跑 `tsc --noEmit` | 已完成 | 零 error · 顺带修复 api-client 重复方法（prd-v15-gaps） |
