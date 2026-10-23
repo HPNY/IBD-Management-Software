@@ -9,7 +9,7 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
-import { clientIp, sessionMintLimiter } from "../common/rate-limit";
+import { clientIp, loginLimiter, sessionMintLimiter } from "../common/rate-limit";
 import { AuthService } from "./auth.service";
 import { CurrentUser } from "./current-user.decorator";
 import { Public } from "./public.decorator";
@@ -30,7 +30,17 @@ export class AuthController {
       code: string;
       deviceId?: string;
     },
+    @Req() req: Request,
   ) {
+    // H2：登录限流（同 IP 10 次/分钟），防暴力破解短信码。
+    const ip = clientIp(req);
+    const ld = loginLimiter.take(`login:${ip}`);
+    if (!ld.ok) {
+      throw new HttpException(
+        { message: "too many login attempts", retryAfterSec: ld.retryAfterSec },
+        429,
+      );
+    }
     return this.auth.loginWithPhone(body);
   }
 

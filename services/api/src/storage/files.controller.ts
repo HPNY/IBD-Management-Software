@@ -1,8 +1,9 @@
-import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Headers, Post, Put, Query, RawBodyRequest, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, HttpException, Body, Controller, Delete, ForbiddenException, Get, Headers, Post, Put, Query, RawBodyRequest, Req, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { Public } from "../auth/public.decorator";
 import { RequireScope } from "../auth/scope.guard";
+import { clientIp, uploadLimiter } from "../common/rate-limit";
 import { StorageService } from "./storage.service";
 
 @ApiTags("files")
@@ -21,7 +22,17 @@ export class FilesController {
       patientId?: string;
       expiresInSec?: number;
     },
+    @Req() req: Request,
   ) {
+    // H2：上传限流（同 IP 30 次/分钟），防滥用存储/解析队列。
+    const ip = clientIp(req);
+    const ud = uploadLimiter.take(`presign:${ip}`);
+    if (!ud.ok) {
+      throw new HttpException(
+        { message: "too many upload requests", retryAfterSec: ud.retryAfterSec },
+        429,
+      );
+    }
     if (!body?.filename) throw new BadRequestException("filename required");
     return this.storage.presign(body);
   }
@@ -36,6 +47,15 @@ export class FilesController {
     @Req() req: RawBodyRequest<Request>,
     @Headers("content-type") contentType: string | undefined,
   ) {
+    // H2：上传限流（同 IP 30 次/分钟）
+    const uip = clientIp(req);
+    const ud2 = uploadLimiter.take(`upload:${uip}`);
+    if (!ud2.ok) {
+      throw new HttpException(
+        { message: "too many upload requests", retryAfterSec: ud2.retryAfterSec },
+        429,
+      );
+    }
     if (this.storage.driver !== "local") {
       throw new BadRequestException("use S3 presigned URL, not API upload");
     }

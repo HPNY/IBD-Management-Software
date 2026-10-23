@@ -54,14 +54,25 @@ export const deviceTokenLimiter = new RateLimiter(30, 60_000);
 /** 通用提醒触发：同 appUserId 10 次 / 分钟，防刷推送 */
 export const pushNotifyLimiter = new RateLimiter(10, 60_000);
 
+/** H2：登录限流，同 IP 10 次 / 分钟，防暴力破解短信码/口令 */
+export const loginLimiter = new RateLimiter(10, 60_000);
+
+/** H2：上传限流，同 IP 30 次 / 分钟，防滥用存储/解析队列 */
+export const uploadLimiter = new RateLimiter(30, 60_000);
+
+/** H2 加固：默认不信任 X-Forwarded-For（防伪造绕过限流）。
+ *  仅当显式配置 TRUSTED_PROXY=true（部署在可信反代后）才解析 XFF 首个地址。 */
 export function clientIp(req: {
-  headers: Record<string, unknown>;
+  headers?: unknown;
   socket?: { remoteAddress?: string };
   ip?: string;
 }): string {
-  const xff = req.headers["x-forwarded-for"];
+  const direct = req.ip || req.socket?.remoteAddress || "unknown";
+  if (process.env.TRUSTED_PROXY !== "true") return direct;
+  const h = req.headers as Record<string, unknown> | undefined;
+  const xff = h?.["x-forwarded-for"];
   if (typeof xff === "string" && xff.length > 0) {
-    return xff.split(",")[0]!.trim();
+    return xff.split(",")[0]!.trim() || direct;
   }
-  return req.ip || req.socket?.remoteAddress || "unknown";
+  return direct;
 }

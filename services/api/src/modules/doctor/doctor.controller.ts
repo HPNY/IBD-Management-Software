@@ -7,6 +7,7 @@ import {
   Headers,
   Param,
   Post,
+  HttpException,
   Req,
   UnauthorizedException,
   UseGuards,
@@ -15,6 +16,7 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { timingSafeEqual } from "node:crypto";
 import { Public } from "../../auth/public.decorator";
 import { RequireScope } from "../../auth/scope.guard";
+import { clientIp, loginLimiter } from "../../common/rate-limit";
 import type { JwtUser } from "../../auth/types";
 import {
   DoctorAuthService,
@@ -38,13 +40,32 @@ export class DoctorController {
       hospital?: string;
       licenseNo?: string;
     },
+    @Req() req: Request,
   ) {
+    // H2：注册限流（同 IP 10 次/分钟），防批量注册。
+    const ip = clientIp(req);
+    const rd = loginLimiter.take(`register:${ip}`);
+    if (!rd.ok) {
+      throw new HttpException(
+        { message: "too many register attempts", retryAfterSec: rd.retryAfterSec },
+        429,
+      );
+    }
     return this.auth.register(body);
   }
 
   @Public()
   @Post("login")
-  login(@Body() body: { email: string; password: string }) {
+  login(@Body() body: { email: string; password: string }, @Req() req: Request) {
+    // H2：登录限流（同 IP 10 次/分钟），防暴力破解口令。
+    const ip = clientIp(req);
+    const ld = loginLimiter.take(`dlogin:${ip}`);
+    if (!ld.ok) {
+      throw new HttpException(
+        { message: "too many login attempts", retryAfterSec: ld.retryAfterSec },
+        429,
+      );
+    }
     return this.auth.login(body.email, body.password);
   }
 
