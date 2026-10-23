@@ -57,10 +57,21 @@ expectThrow("prod-default-storage", {
   PUBLIC_BASE_URL: "https://ibders.example.com",
 });
 
+expectThrow("prod-default-admin-token", {
+  NODE_ENV: "production",
+  DEV_SMS_CODE: "998877",
+  DB_SYNC: "false",
+  DOCTOR_ADMIN_TOKEN: "dev-doctor-admin",
+  STORAGE_SECRET: "strong-secret-value",
+  JWT_SECRET: "strong-jwt-secret-value",
+  PUBLIC_BASE_URL: "https://ibders.example.com",
+});
+
 expectPass("prod-ok", {
   NODE_ENV: "production",
   DEV_SMS_CODE: "998877",
   DB_SYNC: "false",
+  DOCTOR_ADMIN_TOKEN: "a-strong-admin-token-value",
   STORAGE_SECRET: "strong-secret-value",
   JWT_SECRET: "strong-jwt-secret-value",
   PUBLIC_BASE_URL: "https://ibders.example.com",

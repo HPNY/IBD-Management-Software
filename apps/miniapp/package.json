@@ -9,13 +9,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ibd/api-client": "workspace:*",
+    "@ibd/domain-types": "workspace:*",
     "@tarojs/components": "3.6.34",
     "@tarojs/plugin-framework-react": "3.6.34",
     "@tarojs/plugin-platform-weapp": "3.6.34",
     "@tarojs/react": "3.6.34",
     "@tarojs/taro": "3.6.34",
-    "@ibd/api-client": "workspace:*",
-    "@ibd/domain-types": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -24,6 +24,7 @@
     "@tarojs/cli": "3.6.34",
     "@tarojs/webpack5-runner": "3.6.34",
     "@types/react": "^18.3.0",
+    "miniprogram-api-typings": "^5.2.3",
     "typescript": "^5.4.5",
     "webpack": "5.91.0"
   }

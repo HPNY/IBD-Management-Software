@@ -337,6 +337,18 @@ const List<LabPanel> kLabPanels = [
   ),
 ];
 
+/// IBD 核心指标中文规范名（PRD 2.1.3），与 packages/domain-types CORE_LAB_NAMES 同源。
+/// 跨副本一致性由 services/parse-worker/app/tests/test_lab_data_consistency.py 守卫。
+const List<String> kCoreLabNames = [
+  '超敏C反应蛋白',
+  '血沉',
+  '粪便钙卫蛋白',
+  '淋巴细胞',
+  '白蛋白',
+  '血红蛋白',
+  '尿酸',
+];
+
 LabPanel? labPanelById(String id) {
   for (final p in kLabPanels) {
     if (p.id == id) return p;

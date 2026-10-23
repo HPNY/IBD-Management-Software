@@ -112,6 +112,9 @@
 | 2026-09 | D1 | 已完成 | 饮食：词典/食谱/营养 v8 |
 | 2026-09 | D2 | 已完成 | 药物评价：本地+服务端聚合+白名单 |
 | 2026-09 | D3 | 已完成 | 同城：档案/指南/匿名帖+无位置隐私 | 饮食：词典/食谱/营养粗记 v8 + 汇总条 |
+| 2026-10 | R0.1–R0.3 | 已完成 | 代码审查修复：CI 全量 flutter test；patients IDOR + 医生审核 token 收紧；检验数据源收敛 + 一致性守卫 |
+| 2026-10 | R0.4/R0.5 | 已完成 | 装 git/node20/pnpm9/python3.12 工具链跑通全链路验证；清 5 处既有 analyze warning（含 my_doctors_page 未用 import） |
+| 2026-10 | R0.6 | 已完成 | miniapp wx 类型错误清零：miniprogram-api-typings + tsconfig types + requestSubscribeMessage 断言；全仓 typecheck 5 包全绿 |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 
@@ -119,6 +122,13 @@
 
 | ID | 事项 | 状态 | 验收 |
 |----|------|------|------|
+| R0 | 代码审查修复轮（C1 CI 测试 / C2 IDOR / H1 检验数据源收敛） | 已完成 | 三处按序落地 + 二次验证 |
+| R0.1 | CI：`flutter test` 跑全部测试文件（原只跑 1 个） | 已完成 | ci.yml 全量 `flutter test` + analyze `--no-fatal-infos`（warning/error 阻塞） |
+| R0.2 | API 全模块 IDOR 归属校验审计 + 修复 | 已完成 | 审计确认大部分到位；修 `GET /patients/:id` 越权（改 `getOwnedBasic`）+ 医生审核 `DOCTOR_ADMIN_TOKEN` 默认值收紧（timing-safe + env-guard 拦截） |
+| R0.3 | 检验套餐数据单一数据源（app.js/domain-types/lab_panels.dart 三处重复） | 已完成 | Dart 加 `kCoreLabNames`、`latestCore()` 复用；app.js exportDart 输出权威 `kCoreLabNames` + 转义修复；新增跨副本一致性守卫 `test_lab_data_consistency.py` 挂 CI（正/负向均已验证） |
+| R0.4 | 本地全链路验证（装 git/node/pnpm/python3.12 工具链） | 已完成 | build:api + typecheck（@ibd/api 等 4 包零 error）· flutter test 98 全过 · flutter analyze 0 warning/0 error · parse-worker 一致性守卫 + test_ai_engine ALL_PASS |
+| R0.5 | 清理既有 analyze warning（避免 CI 卡既有问题） | 已完成 | 删 `ibd_api_client.dart` 4 处冗余 cast + `my_doctors_page.dart` 未用 import；analyze warning 16→0；my_doctors_page 未用 import 已补 |
+| R0.6 | 修复 miniapp 既有 wx 类型错误（审查 M1） | 已完成 | 装 miniprogram-api-typings + tsconfig types 引入 + equestSubscribeMessage 参数按微信语义断言（规避 Taro 类型 entityIds 支付宝必填缺陷）；miniapp typecheck 15 error→0；全仓 5 包 typecheck 全绿 |
 | T4.2b | PC Web 批量解析接真上传（presign/enqueue/confirm） | 已完成 | 真 API：presign→PUT→enqueue→轮询→confirm(deleteSource) |
 | T2.6 | `GET /parse/jobs/:id` 补归属校验（getForUser） | 已完成 | 他人 jobId 返回 404 · tsc 通过 |
 | T2.7 | Web 装依赖后跑 `tsc --noEmit` | 已完成 | 零 error · 顺带修复 api-client 重复方法（prd-v15-gaps） |

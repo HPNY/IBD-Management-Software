@@ -26,6 +26,14 @@ export function assertSafeRuntimeConfig(env: NodeJS.ProcessEnv = process.env): v
     errors.push("DB_SYNC=true is forbidden when NODE_ENV=production");
   }
 
+  // 2b) 医生审核管理令牌禁止默认值
+  const adminToken = env.DOCTOR_ADMIN_TOKEN ?? "";
+  if (!adminToken || adminToken === "dev-doctor-admin" || adminToken.length < 12) {
+    errors.push(
+      "DOCTOR_ADMIN_TOKEN must be set to a strong non-default value in production",
+    );
+  }
+
   // 3) 存储签名密钥
   const storageSecret = env.STORAGE_SECRET ?? "";
   if (!storageSecret || storageSecret === "dev-storage-secret") {

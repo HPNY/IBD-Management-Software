@@ -365,7 +365,7 @@ class IbdApiClient {
       },
     );
     _ensureOk(res, 'createGeoPost');
-    return _json(res) as Map<String, dynamic>;
+    return _json(res);
   }
 
   Future<Map<String, dynamic>> drugReviewSummary(String drug) async {
@@ -374,7 +374,7 @@ class IbdApiClient {
       config.uri('/api/v1/drug-reviews/summary?drug=${Uri.encodeComponent(drug)}'),
     );
     _ensureOk(res, 'drugReviewSummary');
-    return _json(res) as Map<String, dynamic>;
+    return _json(res);
   }
 
   Future<Map<String, dynamic>> confirmDoctorGrant(
@@ -392,7 +392,7 @@ class IbdApiClient {
       },
     );
     _ensureOk(res, 'confirmDoctorGrant');
-    return _json(res) as Map<String, dynamic>;
+    return _json(res);
   }
 
   Future<Map<String, dynamic>> revokeDoctorGrant(String grantId) async {
@@ -401,7 +401,7 @@ class IbdApiClient {
       config.uri('/api/v1/doctor-grants/$grantId/revoke'),
     );
     _ensureOk(res, 'revokeDoctorGrant');
-    return _json(res) as Map<String, dynamic>;
+    return _json(res);
   }
 
   Future<Map<String, dynamic>> updateMedication(

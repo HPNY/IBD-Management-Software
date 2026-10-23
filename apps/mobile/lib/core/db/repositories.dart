@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
+import '../lab/lab_panels.dart';
 import 'local_db.dart';
 
 class LabRepository {
@@ -473,17 +474,8 @@ class LabSeriesRepository {
 
   /// 汇总：最近一次各核心指标
   Future<Map<String, Map<String, dynamic>>> latestCore() async {
-    const names = [
-      '超敏C反应蛋白',
-      '血沉',
-      '粪便钙卫蛋白',
-      '淋巴细胞',
-      '白蛋白',
-      '血红蛋白',
-      '尿酸',
-    ];
     final out = <String, Map<String, dynamic>>{};
-    for (final n in names) {
+    for (final n in kCoreLabNames) {
       final s = await seriesByName(n);
       if (s.isNotEmpty) out[n] = s.last;
     }

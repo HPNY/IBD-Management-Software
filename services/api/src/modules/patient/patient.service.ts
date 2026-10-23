@@ -10,9 +10,10 @@ export class PatientService {
     private readonly patients: Repository<PatientEntity>,
   ) {}
 
-  async getBasic(patientId: string): Promise<PatientEntity> {
+  /** 仅当 patient 属于当前 user 时返回，否则 404（防 IDOR 越权读取他人档案）。 */
+  async getOwnedBasic(userId: string, patientId: string): Promise<PatientEntity> {
     const found = await this.patients.findOne({ where: { id: patientId } });
-    if (found) return found;
+    if (found && found.userId === userId) return found;
     throw new NotFoundException(`patient ${patientId} not found`);
   }
 

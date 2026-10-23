@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { timingSafeEqual } from "node:crypto";
 import { Public } from "../../auth/public.decorator";
 import { RequireScope } from "../../auth/scope.guard";
 import type { JwtUser } from "../../auth/types";
@@ -76,12 +77,26 @@ export class DoctorController {
     @Body() body: { status: "approved" | "rejected" },
     @Headers("x-admin-token") adminToken?: string,
   ) {
-    const expect = process.env.DOCTOR_ADMIN_TOKEN || "dev-doctor-admin";
-    if (!adminToken || adminToken !== expect) {
+    const expect = process.env.DOCTOR_ADMIN_TOKEN;
+    if (
+      !expect ||
+      expect === "dev-doctor-admin" ||
+      expect.length < 12 ||
+      !adminToken ||
+      !timingSafeEqualStr(adminToken, expect)
+    ) {
       throw new UnauthorizedException("admin token required");
     }
     return this.auth.approve(id, body.status);
   }
+}
+
+/** 常量时间比较，避免计时侧信道。 */
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const ab = Buffer.from(a, "utf8");
+  const bb = Buffer.from(b, "utf8");
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
 }
 
 @ApiTags("doctor-grant")

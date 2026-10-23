@@ -548,20 +548,28 @@ function exportJson() {
 }
 
 function exportDart() {
-  // 生成可贴回 lab_panels.dart 的片段（便于与 App 内置模板对齐）
-  const lines = ["const List<LabPanel> kLabPanels = ["];
+  // 生成可贴回 lab_panels.dart 的片段（便于与 App 内置模板对齐）。
+  // 同时导出 CORE_LAB_NAMES 常量，保证与 packages/domain-types 同源、避免手工漂移。
+  const dartStr = (s) => "'" + String(s).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
+  const lines = [];
+  lines.push("/// CORE_LAB_NAMES（IBD 核心指标中文规范名，与 packages/domain-types 保持一致）");
+  lines.push("const List<String> kCoreLabNames = [");
+  CORE_LAB_NAMES.forEach((n) => lines.push(`  ${dartStr(n)},`));
+  lines.push("];");
+  lines.push("");
+  lines.push("const List<LabPanel> kLabPanels = [");
   state.panels.forEach((p) => {
     lines.push("  LabPanel(");
-    lines.push(`    id: '${p.id}',`);
-    lines.push(`    title: '${p.title}',`);
-    if (p.subtitle) lines.push(`    subtitle: '${p.subtitle}',`);
+    lines.push(`    id: ${dartStr(p.id)},`);
+    lines.push(`    title: ${dartStr(p.title)},`);
+    if (p.subtitle) lines.push(`    subtitle: ${dartStr(p.subtitle)},`);
     lines.push("    items: [");
     [...p.items]
       .sort((a, b) => a.sort - b.sort)
       .forEach((it) => {
-        const parts = [`nameNorm: '${it.nameNorm}'`];
-        if (it.nameRaw) parts.push(`nameRaw: '${it.nameRaw}'`);
-        parts.push(`unit: '${it.unit}'`);
+        const parts = [`nameNorm: ${dartStr(it.nameNorm)}`];
+        if (it.nameRaw) parts.push(`nameRaw: ${dartStr(it.nameRaw)}`);
+        parts.push(`unit: ${dartStr(it.unit)}`);
         if (it.refMin != null) parts.push(`refMin: ${it.refMin}`);
         if (it.refMax != null) parts.push(`refMax: ${it.refMax}`);
         lines.push(`      LabItemSpec(${parts.join(", ")}),`);

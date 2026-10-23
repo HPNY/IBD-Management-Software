@@ -72,7 +72,7 @@ export async function requestSubscribe(
     };
   }
   try {
-    const res = await Taro.requestSubscribeMessage({ tmplIds: [tmpl] });
+    const res = await Taro.requestSubscribeMessage({ tmplIds: [tmpl] } as unknown as Taro.requestSubscribeMessage.Option);
     const accepted = (res as { [key: string]: string })[tmpl] === "accept";
     return {
       ok: accepted,

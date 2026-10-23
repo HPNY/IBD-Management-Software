@@ -72,6 +72,10 @@ jobs:
         working-directory: services/parse-worker
         run: python -m app.tests.test_ai_engine
 
+      - name: Lab data consistency guard
+        working-directory: services/parse-worker
+        run: python -m app.tests.test_lab_data_consistency
+
   flutter-analyze:
     name: Flutter analyze
     runs-on: ubuntu-latest
@@ -89,9 +93,9 @@ jobs:
 
       - name: Analyze
         working-directory: apps/mobile
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
-        # 业务 warning 已修复；deprecation info 不阻塞 CI
+        run: flutter analyze --no-fatal-infos
+        # deprecation info 不阻塞；warning 与 error 均阻塞 CI
 
-      - name: Push copy unit tests
+      - name: Unit tests (full suite)
         working-directory: apps/mobile
-        run: flutter test test/push_copy_test.dart
+        run: flutter test

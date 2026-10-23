@@ -19,7 +19,7 @@ export class PatientController {
   }
 
   @Get(":id")
-  get(@Param("id") id: string) {
-    return this.patients.getBasic(id);
+  get(@CurrentUser() user: JwtUser, @Param("id") id: string) {
+    return this.patients.getOwnedBasic(user.userId, id);
   }
 }

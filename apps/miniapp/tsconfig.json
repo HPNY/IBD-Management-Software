@@ -9,7 +9,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "baseUrl": ".",
-    "types": ["@tarojs/taro"]
+    "types": ["@tarojs/taro", "miniprogram-api-typings"]
   },
   "include": ["src/**/*", "config/**/*"],
   "exclude": ["node_modules", "dist"]
