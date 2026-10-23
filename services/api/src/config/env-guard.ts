@@ -20,6 +20,12 @@ export function assertSafeRuntimeConfig(env: NodeJS.ProcessEnv = process.env): v
       "DEV_SMS_CODE must not be the development default when NODE_ENV=production",
     );
   }
+  // H2: 开发短信登录开关在生产必须关闭
+  if (env.ENABLE_DEV_SMS_LOGIN === "true") {
+    errors.push(
+      "ENABLE_DEV_SMS_LOGIN=true is forbidden when NODE_ENV=production",
+    );
+  }
 
   // 2) 禁止 TypeORM synchronize
   if (env.DB_SYNC === "true") {

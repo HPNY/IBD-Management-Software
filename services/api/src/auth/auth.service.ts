@@ -5,13 +5,16 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { Repository } from "typeorm";
 import { RefreshTokenEntity, UserEntity } from "../database/entities";
 import type { JwtUser } from "./types";
 
 /** 开发环境固定验证码；生产应接短信服务商。 */
 const DEV_SMS_CODE = process.env.DEV_SMS_CODE ?? "123456";
+/** H2：开发短信登录须显式开启（ENABLE_DEV_SMS_LOGIN=true），非 production 也默认关闭，
+ *  避免 demo/staging 误暴露 123456 后门。production 由 env-guard 强制禁用。 */
+const DEV_SMS_LOGIN_ENABLED = process.env.ENABLE_DEV_SMS_LOGIN === "true";
 const IS_PROD =
   (process.env.NODE_ENV ?? "development").toLowerCase() === "production";
 const ACCESS_TTL = process.env.JWT_ACCESS_TTL ?? "15m";
@@ -43,11 +46,21 @@ export class AuthService {
     if (!input.phone || !/^\d{6,20}$/.test(input.phone)) {
       throw new BadRequestException("invalid phone");
     }
-    // 生产禁止使用开发固定码
-    if (IS_PROD && (DEV_SMS_CODE === "123456" || DEV_SMS_CODE.length < 6)) {
-      throw new UnauthorizedException("sms login disabled: invalid DEV_SMS_CODE");
+    // H2：生产始终禁用开发固定码短信登录；非生产须显式 ENABLE_DEV_SMS_LOGIN=true。
+    if (IS_PROD) {
+      throw new UnauthorizedException("sms login disabled in production");
     }
-    if (input.code !== DEV_SMS_CODE) {
+    if (!DEV_SMS_LOGIN_ENABLED) {
+      throw new UnauthorizedException(
+        "sms login disabled: set ENABLE_DEV_SMS_LOGIN=true for local/dev testing",
+      );
+    }
+    // timing-safe 比对，避免验证码时序侧信道。
+    const codeBuf = Buffer.from(input.code ?? "", "utf8");
+    const expBuf = Buffer.from(DEV_SMS_CODE, "utf8");
+    const codeMatches =
+      codeBuf.length === expBuf.length && timingSafeEqual(codeBuf, expBuf);
+    if (!codeMatches) {
       throw new UnauthorizedException("invalid sms code");
     }
 

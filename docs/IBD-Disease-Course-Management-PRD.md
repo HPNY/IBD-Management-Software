@@ -685,10 +685,10 @@ FlareAssessment
 ## 4. Non-Functional Requirements
 
 ### 4.1 Data Security
-- Encrypted storage of patient health data (AES-256)
+- Patient data encryption: **client-side** local DB SQLCipher (AES-256) + cloud backup AES-GCM end-to-end ciphertext (server stores only ciphertext, cannot decrypt); server-side parse/sync staging data is currently **stored in plaintext** — field-level encryption (AES-256-GCM DEK) is target design, not yet implemented
 - Local storage first, cloud sync optional
 - Data export support (JSON/PDF/DOCX formats)
-- Compliant with the medical-data provisions of China's Personal Information Protection Law (PIPL)
+- Privacy design aligns with the medical-data principles of China's Personal Information Protection Law (PIPL) (local-first, minimal upload, explicit consent); formal compliance requires DPIA/consent-flow docs not yet in this repo
 
 ### 4.2 Client-Type Planning
 

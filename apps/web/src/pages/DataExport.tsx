@@ -1,5 +1,5 @@
 import { useState } from "react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 const KEYS = {
   labs: "ibd_web_labs",
@@ -88,19 +88,34 @@ export default function DataExport() {
       conclusion: string;
     }>;
 
-    const wb = XLSX.utils.book_new();
-    const labsSheet = XLSX.utils.json_to_sheet(labRows, {
-      header: ["date", "nameNorm", "value", "unit"],
+    // exceljs：无已知 critical 漏洞的 Excel 生成库（替代 SheetJS xlsx）
+    const wb = new ExcelJS.Workbook();
+    const labsSheet = wb.addWorksheet("labs");
+    labsSheet.columns = [
+      { header: "date", key: "date" },
+      { header: "nameNorm", key: "nameNorm" },
+      { header: "value", key: "value" },
+      { header: "unit", key: "unit" },
+    ];
+    labRows.forEach((r) => labsSheet.addRow(r));
+    const clinicalSheet = wb.addWorksheet("clinical");
+    clinicalSheet.columns = [
+      { header: "kind", key: "kind" },
+      { header: "date", key: "date" },
+      { header: "type", key: "type" },
+      { header: "conclusion", key: "conclusion" },
+    ];
+    clinicalRows.forEach((r) => clinicalSheet.addRow(r));
+    void wb.xlsx.writeBuffer().then((buf) => {
+      const blob = new Blob([buf], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `ibders-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(a.href);
     });
-    const clinicalSheet = XLSX.utils.json_to_sheet(clinicalRows, {
-      header: ["kind", "date", "type", "conclusion"],
-    });
-    XLSX.utils.book_append_sheet(wb, labsSheet, "labs");
-    XLSX.utils.book_append_sheet(wb, clinicalSheet, "clinical");
-    XLSX.writeFile(
-      wb,
-      `ibders-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
-    );
     setMsg("已导出 Excel");
   };
 

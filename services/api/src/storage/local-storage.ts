@@ -81,9 +81,23 @@ export class LocalObjectStorage {
   }
 
   private resolveSafe(objectKey: string): string {
-    const full = resolve(this.rootDir, normalize(objectKey).replace(/^(\.\.(\/|\\|$))+/, ""));
+    // C1 加固：显式拒绝反斜杠、NUL、绝对路径、空段与 ".." 穿越段，不依赖 resolve 隐式归一。
+    if (
+      typeof objectKey !== "string" ||
+      objectKey.includes("\\") ||
+      objectKey.includes("\0") ||
+      objectKey.startsWith("/") ||
+      /^[a-zA-Z]:/.test(objectKey)
+    ) {
+      throw new Error("invalid objectKey");
+    }
+    const segs = objectKey.split("/");
+    if (segs.length === 0 || segs.some((s) => s === "" || s === "." || s === "..")) {
+      throw new Error("invalid objectKey");
+    }
+    const full = resolve(this.rootDir, normalize(objectKey));
     const root = resolve(this.rootDir);
-    if (!full.startsWith(root + sep) && full !== root) {
+    if (!full.startsWith(root + sep)) {
       throw new Error("invalid objectKey");
     }
     return full;

@@ -55,9 +55,15 @@ export class FilesController {
     return { ok: true, objectKey, size: body.length };
   }
 
+  /** 文件元信息：仅限合法 presign 形状（uploads/ 前缀），防 IDOR 探测他人 objectKey。 */
+  @UseGuards(RequireScope("full", "parse_session"))
   @Get("meta")
   async meta(@Query("objectKey") objectKey: string) {
     if (!objectKey) throw new BadRequestException("objectKey required");
+    // C1 防 IDOR：只接受 presign 生成的 uploads/<date>/<uuid>/<name> 形状，拒绝任意/穿越键。
+    if (!/^uploads\/[0-9]{4}-[0-9]{2}-[0-9]{2}\/[A-Za-z0-9-]+\/[^/]+$/.test(objectKey)) {
+      throw new BadRequestException("invalid objectKey");
+    }
     try {
       const obj = await this.storage.get(objectKey);
       return { objectKey, size: obj.size, contentType: obj.contentType ?? null };

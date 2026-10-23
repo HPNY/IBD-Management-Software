@@ -13,6 +13,7 @@ export PUBLIC_BASE_URL="${PUBLIC_BASE_URL:-http://127.0.0.1:3000}"
 export STORAGE_SECRET="${STORAGE_SECRET:-ci-storage-secret}"
 export RUN_MIGRATIONS="${RUN_MIGRATIONS:-true}"
 export NODE_ENV="${NODE_ENV:-development}"
+export ENABLE_DEV_SMS_LOGIN="${ENABLE_DEV_SMS_LOGIN:-true}"  # H2: e2e needs dev SMS login
 export PORT="${PORT:-3000}"
 export PARSE_WORKER_PORT="${PARSE_WORKER_PORT:-8081}"
 export IBD_API_BASE="${IBD_API_BASE:-http://127.0.0.1:3000}"
