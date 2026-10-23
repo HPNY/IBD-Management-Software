@@ -202,6 +202,10 @@ export class DoctorGrantService {
     row.confirmed = true;
     // M2.4：仅存再包裹后的 DEK 密文，不落明文
     if (opts.wrappedDek) {
+      // M6：wrappedDek 必须是合法 base64（服务端不落明文 DEK，仅校验格式）
+      if (!/^[A-Za-z0-9+/=]+$/.test(opts.wrappedDek)) {
+        throw new BadRequestException("wrappedDek must be base64");
+      }
       if (opts.wrappedDek.length > 8192) {
         throw new BadRequestException("wrappedDek too large");
       }

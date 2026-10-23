@@ -60,6 +60,9 @@ export const loginLimiter = new RateLimiter(10, 60_000);
 /** H2：上传限流，同 IP 30 次 / 分钟，防滥用存储/解析队列 */
 export const uploadLimiter = new RateLimiter(30, 60_000);
 
+/** M6：授权码生成限流，同 doctor 10 次 / 分钟，防批量刷授权码 */
+export const grantLimiter = new RateLimiter(10, 60_000);
+
 /** H2 加固：默认不信任 X-Forwarded-For（防伪造绕过限流）。
  *  仅当显式配置 TRUSTED_PROXY=true（部署在可信反代后）才解析 XFF 首个地址。 */
 export function clientIp(req: {

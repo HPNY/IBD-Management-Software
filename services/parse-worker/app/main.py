@@ -81,6 +81,25 @@ def run_pipeline(
     )
 
 
+# M4：单次取件大小上限（与 /parse 的 20MB 一致），防超大对象耗尽内存。
+MAX_FETCH_BYTES = 20 * 1024 * 1024
+
+
+def _read_limited(stream) -> bytes:
+    """M4：受限读取，超过 MAX_FETCH_BYTES 即截断抛错，防内存耗尽。"""
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = stream.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_FETCH_BYTES:
+            raise ValueError(f"object too large (> {MAX_FETCH_BYTES} bytes)")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 def fetch_object_bytes(data: dict[str, Any]) -> bytes | None:
     """按 storage.driver 取直传对象。"""
     object_key = data.get("objectKey") or ""
@@ -97,7 +116,7 @@ def fetch_object_bytes(data: dict[str, Any]) -> bytes | None:
         import urllib.request
 
         with urllib.request.urlopen(object_key, timeout=60) as resp:  # noqa: S310
-            return resp.read()
+            return _read_limited(resp)
 
     if driver == "s3":
         try:
@@ -114,7 +133,7 @@ def fetch_object_bytes(data: dict[str, Any]) -> bytes | None:
             region_name=os.getenv("S3_REGION", "us-east-1"),
         )
         obj = client.get_object(Bucket=bucket, Key=object_key)
-        return obj["Body"].read()
+        return _read_limited(obj["Body"])
 
     # local：objectKey 相对 STORAGE_LOCAL_DIR，也允许绝对路径
     local_dir = storage.get("localDir") or os.getenv("STORAGE_LOCAL_DIR", "var/uploads")
@@ -126,7 +145,7 @@ def fetch_object_bytes(data: dict[str, Any]) -> bytes | None:
     for path in candidates:
         if os.path.isfile(path):
             with open(path, "rb") as f:
-                return f.read()
+                return _read_limited(f)
     raise FileNotFoundError(f"object not found: {object_key}")
 
 

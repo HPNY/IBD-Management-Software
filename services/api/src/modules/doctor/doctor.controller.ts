@@ -16,7 +16,7 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { timingSafeEqual } from "node:crypto";
 import { Public } from "../../auth/public.decorator";
 import { RequireScope } from "../../auth/scope.guard";
-import { clientIp, loginLimiter } from "../../common/rate-limit";
+import { clientIp, grantLimiter, loginLimiter } from "../../common/rate-limit";
 import type { JwtUser } from "../../auth/types";
 import {
   DoctorAuthService,
@@ -133,6 +133,15 @@ export class DoctorGrantController {
     @Body() body: { scope: string[]; ttlHours?: number },
     @Req() req: { user?: DoctorJwt },
   ) {
+    // M6：授权码生成限流（同 doctor 10 次/分钟），防批量刷授权码。
+    const gkey = req.user?.doctorId ?? req.user?.userId ?? "anon";
+    const gd = grantLimiter.take(`grant:${gkey}`);
+    if (!gd.ok) {
+      throw new HttpException(
+        { message: "too many grant requests", retryAfterSec: gd.retryAfterSec },
+        429,
+      );
+    }
     return this.grants.createCode({
       doctorId: req.user?.doctorId ?? req.user?.userId ?? "",
       scope: body.scope,
