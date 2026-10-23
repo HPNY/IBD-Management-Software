@@ -7,7 +7,13 @@ import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { Repository } from "typeorm";
-import { RefreshTokenEntity, UserEntity } from "../database/entities";
+import { DevicePubKeyEntity, RefreshTokenEntity, UserEntity } from "../database/entities";
+import {
+  newNonce,
+  publicKeyFingerprint,
+  sessionSignPayload,
+  verifyEd25519,
+} from "./device-pop";
 import type { JwtUser } from "./types";
 
 /** 开发环境固定验证码；生产应接短信服务商。 */
@@ -28,6 +34,24 @@ export interface TokenPair {
   user: { id: string; phone: string | null; status: string };
 }
 
+/** 短会话签发入参；H3 持有证明三元组可选（REQUIRE_POP=true 时必填）。 */
+export interface SessionIssueInput {
+  appUserId: string;
+  deviceId?: string;
+  devicePubKey?: string;
+  popNonce?: string;
+  popSignature?: string;
+}
+
+export interface SessionIssueResult {
+  accessToken: string;
+  expiresIn: string;
+  tokenType: "Bearer";
+  scope: string;
+  appUserId: string;
+  nonce: string;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -36,6 +60,8 @@ export class AuthService {
     private readonly users: Repository<UserEntity>,
     @InjectRepository(RefreshTokenEntity)
     private readonly refreshTokens: Repository<RefreshTokenEntity>,
+    @InjectRepository(DevicePubKeyEntity)
+    private readonly devicePubKeys: Repository<DevicePubKeyEntity>,
   ) {}
 
   async loginWithPhone(input: {
@@ -149,94 +175,104 @@ export class AuthService {
    * 不要求长期账号；scope=parse_session。
    * 会在 users 表登记一条 session 用户，保证 patient.userId 外键可用。
    */
-  async issueParseSession(input: { appUserId: string; deviceId?: string }) {
-    const user = await this.ensureSessionUser(input.appUserId);
-    const accessToken = this.jwt.sign(
-      {
-        userId: user.id,
-        phone: null,
-        deviceId: input.deviceId,
-        scope: "parse_session",
-        appUserId: input.appUserId,
-      } satisfies JwtUser,
-      { expiresIn: "30m" },
-    );
-    return {
-      accessToken,
-      expiresIn: "30m",
-      tokenType: "Bearer",
-      scope: "parse_session",
-      appUserId: input.appUserId,
-    };
+  async issueParseSession(
+    input: SessionIssueInput,
+  ): Promise<SessionIssueResult> {
+    return this.issueScopedSession("parse_session", "30m", input);
   }
 
-  /** 密文同步短时会话（scope=sync_ciphertext） */
-  async issueSyncSession(input: { appUserId: string; deviceId?: string }) {
-    const user = await this.ensureSessionUser(input.appUserId);
-    const accessToken = this.jwt.sign(
-      {
-        userId: user.id,
-        phone: null,
-        deviceId: input.deviceId,
-        scope: "sync_ciphertext",
-        appUserId: input.appUserId,
-      } satisfies JwtUser,
-      { expiresIn: "15m" },
-    );
-    return {
-      accessToken,
-      expiresIn: "15m",
-      tokenType: "Bearer",
-      scope: "sync_ciphertext",
-      appUserId: input.appUserId,
-    };
+  async issueSyncSession(
+    input: SessionIssueInput,
+  ): Promise<SessionIssueResult> {
+    return this.issueScopedSession("sync_ciphertext", "15m", input);
   }
 
   /** 推送注册短时会话（scope=push_register）：只绑 appUserId，无登录墙 */
-  async issuePushSession(input: { appUserId: string; deviceId?: string }) {
+  async issuePushSession(
+    input: SessionIssueInput,
+  ): Promise<SessionIssueResult> {
+    return this.issueScopedSession("push_register", "15m", input);
+  }
+
+  async issueCommunitySession(
+    input: SessionIssueInput,
+  ): Promise<SessionIssueResult> {
+    return this.issueScopedSession("community", "30m", input);
+  }
+
+  /**
+   * H3（DPoP-lite）统一短会话签发：验签设备持有证明 → 登记/更新公钥 → JWT 内嵌 popKeyHash。
+   * REQUIRE_POP=true 时强制要求 PoP；默认（渐进迁移）允许缺省以兼容旧客户端/e2e。
+   */
+  private async issueScopedSession(
+    scope: "parse_session" | "sync_ciphertext" | "push_register" | "community",
+    expiresIn: string,
+    input: SessionIssueInput,
+  ): Promise<SessionIssueResult> {
     const user = await this.ensureSessionUser(input.appUserId);
+    const requirePop = process.env.REQUIRE_POP === "true";
+
+    // H3 持有证明：验签 appUserId|nonce，登记公钥并把指纹写入 JWT。
+    let popKeyHash: string | undefined;
+    if (input.devicePubKey && input.popNonce && input.popSignature) {
+      const data = sessionSignPayload(input.appUserId, input.popNonce);
+      if (!verifyEd25519(input.devicePubKey, data, input.popSignature)) {
+        throw new UnauthorizedException("invalid device proof-of-possession");
+      }
+      popKeyHash = publicKeyFingerprint(input.devicePubKey);
+      await this.registerDevicePubKey(input.appUserId, input.devicePubKey, popKeyHash);
+    } else if (requirePop) {
+      throw new UnauthorizedException("device proof-of-possession required");
+    }
+
     const accessToken = this.jwt.sign(
       {
         userId: user.id,
-        phone: null,
         deviceId: input.deviceId,
-        scope: "push_register",
+        scope,
         appUserId: input.appUserId,
-      } satisfies JwtUser,
-      { expiresIn: "15m" },
+        ...(popKeyHash ? { popKeyHash } : {}),
+      },
+      { expiresIn: expiresIn as `${number}m` },
     );
     return {
       accessToken,
-      expiresIn: "15m",
+      expiresIn,
       tokenType: "Bearer",
-      scope: "push_register",
+      scope,
       appUserId: input.appUserId,
+      nonce: newNonce(),
     };
   }
 
-  /** Skill 社区短时会话（scope=community）：匿名发布/评分，无登录墙 */
-  async issueCommunitySession(input: { appUserId: string; deviceId?: string }) {
-    const user = await this.ensureSessionUser(input.appUserId);
-    const accessToken = this.jwt.sign(
-      {
-        userId: user.id,
-        phone: null,
-        deviceId: input.deviceId,
-        scope: "community",
-        appUserId: input.appUserId,
-      } satisfies JwtUser,
-      { expiresIn: "30m" },
-    );
-    return {
-      accessToken,
-      expiresIn: "30m",
-      tokenType: "Bearer",
-      scope: "community",
-      appUserId: input.appUserId,
-    };
+  /** 登记/轮换设备公钥（同 appUserId 唯一）。 */
+  private async registerDevicePubKey(
+    appUserId: string,
+    publicKey: string,
+    pubKeyHash: string,
+  ): Promise<void> {
+    const existing = await this.devicePubKeys.findOne({ where: { appUserId } });
+    const now = new Date();
+    if (existing) {
+      await this.devicePubKeys.save({
+        ...existing,
+        publicKey,
+        pubKeyHash,
+        lastSeenAt: now,
+      });
+    } else {
+      await this.devicePubKeys.save(
+        this.devicePubKeys.create({
+          appUserId,
+          publicKey,
+          pubKeyHash,
+          createdAt: now,
+          lastSeenAt: now,
+        }),
+      );
+    }
   }
 
-  /** 将 app_user_uuid 映射为 users 行（openid 存 uuid，非真实微信）。 */
   private async ensureSessionUser(appUserId: string): Promise<UserEntity> {
     if (!appUserId || appUserId.length < 8) {
       throw new BadRequestException("appUserId required");
