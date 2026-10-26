@@ -108,6 +108,35 @@ void main() {
     expect(crp['flag'], 'high');
   });
 
+  testWidgets('T2：Skill 引擎解析结果入库 source=skill', (tester) async {
+    final repo = _FakeLabRepository();
+    await _pumpEntry(
+      tester,
+      LabEntryPage(
+        labRepo: repo,
+        seedParsedEngine: 'skill',
+        seedParsedItems: const [
+          {
+            'nameNorm': '超敏C反应蛋白',
+            'nameRaw': 'hs-CRP',
+            'value': 8.2,
+            'valueText': '8.2',
+            'unit': 'mg/L',
+            'refMax': 5.0,
+          },
+        ],
+      ),
+    );
+
+    await tester.ensureVisible(find.text('保存本次检验到本机'));
+    await tester.tap(find.text('保存本次检验到本机'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(repo.saved, hasLength(1));
+    expect(repo.saved.first['source'], 'skill');
+  });
+
   testWidgets('仅套餐手填仍可保存 source=manual', (tester) async {
     final repo = _FakeLabRepository();
     await _pumpEntry(tester, LabEntryPage(labRepo: repo));
