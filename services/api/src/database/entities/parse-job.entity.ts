@@ -40,6 +40,10 @@ export class ParseJobEntity {
   @Column({ type: "varchar", length: 128, nullable: true })
   skillVersionId: string | null;
 
+  /** T2：解析引擎（skill|ai）；历史行为 NULL，来源判定见 parse-source.ts 兼容回退 */
+  @Column({ type: "varchar", length: 16, nullable: true })
+  engine: string | null;
+
   @Column({ type: "jsonb", nullable: true })
   items: unknown[] | null;
 

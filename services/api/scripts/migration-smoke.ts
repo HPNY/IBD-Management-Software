@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { newDb, DataType } from "pg-mem";
 import { DataSource } from "typeorm";
 import { InitSchema1726200000000 } from "../src/database/migrations/1726200000000-InitSchema";
+import { AddParseJobEngine1727600000000 } from "../src/database/migrations/1727600000000-AddParseJobEngine";
 
 async function main() {
   const db = newDb({ autoCreateForeignKeyIndices: true });
@@ -59,6 +60,38 @@ async function main() {
   ];
   const missing = required.filter((t) => !names.includes(t));
   if (missing.length) throw new Error(`missing tables: ${missing.join(",")}`);
+
+  // T2：parse_jobs.engine 迁移可执行且可空（向后兼容）。
+  // 行为级探针：缺省 engine 插入不报错且回读为 NULL——pg-mem 对 ALTER 加列的
+  // is_nullable 目录表示与真 PG 有差异，真 PG 行为由迁移 DDL 的显式 NULL 保证。
+  await new AddParseJobEngine1727600000000().up(runner);
+  const engineCols = await runner.query(
+    `SELECT column_name FROM information_schema.columns WHERE table_name='parse_jobs' AND column_name='engine'`,
+  );
+  if (!engineCols.length) throw new Error("parse_jobs.engine column missing");
+  const probeUserId = randomUUID();
+  await runner.query(
+    `INSERT INTO users (id, phone, status) VALUES ($1, $2, $3)`,
+    [probeUserId, "engine-probe-user", "active"],
+  );
+  const probePatientId = randomUUID();
+  await runner.query(
+    `INSERT INTO patients (id, "userId", name, sex, "birthDate", "diagnosisDate", "ibdType")
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [probePatientId, probeUserId, "probe", "unknown", "2000-01-01", "2020-01-01", "cd"],
+  );
+  await runner.query(
+    `INSERT INTO parse_jobs (id, "patientId", "objectKey", "status") VALUES ($1, $2, $3, $4)`,
+    [randomUUID(), probePatientId, "inline://probe", "done"],
+  );
+  const probeRows = (await runner.query(
+    `SELECT engine FROM parse_jobs WHERE "patientId"=$1`,
+    [probePatientId],
+  )) as Array<{ engine: string | null }>;
+  if (!probeRows.length) throw new Error("engine probe insert failed");
+  if (probeRows[0].engine !== null) {
+    throw new Error("parse_jobs.engine must default to NULL for legacy rows");
+  }
 
   await runner.query(`INSERT INTO users (phone, status) VALUES ($1, $2)`, [
     "mig-smoke",

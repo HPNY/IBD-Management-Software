@@ -52,6 +52,9 @@ jobs:
       - name: Smoke migration (pg-mem)
         run: pnpm --filter @ibd/api smoke:migration
 
+      - name: Smoke parse source (T2)
+        run: pnpm --filter @ibd/api smoke:parse-source
+
       - name: Smoke storage
         run: pnpm --filter @ibd/api smoke:storage
 

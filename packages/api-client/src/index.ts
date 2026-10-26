@@ -32,6 +32,8 @@ export interface ParseJobDto {
   status: string;
   objectKey: string;
   items?: unknown[];
+  /** T2：解析引擎（skill|ai）；旧任务无此字段 */
+  engine?: string | null;
   sourceDeleted?: boolean;
   error?: string | null;
 }
