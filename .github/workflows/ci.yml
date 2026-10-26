@@ -31,8 +31,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Dependency audit (high+)
-        run: pnpm audit --audit-level=high
+      # 门禁范围（T0.4 裁决 2a）：生产依赖 high+ 必须为零。
+      # dev 构建链已知无补丁/需工具链大版本升级的项记录于
+      # docs/dependency-audit-notes.md，不阻塞本门禁，随工具链升级任务复查。
+      - name: Dependency audit (high+, production deps)
+        run: pnpm audit --prod --audit-level=high
 
       - name: Build API
         run: pnpm --filter @ibd/api build

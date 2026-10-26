@@ -21,6 +21,8 @@ apps/mobile/.dart_tool/
 apps/mobile/build/
 apps/mobile/.flutter-plugins*
 *.tsbuildinfo
+.swc/
+apps/miniapp/.swc/
 
 # Firebase / 移动端密钥（M1：勿提交）
 google-services.json
