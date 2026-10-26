@@ -15,7 +15,9 @@
       "brace-expansion@2": "^2.1.6",
       "js-yaml@4": "^4.3.0",
       "form-data@2": "^2.5.4",
-      "swiper": "^12.1.2"
+      "swiper": "^12.1.2",
+      "follow-redirects": "^1.16.1",
+      "glob@10": "^10.5.0"
     }
   },
   "scripts": {
