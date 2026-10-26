@@ -96,6 +96,7 @@
 | T1.1 | T1 审阅修复：修复标记清除语义改 B + v10 补偿脚本 | 已完成 | 裁决「问题1 B」：仅实际录入腹胀才解除标记；关态保存写 null；补 `docs/migrations/local-db-v10-compensation.sql`（幂等）· `task/t1.1-bloat-flag-semantics` |
 | T1.2 | T1 审阅修复：疲劳开关关闭不残留滑块旧值 | 已完成 | 裁决「问题5 立疲劳小任务」：关态保存写 null；新增 `checkin_fatigue_ui_test` 回归 · `task/t1.2-fatigue-toggle-fix` |
 | T0.4 | 依赖安全治理（CI 门禁修复） | 已完成 | 裁决「T0.4 开工，2a，3a」：overrides 治本生产链 high+critical（--prod 门禁清零）；dev 链 patch 级修复；遗留项与 swiper 验证 BLOCKED 记录于 docs/dependency-audit-notes.md · `task/t0.4-dependency-audit` |
+| T0.5 | 修复 miniapp 构建 + swiper 限期集成验证 | 已完成 | 裁决「点名 T0.5；swiper 先保留限期验证」：补 babel.config.js + babel-preset-taro + 工作区 TS loader；build:weapp 编译成功，swiper 12.2.0 进产物验证通过；运行时验证随真机验收 · `task/t0.5-miniapp-build-fix` |
 | T2 | 修复检验来源标记失真 | 待办 | confirm 不恒写 skill；App 写入正确；三来源测试覆盖；旧数据不回填并说明 |
 | T3 | App 本地 Skill 缓存可读/可命中/可清理 | 待办 | 命中路径测试或可复现验证；清理/失效逻辑；不改服务端解析契约 |
 | T4 | 注射提醒提前天数可配置 | 待办 | 默认 3 天兼容；配置持久化；调度读配置；含提前 1 天/当天结构；设置页入口 |
@@ -120,6 +121,7 @@
 | T18 | 年度报告增强：年度指标趋势图、Web 年报只读/导出 | 待办 |
 | T19 | 解析 Skill 夯实：check_fn 统一异常判定、multiline 执行、accuracy 统计口径 | 待办 |
 | T20 | 小程序订阅消息模板接入 | 阻塞（缺微信 appid/模板 ID，见 P8.4） |
+| T21 | dev 工具链升级（Taro/Vite/webpack 链）+ 门禁收紧 | 待办 | 裁决（2026-10-26）：**P1 之后执行**；消化 docs/dependency-audit-notes.md 遗留 11 项后，CI 门禁收紧回全量 `pnpm audit --audit-level=high` |
 
 ### P8.3 · Phase 1 设计文档（G0 通过后执行；只写 docs，不写业务代码）
 
@@ -188,6 +190,7 @@
 | 2026-10 | T1.1 | 已完成 | 裁决「问题1 B」落地：修复标记仅在实际录入腹胀时清除（关态保存写 null）；v10 补偿脚本入库（幂等）；flutter test 107 全过、analyze 0 warning/0 error |
 | 2026-10 | T1.2 | 已完成 | 裁决「问题5」疲劳小任务：开关关闭不再残留滑块旧值（关态写 null）；checkin_fatigue_ui_test 3 用例；flutter test 110 全过、analyze 0 warning/0 error |
 | 2026-10 | T0.4 | 已完成 | 依赖安全治理：生产链 10 项 + dev 链 2 项 overrides（多主版本定向不误伤）；全量漏洞 106→73、生产 high/critical 清零；CI 门禁改 --prod（裁决 2a）；swiper override 12.2.0 落地、构建集成验证因既有 miniapp 构建损坏 BLOCKED（见 docs/dependency-audit-notes.md，建议 T0.5） |
+| 2026-10 | T0.5 | 已完成 | miniapp 构建修复（babel.config.js + babel-preset-taro + 工作区 TS loader 规则）：build:weapp 编译成功（基线对照证实损坏为既有问题）；swiper 12.2.0 构建集成验证过（进产物）；裁决 3 的"限期验证"达成，运行时验证并入真机验收；登记 T21（工具链升级→门禁收紧） |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 
