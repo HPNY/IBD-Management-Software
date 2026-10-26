@@ -244,7 +244,8 @@ class _SymptomPageState extends State<SymptomPage> {
       // T1.1（裁决 B）：仅实际录入腹胀才写非空值（非空值会解除修复标记）；
       // 开关关闭时写 null，避免误清标记，也避免残留滑块旧值。
       bloating: _bloatingFlag ? _bloating.round() : null,
-      fatigue: _fatigue.round(),
+      // T1.2：疲劳同构修复——开关关闭时不写滑块旧值，写 null（未记录）。
+      fatigue: _fatigueFlag ? _fatigue.round() : null,
       nausea: _nausea,
       overallFeeling: _feeling,
       urgency: _urgency,
