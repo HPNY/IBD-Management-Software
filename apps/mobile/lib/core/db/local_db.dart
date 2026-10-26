@@ -394,6 +394,9 @@ class LocalDb {
       // - 置空 bloating（原值等同 fatigue，信息无损）；
       // - data_flags bit0 标记该行曾被修复，UI 提示用户可补录；
       // - fatigue 等其余字段一律不动。
+      // 幂等：UPDATE 条件为 `bloating IS NOT NULL`，重入无副作用。
+      // 补偿/回退脚本：docs/migrations/local-db-v10-compensation.sql
+      // （按标记行从同行 fatigue 还原副本值，亦幂等）。
       await _addColumnIfMissing(
         db,
         'symptom_diaries',
