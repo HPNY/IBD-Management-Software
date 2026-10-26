@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/checkin/diary_severity.dart';
 import '../../core/checkin/quick_template.dart';
+import '../../core/db/local_db.dart';
 import '../../core/db/repositories.dart';
 import '../../core/ui/theme.dart';
 
@@ -41,6 +42,12 @@ class _SymptomPageState extends State<SymptomPage> {
   bool _nausea = false;
   bool _fatigueFlag = false;
   double _fatigue = 0;
+  // T1：腹胀独立字段（不再复用疲劳值）
+  bool _bloatingFlag = false;
+  double _bloating = 0;
+
+  /// 历史缺陷修复提示（data_flags bit0）：该日腹胀曾被误存为疲劳值并已置空。
+  bool _bloatResetNotice = false;
   String _feeling = 'same';
   bool _saved = false;
   bool _syncedToBathroom = false;
@@ -107,6 +114,13 @@ class _SymptomPageState extends State<SymptomPage> {
         final fatigue = ((row['fatigue'] as num?) ?? 0).toDouble();
         _fatigueFlag = fatigue > 0;
         _fatigue = fatigue;
+        final bloating = ((row['bloating'] as num?) ?? 0).toDouble();
+        _bloatingFlag = bloating > 0;
+        _bloating = bloating;
+        _bloatResetNotice =
+            (((row['data_flags'] as num?) ?? 0).toInt() &
+                kDataFlagBloatingReset) !=
+            0;
         _feeling = '${row['overall_feeling'] ?? 'same'}';
         // G2/G4 回读
         final ulcer = row['oral_ulcer'];
@@ -227,7 +241,7 @@ class _SymptomPageState extends State<SymptomPage> {
       diarrheaCount: _diarrhea,
       stoolType: _stoolType,
       bloodyStool: _blood,
-      bloating: _fatigue.round(),
+      bloating: _bloatingFlag ? _bloating.round() : 0,
       fatigue: _fatigue.round(),
       nausea: _nausea,
       overallFeeling: _feeling,
@@ -279,6 +293,8 @@ class _SymptomPageState extends State<SymptomPage> {
       _nausea = m['nausea'] == true;
       _fatigueFlag = m['fatigueFlag'] == true;
       _fatigue = (m['fatigue'] as num?)?.toDouble() ?? 0;
+      _bloatingFlag = m['bloatingFlag'] == true;
+      _bloating = (m['bloating'] as num?)?.toDouble() ?? 0;
       _feeling = '${m['overallFeeling'] ?? feeling}';
       _oralUlcer = m['oralUlcer'] == true;
       _jointPain = m['jointPain'] == true;
@@ -409,6 +425,23 @@ class _SymptomPageState extends State<SymptomPage> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               children: [
+                if (_bloatResetNotice) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7E0),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: IbdColors.warning),
+                    ),
+                    child: const Text(
+                      '数据修复提示：本日腹胀曾因历史缺陷被误存为疲劳值，'
+                      '已置空并标记；疲劳值不受影响。如需请补录腹胀，保存后本提示自动消失。',
+                      style: _hintStyle,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 if (_yesterday != null) ...[
                   _SectionCard(
                     title: '快捷模板',
@@ -852,6 +885,30 @@ class _SymptomPageState extends State<SymptomPage> {
                   child: Column(
                     children: [
                       _SwitchRow(
+                        label: '腹胀明显',
+                        hint: '肚子胀气、发紧或鼓胀',
+                        value: _bloatingFlag,
+                        onChanged: (v) => setState(() {
+                          _bloatingFlag = v;
+                          _saved = false;
+                        }),
+                      ),
+                      if (_bloatingFlag) ...[
+                        const SizedBox(height: 8),
+                        Text('腹胀 ${_bloating.round()} / 10', style: _hintStyle),
+                        Slider(
+                          key: const Key('symptom-bloating-slider'),
+                          value: _bloating,
+                          max: 10,
+                          divisions: 10,
+                          onChanged: (v) => setState(() {
+                            _bloating = v;
+                            _saved = false;
+                          }),
+                        ),
+                      ],
+                      const Divider(height: 1),
+                      _SwitchRow(
                         label: '恶心',
                         hint: '想吐或胃里翻腾',
                         value: _nausea,
@@ -874,6 +931,7 @@ class _SymptomPageState extends State<SymptomPage> {
                         const SizedBox(height: 8),
                         Text('疲劳 ${_fatigue.round()} / 10', style: _hintStyle),
                         Slider(
+                          key: const Key('symptom-fatigue-slider'),
                           value: _fatigue,
                           max: 10,
                           divisions: 10,

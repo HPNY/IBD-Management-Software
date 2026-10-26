@@ -21,6 +21,9 @@ Map<String, Object?> prefilledFromYesterday(
     'nausea': take('nausea') == 1 || take('nausea') == true,
     'fatigueFlag': ((take('fatigue') as num?) ?? 0) > 0,
     'fatigue': (take('fatigue') as num?)?.round() ?? 0,
+    // T1：腹胀独立字段（历史缺陷修复后旧行 bloating 为空，安全默认 0/关）
+    'bloatingFlag': ((take('bloating') as num?) ?? 0) > 0,
+    'bloating': (take('bloating') as num?)?.round() ?? 0,
     'overallFeeling': overallFeeling,
     // G2/G4 扩展（昨日旧数据无列时给安全默认）
     'oralUlcer': take('oral_ulcer') == 1 || take('oral_ulcer') == true,

@@ -262,6 +262,21 @@ class SymptomRepository {
         diarrheaCount != null;
 
     await db.transaction((txn) async {
+      // data_flags 随 replace 语义保留：未提供新腹胀值时沿用旧标记，
+      // 提供真实腹胀值（T1 修复后的新数据）则解除 bloating 修复标记。
+      final existingRows = await txn.query(
+        'symptom_diaries',
+        where: 'date = ?',
+        whereArgs: [date],
+        limit: 1,
+      );
+      var dataFlags = existingRows.isEmpty
+          ? 0
+          : ((existingRows.first['data_flags'] as num?) ?? 0).toInt();
+      if (bloating != null) {
+        dataFlags &= ~kDataFlagBloatingReset;
+      }
+
       await txn.insert(
         'symptom_diaries',
         {
@@ -273,6 +288,7 @@ class SymptomRepository {
           'bloody_stool': bloodyStool,
           'bloating': bloating,
           'fatigue': fatigue,
+          'data_flags': dataFlags,
           'nausea': nausea == null ? null : (nausea ? 1 : 0),
           'overall_feeling': overallFeeling,
           'urgency': urgency == null ? null : (urgency ? 1 : 0),

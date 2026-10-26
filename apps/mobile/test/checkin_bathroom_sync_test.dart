@@ -41,7 +41,8 @@ Future<Database> _openTestDb() async {
             sleep_insomnia INTEGER,
             night_wakes INTEGER,
             stress_level INTEGER,
-            stress_source TEXT
+            stress_source TEXT,
+            data_flags INTEGER NOT NULL DEFAULT 0
           )
         ''');
         await db.execute('''

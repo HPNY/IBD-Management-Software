@@ -6,6 +6,13 @@ import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import 'db_key_service.dart';
 
+/// 数据质量标记位（`symptom_diaries.data_flags`，位掩码）。
+///
+/// bit0（[kDataFlagBloatingReset]）：该行 `bloating` 曾因历史缺陷被误写为
+/// 疲劳值副本（见 v10 迁移），迁移已将其置空。原值未丢失（等同同行
+/// `fatigue`）。用户重新录入真实腹胀值后，保存时自动清除该标记。
+const kDataFlagBloatingReset = 1;
+
 /// 本地权威库（SQLCipher 全库加密）。
 /// 密钥在 Keystore/Keychain，不在 SharedPreferences。
 class LocalDb {
@@ -38,7 +45,7 @@ class LocalDb {
       final db = await openDatabase(
         path,
         password: password,
-        version: 9,
+        version: 10,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
         },
@@ -378,6 +385,27 @@ class LocalDb {
       await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_drug_reviews_drug ON drug_reviews (drug_name)',
       );
+    }
+    if (from < 10) {
+      // T1：修复 bloating 历史缺陷。
+      // 缺陷：symptom_page 旧代码保存时写 `bloating: _fatigue.round()`（dd2e519 起），
+      // 即所有非空 bloating 均为同行 fatigue 的副本，从未有合法腹胀值入库
+      // （此前版本不写该列）。迁移按「置空 + 标记」修复，不静默覆盖：
+      // - 置空 bloating（原值等同 fatigue，信息无损）；
+      // - data_flags bit0 标记该行曾被修复，UI 提示用户可补录；
+      // - fatigue 等其余字段一律不动。
+      await _addColumnIfMissing(
+        db,
+        'symptom_diaries',
+        'data_flags',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute('''
+        UPDATE symptom_diaries
+        SET bloating = NULL,
+            data_flags = COALESCE(data_flags, 0) | $kDataFlagBloatingReset
+        WHERE bloating IS NOT NULL
+      ''');
     }
   }
 
