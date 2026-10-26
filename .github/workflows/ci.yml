@@ -31,8 +31,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-        - name: Dependency audit (high+)
-          run: pnpm audit --audit-level=high
+      - name: Dependency audit (high+)
+        run: pnpm audit --audit-level=high
 
       - name: Build API
         run: pnpm --filter @ibd/api build
