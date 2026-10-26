@@ -57,7 +57,7 @@ void main() {
     bathroom = FakeBathroomRepository(store);
   });
 
-  testWidgets('仅填疲劳时，腹胀保存为 0（不再复制疲劳值）', (tester) async {
+  testWidgets('仅填疲劳时，腹胀不写值（null，不再复制疲劳值）', (tester) async {
     await pumpSymptom(tester, symptoms, bathroom);
 
     await scrollToAndTap(tester, find.text('疲劳感明显'));
@@ -70,8 +70,24 @@ void main() {
 
     final diary = store.symptoms[uiTodayIso()]!;
     expect(diary['fatigue'], 10);
-    // T1 核心回归：bloating 不得等于/复制 fatigue
-    expect(diary['bloating'], 0);
+    // T1 核心回归：bloating 不得等于/复制 fatigue；T1.1：关态不写值
+    expect(diary['bloating'], isNull);
+  });
+
+  testWidgets('腹胀滑块拖动后关闭开关，保存不残留旧值', (tester) async {
+    await pumpSymptom(tester, symptoms, bathroom);
+
+    await scrollToAndTap(tester, find.text('腹胀明显'));
+    await tester.drag(
+      find.byKey(const Key('symptom-bloating-slider')),
+      const Offset(300, 0),
+    );
+    await tester.pump();
+    await scrollToAndTap(tester, find.text('腹胀明显')); // 关闭开关
+    await scrollToAndTap(tester, find.text('保存今日打卡'));
+
+    final diary = store.symptoms[uiTodayIso()]!;
+    expect(diary['bloating'], isNull);
   });
 
   testWidgets('腹胀与疲劳独立录入并分别保存', (tester) async {

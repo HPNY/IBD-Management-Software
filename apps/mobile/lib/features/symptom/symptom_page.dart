@@ -241,7 +241,9 @@ class _SymptomPageState extends State<SymptomPage> {
       diarrheaCount: _diarrhea,
       stoolType: _stoolType,
       bloodyStool: _blood,
-      bloating: _bloatingFlag ? _bloating.round() : 0,
+      // T1.1（裁决 B）：仅实际录入腹胀才写非空值（非空值会解除修复标记）；
+      // 开关关闭时写 null，避免误清标记，也避免残留滑块旧值。
+      bloating: _bloatingFlag ? _bloating.round() : null,
       fatigue: _fatigue.round(),
       nausea: _nausea,
       overallFeeling: _feeling,
@@ -436,7 +438,7 @@ class _SymptomPageState extends State<SymptomPage> {
                     ),
                     child: const Text(
                       '数据修复提示：本日腹胀曾因历史缺陷被误存为疲劳值，'
-                      '已置空并标记；疲劳值不受影响。如需请补录腹胀，保存后本提示自动消失。',
+                      '已置空并标记；疲劳值不受影响。补录腹胀并保存后本提示消失。',
                       style: _hintStyle,
                     ),
                   ),

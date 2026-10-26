@@ -93,6 +93,7 @@
 | T0.2 | Phase 0/1 计划登记入 worklist | 已完成 | 本节入库（P8.1–P8.4） |
 | T0.3 | 项目级软件工程强制约束落盘 | 已完成 | 用户点名最高优先级；约束全文原样入库 `docs/engineering-constraints.md`，声明项目级生效 |
 | T1 | 修复症状日记 bloating 缺陷 | 已完成 | 腹胀独立录入/展示/保存；历史数据迁移置空+标记（不静默覆盖）；回归测试；迁移策略说明 · 库 v9→v10 · `fix/phase0-t1-bloating` |
+| T1.1 | T1 审阅修复：修复标记清除语义改 B + v10 补偿脚本 | 已完成 | 裁决「问题1 B」：仅实际录入腹胀才解除标记；关态保存写 null；补 `docs/migrations/local-db-v10-compensation.sql`（幂等）· `task/t1.1-bloat-flag-semantics` |
 | T2 | 修复检验来源标记失真 | 待办 | confirm 不恒写 skill；App 写入正确；三来源测试覆盖；旧数据不回填并说明 |
 | T3 | App 本地 Skill 缓存可读/可命中/可清理 | 待办 | 命中路径测试或可复现验证；清理/失效逻辑；不改服务端解析契约 |
 | T4 | 注射提醒提前天数可配置 | 待办 | 默认 3 天兼容；配置持久化；调度读配置；含提前 1 天/当天结构；设置页入口 |
@@ -182,6 +183,7 @@
 | 2026-10 | T0.2 | 已完成 | Phase 0/1 路线计划登记入 worklist（P8.1–P8.4：T0–T20、D1–D4、裁决记录、BLOCKED 清单） |
 | 2026-10 | T1 | 已完成 | bloating 误写疲劳值修复：库 v9→v10 迁移（脏值置空 + data_flags bit0 标记，不静默覆盖）、腹胀独立 UI/保存/快捷模板、修复提示卡；新增 8 项回归测试，flutter test 106 全过、analyze 0 warning/0 error |
 | 2026-10 | T0.3 | 已完成 | 用户点名最高优先级：软件工程强制约束落盘为 `docs/engineering-constraints.md`（项目级生效，原样入库不改写）；worklist 登记 |
+| 2026-10 | T1.1 | 已完成 | 裁决「问题1 B」落地：修复标记仅在实际录入腹胀时清除（关态保存写 null）；v10 补偿脚本入库（幂等）；flutter test 107 全过、analyze 0 warning/0 error |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 
