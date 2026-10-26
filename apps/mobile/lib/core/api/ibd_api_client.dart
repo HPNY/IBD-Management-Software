@@ -44,6 +44,7 @@ class ParseJobDto {
     required this.status,
     required this.objectKey,
     this.items = const [],
+    this.engine,
     this.error,
   });
 
@@ -51,6 +52,9 @@ class ParseJobDto {
   final String status;
   final String objectKey;
   final List<dynamic> items;
+
+  /// T2：解析引擎（skill|ai）；旧任务无此字段（服务端迁移前的历史数据）
+  final String? engine;
   final String? error;
 
   factory ParseJobDto.fromJson(Map<String, dynamic> json) {
@@ -59,6 +63,7 @@ class ParseJobDto {
       status: (json['status'] as String?) ?? 'queued',
       objectKey: (json['objectKey'] as String?) ?? '',
       items: (json['items'] as List?) ?? const [],
+      engine: json['engine'] as String?,
       error: json['error'] as String?,
     );
   }

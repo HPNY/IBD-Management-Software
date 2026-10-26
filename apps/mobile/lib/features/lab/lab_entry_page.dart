@@ -33,6 +33,7 @@ class LabEntryPage extends StatefulWidget {
     this.parseFiller,
     this.emphasizeParse = false,
     this.seedParsedItems,
+    this.seedParsedEngine,
   });
 
   final LabRepository? labRepo;
@@ -45,6 +46,9 @@ class LabEntryPage extends StatefulWidget {
 
   /// 测试：预置解析结果，跳过选文件/上传。
   final List<Map<String, dynamic>>? seedParsedItems;
+
+  /// T2：seed 解析结果对应的引擎（skill|ai），测试注入用
+  final String? seedParsedEngine;
 
   @override
   State<LabEntryPage> createState() => _LabEntryPageState();
@@ -103,6 +107,9 @@ class _LabEntryPageState extends State<LabEntryPage> {
   Uint8List? _bytes;
   String _stage = 'idle';
   bool _parseUsed = false;
+
+  /// T2：解析引擎（skill|ai）；保存时决定 source 三值中的 skill/ai 档
+  String? _parseEngine;
   String? _parseSkillNote;
   bool _busy = false;
   String? _error;
@@ -130,12 +137,16 @@ class _LabEntryPageState extends State<LabEntryPage> {
     if (seed != null && seed.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _applyParsedItems(seed);
+        _applyParsedItems(seed, engine: widget.seedParsedEngine);
       });
     }
   }
 
-  void _applyParsedItems(List<Map<String, dynamic>> items) {
+  void _applyParsedItems(
+    List<Map<String, dynamic>> items, {
+    String? engine,
+  }) {
+    if (engine != null) _parseEngine = engine;
     for (final p in _parsedItems) {
       p.dispose();
     }
@@ -333,6 +344,8 @@ class _LabEntryPageState extends State<LabEntryPage> {
         onProgress: (p) => onProgress?.call(p.stage),
       );
       final done = await upload.waitUntilDone(job.id);
+      // T2：记录真实解析引擎（skill|ai），保存时如实标记来源
+      _parseEngine = done.engine;
       // 用完即删：解析完成后立即删除云端 PDF 原件
       if (!job.objectKey.startsWith('inline://')) {
         try {
@@ -445,7 +458,9 @@ class _LabEntryPageState extends State<LabEntryPage> {
       final id = await _repo.insert(
         date: _dateCtrl.text.trim(),
         hospital: hospital.isEmpty ? null : hospital,
-        source: usedParse && _parseUsed ? 'ai' : 'manual',
+        source: usedParse && _parseUsed
+            ? (_parseEngine == 'skill' ? 'skill' : 'ai')
+            : 'manual',
         items: items,
       );
       _parseSkillNote = null;

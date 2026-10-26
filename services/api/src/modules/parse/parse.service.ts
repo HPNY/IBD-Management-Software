@@ -7,6 +7,7 @@ import { ParseJobEntity } from "../../database/entities";
 import { LabService } from "../lab/lab.service";
 import { PatientService } from "../patient/patient.service";
 import { SkillService } from "../skill/skill.service";
+import { normalizeParseEngine, resolveLabSource } from "./parse-source";
 import { StorageService } from "../../storage/storage.service";
 import { PARSE_QUEUE } from "./parse.constants";
 
@@ -190,7 +191,9 @@ export class ParseService {
       date,
       hospital: job.hospitalHint ?? undefined,
       items: input.items,
-      source: "skill",
+      // T2：来源按解析任务真实引擎写入（skill|ai），不再恒写 skill；
+      // 旧任务兼容回退见 parse-source.ts（旧数据不回填）。
+      source: resolveLabSource(job),
       deviceId: input.deviceId || "confirm",
     });
 
@@ -269,6 +272,8 @@ export class ParseService {
       status: result.error ? "failed" : "done",
       items: result.items ?? [],
       skillVersionId: result.skillVersion ?? null,
+      // T2：持久化真实引擎（skill|ai|ai-empty→ai），confirm 写 source 的依据
+      engine: normalizeParseEngine(result.engine),
       error: result.error ?? null,
       reportDate,
     });
