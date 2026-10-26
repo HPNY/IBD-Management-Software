@@ -33,9 +33,10 @@ dev 链 patch 级：follow-redirects 1.16.x、glob@10 10.5.x。
 
 - ✅ `pnpm audit --prod --audit-level=high`：0 high/critical（12 moderate）。
 - ✅ `pnpm build:api`、全仓 `pnpm typecheck`（5 包）、6 项 API smoke：全过。
-- ⚠️ **swiper 12 override 的小程序构建集成验证 BLOCKED**：`apps/miniapp` 构建在**无 override 基线**上同样失败（babel-loader 解析 `src/app.ts` TSX 报 `Unexpected token`）——仓库从未包含 babel.config（git 全历史为空），属**既有构建损坏**，与本任务无关。替代证据：依赖解析正确（锁文件 swiper@12.2.0）、typecheck 通过、生产审计清零。待 Taro 构建修复任务（建议 T0.5）完成后补做 `build:weapp` 集成验证；若届时 swiper 12 不兼容，按裁决 3a 备选回退为 ignoreCves 豁免并记录。
+- ✅ **swiper 12 override 构建集成验证（T0.5 内完成，符合"限期验证"裁决）**：miniapp 构建已修复（补 babel.config.js + babel-preset-taro + 工作区 TS loader 规则），`build:weapp` 编译成功，产物 `dist/taro.js` 含 swiper 12.2.0 编译代码、`dist/common.js` 含 @ibd/api-client 运行时代码。
+- ⚠️ 遗留（既有 BLOCKED）：swiper 12 的**运行时**行为需微信开发者工具/真机验证，随 T2.4/T2.5 真机验收执行。
 
 ## 后续建议
 
-- T0.5（待点名）：修复 miniapp 构建（补 babel.config/babel-preset-taro），随后补 swiper 集成验证。
-- 工具链升级任务（Taro/Vite/webpack 链）消化上表遗留项后再收紧门禁为全量 high。
+- ~~T0.5：修复 miniapp 构建~~ **已完成**（2026-10-26，`task/t0.5-miniapp-build-fix`）。
+- T21（裁决 3，P1 之后执行）：dev 工具链升级（Taro/Vite/webpack 链）消化上表遗留项，**完成后门禁收紧回全量 `pnpm audit --audit-level=high`**。
