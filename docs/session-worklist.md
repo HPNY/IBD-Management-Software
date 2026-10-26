@@ -219,5 +219,6 @@ equestSubscribeMessage 参数按微信语义断言（规避 Taro 类型 entityId
 | T2.8 | 真机/模拟器 UI 回归（analyze 通过后） | 已完成 | Widget 回归全过（五 Tab/设置大字/语言/诊断）· 真机残留见 T2.4/T2.5 |
 | T2.9 | 清理 info：`const FirebaseOptions` · Radio 弃用改 RadioGroup | 已完成 | analyze **No issues found** |
 | T4.2a | T4.2 清单措辞：与真上传行为一致 | 已完成 | 已改为「真上传链路」描述 |
+| SWIPER-R1 | swiper 12 override 运行时真机兼容（限期验证风险项） | 进行中 | 裁决（2026-10-26）：接受风险、不直接豁免；**owner：lead（协调）+ 真机执行人待指派；截止 2026-11-09**；矩阵/场景/回滚预案见 [audit-evidence/t05-build-and-swiper.md](audit-evidence/t05-build-and-swiper.md)；逾期未验立即上报裁决 |
 
 **规范提醒**：任何新增工作（含审阅遗留、bugfix、文档）必须**同时**写入本清单（ID/任务/状态/验收），避免会话切换丢失。
