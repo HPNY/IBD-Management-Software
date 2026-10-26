@@ -116,6 +116,7 @@
 | 2026-10 | R0.4/R0.5 | 已完成 | 装 git/node20/pnpm9/python3.12 工具链跑通全链路验证；清 5 处既有 analyze warning（含 my_doctors_page 未用 import） |
 | 2026-10 | R0.6 | 已完成 | miniapp wx 类型错误清零：miniprogram-api-typings + tsconfig types + requestSubscribeMessage 断言；全仓 typecheck 5 包全绿 |
 | 2026-10 | R0.7 | 已完成 | README 英文化：英文为主 README.md + 中文 README.zh-CN.md 互链；两版对齐 |
+| 2026-10 | prd-v1.1 | 已完成 | PRD×代码全量对照审计（证据存 var/prd-audit/ 三份报告）+ 输出中英 V1.1 修订版 PRD（docs/IBD病程管理程序PRD-v1.1.md、docs/IBD-Disease-Course-Management-PRD-v1.1.md）；原 V1.0 PRD 保留不动 |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 
