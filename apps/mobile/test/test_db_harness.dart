@@ -2,7 +2,7 @@ import 'package:ibd_mobile/core/db/repositories.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// Widget 测试用：桌面临时 SQLite，schema 对齐 local_db v6。
+/// Widget 测试用：桌面临时 SQLite，schema 对齐 local_db v10。
 class TestDbHarness {
   TestDbHarness._(this.db, this.symptoms, this.bathroom);
 
@@ -47,7 +47,8 @@ class TestDbHarness {
               sleep_insomnia INTEGER,
               night_wakes INTEGER,
               stress_level INTEGER,
-              stress_source TEXT
+              stress_source TEXT,
+              data_flags INTEGER NOT NULL DEFAULT 0
             )
           ''');
           await db.execute('''
