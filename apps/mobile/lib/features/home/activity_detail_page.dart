@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/activity/activity_service.dart';
 import '../../core/db/repositories.dart';
+import '../../core/ui/disclaimer.dart';
 import '../../core/ui/theme.dart';
 import '../injection/injection_page.dart';
 import '../medication/medication_page.dart';
@@ -442,6 +443,8 @@ class _ScoreTrendCard extends StatelessWidget {
                       color: IbdColors.textSecondary,
                     ),
                   ),
+                // T7：非诊断/非治疗声明
+                const DisclaimerFooter(),
               ],
             ),
     );

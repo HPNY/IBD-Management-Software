@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/flare/flare_service.dart';
+import '../../core/ui/disclaimer.dart';
 import '../../core/ui/theme.dart';
 
 class FlarePage extends StatefulWidget {
@@ -140,6 +141,8 @@ class _FlarePageState extends State<FlarePage> {
                       onPressed: _busy ? null : _load,
                       child: Text(_busy ? '评估中…' : '重新评估'),
                     ),
+                    // T7：非诊断/非治疗声明
+                    const DisclaimerFooter(),
                   ],
                 ),
     );
