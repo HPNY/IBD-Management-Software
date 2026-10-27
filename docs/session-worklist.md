@@ -98,6 +98,7 @@
 | T0.4 | 依赖安全治理（CI 门禁修复） | 已完成 | 裁决「T0.4 开工，2a，3a」：overrides 治本生产链 high+critical（--prod 门禁清零）；dev 链 patch 级修复；遗留项与 swiper 验证 BLOCKED 记录于 docs/dependency-audit-notes.md · `task/t0.4-dependency-audit` |
 | T0.5 | 修复 miniapp 构建 + swiper 限期集成验证 | 已完成 | 裁决「点名 T0.5；swiper 先保留限期验证」：补 babel.config.js + babel-preset-taro + 工作区 TS loader；build:weapp 编译成功，swiper 12.2.0 进产物验证通过；运行时验证随真机验收 · `task/t0.5-miniapp-build-fix` |
 | T2 | 修复检验来源标记失真 | 已完成 | confirm 按任务真实引擎写 source（skill\|ai）；App 三档标记；旧数据不回填（裁决④）；smoke:parse-source 9 断言 + 迁移行为级探针 + flutter 111 全过 · 证据 docs/audit-evidence/t2-lab-source.md · `task/t2-lab-source-accuracy` |
+| T0.6 | 优先修复红 CI：AuthModule DI 接线（R0.13 遗留） | 进行中 | 裁决「CI 红优先修复」：TypeOrmModule.forFeature 补 DevicePubKeyEntity（AuthService 注入缺失致 API 启动失败、E2E 红）；启动探针证实 DI 恢复 · `task/t0.6-auth-di-fix` |
 | T3 | App 本地 Skill 缓存可读/可命中/可清理 | 待办 | 命中路径测试或可复现验证；清理/失效逻辑；不改服务端解析契约 |
 | T4 | 注射提醒提前天数可配置 | 待办 | 默认 3 天兼容；配置持久化；调度读配置；含提前 1 天/当天结构；设置页入口 |
 | T5 | 医生端患者侧建议/审计接真实 API | 待办 | 真实数据可见；scope 不泄露未授权数据；空态/错误降级；测试或可复现验证 |
