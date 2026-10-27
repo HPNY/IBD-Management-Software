@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -13,6 +14,7 @@ import '../../core/identity/local_identity.dart';
 import '../../core/lab/lab_panels.dart';
 import '../../core/lab/lab_parse_mapper.dart';
 import '../../core/skill/local_skill_store.dart';
+import '../../core/skill/skill_matcher.dart';
 import '../../core/storage/direct_upload_service.dart';
 
 /// 解析填充：返回规范化的检验项列表（不直接落库）。
@@ -244,6 +246,36 @@ class _LabEntryPageState extends State<LabEntryPage> {
       setState(() => _error = '请先选择报告文件');
       return;
     }
+
+    // T3：文本报告优先走本地 Skill 快速通道——文件不出设备、不上传。
+    // 未命中/非 txt/缓存失效 → 保持原云端解析链路不变（安全回退）。
+    if (name.toLowerCase().endsWith('.txt')) {
+      final hospital = _hospitalCtrl.text.trim();
+      final reportType = _reportTypeCtrl.text.trim();
+      if (hospital.isNotEmpty && reportType.isNotEmpty) {
+        final skill = await LocalSkillStore.load(hospital, reportType);
+        if (skill != null) {
+          final hit = matchSkill(
+            utf8.decode(bytes, allowMalformed: true),
+            skill,
+          );
+          if (hit.isFullHit) {
+            _applyParsedItems(hit.items, engine: 'skill');
+            if (mounted) {
+              setState(() {
+                _stage = 'filled';
+                _ok = '本地 Skill 模板快速命中（${hit.items.length} 项）：文件未上传';
+                _error = null;
+              });
+            }
+            return;
+          }
+        }
+      }
+    }
+
+    // 本地快速通道为异步（SharedPreferences），回到上传确认前守卫 mounted
+    if (!mounted) return;
 
     final identity = context.read<LocalIdentity>();
     final confirmed = await showDialog<bool>(

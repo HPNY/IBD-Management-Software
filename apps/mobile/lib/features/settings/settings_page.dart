@@ -42,6 +42,9 @@ class _SettingsPageState extends State<SettingsPage> {
   String? _message;
   Map<String, Object?>? _dbProbe;
 
+  /// T3：本地 Skill 缓存计数（清理后重建以刷新）
+  Future<int> _skillCountF = LocalSkillStore.count();
+
   @override
   void initState() {
     super.initState();
@@ -80,6 +83,36 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _onPushChanged() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _clearSkillCache() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('清理本地 Skill 缓存？'),
+        content: const Text(
+          '将删除本机保存的解析模板缓存（不含检验数据）。\n'
+          '下次解析会走云端，确认后可重新生成。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('清理'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await LocalSkillStore.clearAll();
+    if (!mounted) return;
+    setState(() {
+      _skillCountF = LocalSkillStore.count();
+      _message = '本地 Skill 缓存已清理';
+    });
   }
 
   Future<void> _loadDbProbe() async {
@@ -385,12 +418,22 @@ class _SettingsPageState extends State<SettingsPage> {
               subtitle: const Text(
                 '未配置 LLM_API_KEY 时走 Skill；否则 Skill 未命中走 LLM',
               ),
-              trailing: FutureBuilder<int>(
-                future: LocalSkillStore.count(),
-                builder: (c, snap) => Text(
-                  'Skill ${snap.data ?? 0}',
-                  style: const TextStyle(fontSize: 12),
-                ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FutureBuilder<int>(
+                    future: _skillCountF,
+                    builder: (c, snap) => Text(
+                      'Skill ${snap.data ?? 0}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: '清理本地 Skill 缓存',
+                    icon: const Icon(Icons.delete_sweep_outlined, size: 20),
+                    onPressed: _clearSkillCache,
+                  ),
+                ],
               ),
             ),
           ),
