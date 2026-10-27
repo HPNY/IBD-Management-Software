@@ -3,8 +3,14 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 端上 Skill 缓存：确认解析后，下次同院同类型可本地快速匹配提示。
+///
+/// T3：可读（load 接入 txt 快速通道）、可清理（clear/clearAll）、
+/// 可失效（formatVersion 不识别或损坏 JSON 一律视为无缓存，安全回落云端）。
 class LocalSkillStore {
   static const _kPrefix = 'ibd_skill_v1_';
+
+  /// 缓存内容格式版本；不识别的版本 load() 返回 null（失效）。
+  static const formatVersion = 1;
 
   static String key(String hospital, String reportType) =>
       '$_kPrefix${hospital}__$reportType';
@@ -33,6 +39,7 @@ class LocalSkillStore {
     final content = {
       'hospital': hospital,
       'report_type': reportType,
+      'formatVersion': formatVersion,
       'savedAt': DateTime.now().toIso8601String(),
       'date': date,
       'items': rules,
@@ -57,9 +64,26 @@ class LocalSkillStore {
     final raw = sp.getString(key(hospital, reportType));
     if (raw == null) return null;
     try {
-      return jsonDecode(raw) as Map<String, dynamic>;
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      // 失效逻辑：格式不识别（含 T3 之前无 formatVersion 的旧缓存）→ 视为无缓存
+      if (decoded['formatVersion'] != formatVersion) return null;
+      return decoded;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// 清理单个医院/报告类型的缓存。
+  static Future<void> clear(String hospital, String reportType) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.remove(key(hospital, reportType));
+  }
+
+  /// 清理全部本地 Skill 缓存。
+  static Future<void> clearAll() async {
+    final sp = await SharedPreferences.getInstance();
+    for (final k in sp.getKeys().where((k) => k.startsWith(_kPrefix))) {
+      await sp.remove(k);
     }
   }
 
