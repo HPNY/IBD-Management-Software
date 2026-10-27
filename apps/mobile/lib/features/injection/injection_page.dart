@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/db/repositories.dart';
 import '../../core/injection/drug_catalog.dart';
-import '../../core/notify/local_notify.dart';
-import '../../core/notify/reminder_prefs.dart';
+import '../../core/notify/reminder_scheduler.dart';
 import '../../core/ui/theme.dart';
 
 /// 注射排期：两级药品 + 起始日 + 间隔（天/周）+ 日历标注
@@ -129,14 +128,9 @@ class _InjectionPageState extends State<InjectionPage> {
             'notes': '${cat.mechanism} · 每 $interval $_unit',
           },
       ]);
-      final pending = await _repo.listPending(withinDays: 120);
       final rows = await _repo.listAll();
-      // T4：调度读取用户配置的提前量集合（默认提前 3 天，兼容旧行为）
-      final leads = await ReminderPrefs.loadInjectionLeads();
-      await LocalNotifyService.instance.scheduleInjectionReminders(
-        pending,
-        leads: leads,
-      );
+      // T6：统一调度入口（注射/用药/复查一次重排，文案脱敏）
+      await ReminderScheduler.syncAll();
       if (!mounted) return;
       setState(() => _rows = rows);
       ScaffoldMessenger.of(context).showSnackBar(

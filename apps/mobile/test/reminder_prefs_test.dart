@@ -36,6 +36,67 @@ void main() {
       await sp.setString('ibd_reminder_injection_leads', 'x,y,zz');
       expect(await ReminderPrefs.loadInjectionLeads(), {3});
     });
+
+    // ---- T6：用药 / 复查配置 ----
+
+    test('用药提醒默认关、时刻默认 9', () async {
+      expect(await ReminderPrefs.loadMedicationEnabled(), isFalse);
+      expect(await ReminderPrefs.loadMedicationHour(), 9);
+    });
+
+    test('用药提醒开关/时刻往返 + 时刻归一化', () async {
+      await ReminderPrefs.saveMedicationEnabled(true);
+      await ReminderPrefs.saveMedicationHour(21);
+      expect(await ReminderPrefs.loadMedicationEnabled(), isTrue);
+      expect(await ReminderPrefs.loadMedicationHour(), 21);
+      await ReminderPrefs.saveMedicationHour(99);
+      expect(await ReminderPrefs.loadMedicationHour(), 9);
+      expect(ReminderPrefs.normalizeHour(-1), 9);
+      expect(ReminderPrefs.normalizeHour(0), 0);
+      expect(ReminderPrefs.normalizeHour(23), 23);
+    });
+
+    test('复查提醒条目往返；非法条目被过滤', () async {
+      await ReminderPrefs.saveFollowups([
+        {'id': 'f1', 'date': '2026-11-03', 'hour': 8},
+        {'id': 'f2', 'date': 'bad-date', 'hour': 8}, // 非法
+        {'id': 'f3', 'date': '2026-12-01'}, // 无 hour 视为默认
+      ]);
+      final loaded = await ReminderPrefs.loadFollowups();
+      expect(loaded.map((e) => e['id']).toList(), ['f1', 'f3']);
+    });
+
+    test('复查提醒损坏 JSON 安全回退空列表', () async {
+      final sp = await SharedPreferences.getInstance();
+      await sp.setString('ibd_reminder_followups', '{broken');
+      expect(await ReminderPrefs.loadFollowups(), isEmpty);
+    });
+  });
+
+  group('T6 调度时刻纯函数', () {
+    test('medicationDailyAnchor：今日未到点取今日，已过取明日', () {
+      final now = DateTime(2026, 11, 3, 8);
+      expect(medicationDailyAnchor(now, 9), DateTime(2026, 11, 3, 9));
+      expect(medicationDailyAnchor(now, 7), DateTime(2026, 11, 4, 7));
+      expect(medicationDailyAnchor(now, 99), DateTime(2026, 11, 3, 9));
+    });
+
+    test('followupFireTimes：按 date+hour，过期条目跳过', () {
+      final now = DateTime(2026, 11, 1, 8);
+      final times = followupFireTimes(
+        [
+          {'id': 'f1', 'date': '2026-11-03', 'hour': 8},
+          {'id': 'f2', 'date': '2026-10-01', 'hour': 8}, // 过期
+          {'id': 'f3', 'date': '2026-11-03', 'hour': 20},
+          {'id': 'f4', 'date': 'bad'}, // 非法
+        ],
+        now: now,
+      );
+      expect(times, [
+        DateTime(2026, 11, 3, 8),
+        DateTime(2026, 11, 3, 20),
+      ]);
+    });
   });
 
   group('injectionReminderFireTimes', () {

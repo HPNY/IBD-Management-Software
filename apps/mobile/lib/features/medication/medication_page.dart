@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/db/repositories.dart';
+import '../../core/notify/reminder_scheduler.dart';
 import '../../core/ui/theme.dart';
 import '../injection/injection_page.dart';
 import 'medication_checkin_page.dart';
@@ -82,6 +83,8 @@ class _MedicationPageState extends State<MedicationPage> {
     );
     if (ok != true) return;
     await _meds.stop(med['id'] as String, reason: reason.text.trim());
+    // T6：用药变更后重排提醒（用药/注射/复查）
+    await ReminderScheduler.syncAll();
     await _load();
   }
 

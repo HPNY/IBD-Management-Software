@@ -9,10 +9,9 @@ import '../../core/api/sync_api.dart';
 import '../../core/auth/auth_session.dart';
 import '../../core/backup/backup_service.dart';
 import '../../core/db/local_db.dart';
-import '../../core/db/repositories.dart';
 import '../../core/identity/local_identity.dart';
-import '../../core/notify/local_notify.dart';
 import '../../core/notify/reminder_prefs.dart';
+import '../../core/notify/reminder_scheduler.dart';
 import '../../core/push/push_bootstrap.dart';
 import '../../core/push/push_service.dart';
 import '../../core/skill/local_skill_store.dart';
@@ -51,6 +50,11 @@ class _SettingsPageState extends State<SettingsPage> {
   /// T4：注射提醒提前量配置（默认 {3} 兼容旧行为）
   Set<int> _injLeads = ReminderPrefs.defaultInjectionLeads;
 
+  /// T6：用药/复查提醒配置
+  bool _medReminders = false;
+  int _medHour = 9;
+  List<Map<String, dynamic>> _followups = [];
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +66,16 @@ class _SettingsPageState extends State<SettingsPage> {
     // T4：读取注射提醒提前量配置（默认 {3}）
     ReminderPrefs.loadInjectionLeads().then((v) {
       if (mounted) setState(() => _injLeads = v);
+    });
+    // T6：读取用药/复查提醒配置
+    ReminderPrefs.loadMedicationEnabled().then((v) {
+      if (mounted) setState(() => _medReminders = v);
+    });
+    ReminderPrefs.loadMedicationHour().then((v) {
+      if (mounted) setState(() => _medHour = v);
+    });
+    ReminderPrefs.loadFollowups().then((v) {
+      if (mounted) setState(() => _followups = v);
     });
     // 异步升级到 FCM 真令牌；失败则保持 local 占位
     createPushService(identity: context.read<LocalIdentity>()).then((p) {
@@ -136,18 +150,92 @@ class _SettingsPageState extends State<SettingsPage> {
     );
     if (ok != true) return;
     await ReminderPrefs.saveInjectionLeads(temp);
-    // 保存后立即按新配置重排现有待打提醒（调度读取配置）
+    // T6：统一调度入口重排（注射/用药/复查）
     final saved = await ReminderPrefs.loadInjectionLeads();
-    final pending = await InjectionRepository().listPending(withinDays: 120);
-    await LocalNotifyService.instance.scheduleInjectionReminders(
-      pending,
-      leads: saved,
-    );
+    await ReminderScheduler.syncAll();
     if (!mounted) return;
     setState(() {
       _injLeads = saved;
       _message = '注射提醒已按「${formatInjectionLeads(saved)}」重排';
     });
+  }
+
+  Future<void> _toggleMedicationReminders(bool v) async {
+    await ReminderPrefs.saveMedicationEnabled(v);
+    await ReminderScheduler.syncAll();
+    if (!mounted) return;
+    setState(() {
+      _medReminders = v;
+      _message = v ? '用药提醒已开启（每日 $_medHour:00，通用文案）' : '用药提醒已关闭';
+    });
+  }
+
+  Future<void> _pickMedicationHour() async {
+    var temp = _medHour;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('用药提醒时刻'),
+          content: Slider(
+            value: temp.toDouble(),
+            min: 0,
+            max: 23,
+            divisions: 23,
+            label: '$temp:00',
+            onChanged: (v) => setLocal(() => temp = v.round()),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('保存'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    await ReminderPrefs.saveMedicationHour(temp);
+    await ReminderScheduler.syncAll();
+    if (!mounted) return;
+    setState(() {
+      _medHour = temp;
+      _message = '用药提醒时刻已改为 $temp:00';
+    });
+  }
+
+  Future<void> _addFollowup() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 7)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked == null) return;
+    final date = picked.toIso8601String().substring(0, 10);
+    final next = [
+      ..._followups,
+      {'id': 'fup-${DateTime.now().microsecondsSinceEpoch}', 'date': date, 'hour': 9},
+    ];
+    await ReminderPrefs.saveFollowups(next);
+    await ReminderScheduler.syncAll();
+    if (!mounted) return;
+    setState(() {
+      _followups = next;
+      _message = '已添加复查提醒（$date 09:00）；复查项目请遵医嘱';
+    });
+  }
+
+  Future<void> _removeFollowup(String id) async {
+    final next = _followups.where((e) => '${e['id']}' != id).toList();
+    await ReminderPrefs.saveFollowups(next);
+    await ReminderScheduler.syncAll();
+    if (!mounted) return;
+    setState(() => _followups = next);
   }
 
   Future<void> _clearSkillCache() async {
@@ -512,6 +600,58 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               trailing: const Icon(Icons.tune),
               onTap: _editInjectionLeads,
+            ),
+          ),
+          // T6：用药提醒（每日重复，默认关；通用文案不含药名）
+          Card(
+            child: SwitchListTile(
+              secondary: const Icon(Icons.medication_liquid_outlined),
+              title: const Text('用药提醒（每日）'),
+              subtitle: Text('在用药物每日 $_medHour:00 提醒；通知不含药名/剂量'),
+              value: _medReminders,
+              onChanged: _toggleMedicationReminders,
+            ),
+          ),
+          ListTile(
+            dense: true,
+            title: const Text('用药提醒时刻'),
+            trailing: Text('$_medHour:00'),
+            onTap: _pickMedicationHour,
+          ),
+          // T6：复查/自定义提醒（一次性；不给医疗建议）
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.event_repeat_outlined),
+                  title: const Text('复查提醒（自定义）'),
+                  trailing: TextButton(
+                    onPressed: _addFollowup,
+                    child: const Text('添加'),
+                  ),
+                ),
+                if (_followups.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Text(
+                      '暂无复查提醒；复查项目与频率请遵医嘱',
+                      style: TextStyle(
+                          fontSize: 12, color: IbdColors.textSecondary),
+                    ),
+                  ),
+                for (final e in _followups)
+                  ListTile(
+                    dense: true,
+                    title: Text(
+                      '${e['date']} '
+                      '${ReminderPrefs.normalizeHour(e['hour'] is num ? (e['hour'] as num).toInt() : null)}:00',
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20),
+                      onPressed: () => _removeFollowup('${e['id']}'),
+                    ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(height: 16),

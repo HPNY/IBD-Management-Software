@@ -3,6 +3,7 @@ import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'push_copy.dart';
+import 'reminder_copy.dart';
 import 'reminder_prefs.dart';
 
 /// 本地通知（不依赖服务端推送）+ 远程推送落地为本地通知。
@@ -92,38 +93,87 @@ class LocalNotifyService {
     return showRemoteAsLocal(kind: kind);
   }
 
-  Future<void> scheduleInjectionReminders(
-    List<Map<String, dynamic>> pending, {
-    // T4：提前量集合可配置（默认 {3} 兼容旧行为）；每个提前量一条通知
-    Set<int> leads = ReminderPrefs.defaultInjectionLeads,
+  /// T6：一次性重排全部提醒（注射 + 用药 + 复查/自定义）。
+  /// 先 cancelAll 再按类调度，避免互相清掉。
+  /// 文案全部走 `reminder_copy` 通用语（不含药名/剂量/病历字段）。
+  Future<void> rescheduleAll({
+    List<Map<String, dynamic>> injections = const [],
+    Set<int> injectionLeads = ReminderPrefs.defaultInjectionLeads,
+    List<Map<String, dynamic>> medications = const [],
+    int medicationHour = 9,
+    List<Map<String, dynamic>> followups = const [],
   }) async {
     if (!_ready) await init();
     await _plugin.cancelAll();
     var n = 0;
-    for (final row in pending) {
+    // 注射（id 1000+）：每个提前量一条；lead=0 用当天证件文案
+    for (final row in injections) {
       final planned = DateTime.tryParse('${row['planned_date']}');
       if (planned == null) continue;
-      for (final fire in injectionReminderFireTimes(planned, leads)) {
-        await _plugin.zonedSchedule(
+      for (final lead in injectionLeads.isEmpty
+          ? ReminderPrefs.defaultInjectionLeads
+          : injectionLeads) {
+        final fire =
+            injectionReminderFireTimes(planned, {lead}).first;
+        await _zoned(
           1000 + n++,
           '注射提醒',
-          '请准备 ${row['drug']}（${row['dose']}）· 计划 ${row['planned_date']}',
-          tz.TZDateTime.from(fire, tz.local),
-          const NotificationDetails(
-            android: AndroidNotificationDetails(
-              'ibd_injection',
-              '注射提醒',
-              channelDescription: '生物制剂注射排期提醒',
-              importance: Importance.high,
-              priority: Priority.high,
-            ),
-            iOS: DarwinNotificationDetails(),
-          ),
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-          uiLocalNotificationDateInterpretation:
-              UILocalNotificationDateInterpretation.absoluteTime,
+          lead == 0 ? kInjectionTodayBody : kInjectionReminderBody,
+          fire,
         );
       }
     }
+    // 用药（id 2000+）：每个在用药物一条每日重复（默认关，由配置开启）
+    if (medications.isNotEmpty) {
+      final anchor = medicationDailyAnchor(DateTime.now(), medicationHour);
+      for (var i = 0; i < medications.length; i++) {
+        await _zoned(
+          2000 + i,
+          kMedicationReminderTitle,
+          kMedicationReminderBody,
+          anchor,
+          daily: true,
+        );
+      }
+    }
+    // 复查/自定义（id 3000+）：一次性提醒，过期条目自然跳过
+    final times = followupFireTimes(followups);
+    for (var i = 0; i < times.length; i++) {
+      await _zoned(
+        3000 + i,
+        kFollowupReminderTitle,
+        kFollowupReminderBody,
+        times[i],
+      );
+    }
+  }
+
+  Future<void> _zoned(
+    int id,
+    String title,
+    String body,
+    DateTime fire, {
+    bool daily = false,
+  }) {
+    return _plugin.zonedSchedule(
+      id,
+      title,
+      body,
+      tz.TZDateTime.from(fire, tz.local),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'ibd_injection',
+          '注射与用药提醒',
+          channelDescription: '生物制剂注射/用药/复查排期提醒',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: daily ? DateTimeComponents.time : null,
+    );
   }
 }

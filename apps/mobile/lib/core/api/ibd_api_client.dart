@@ -309,17 +309,8 @@ class IbdApiClient {
     return _json(res);
   }
 
-  Future<void> ensureInjectionReminderRule({int leadDays = 3}) async {
-    try {
-      await _send(
-        'POST',
-        config.uri('/api/v1/reminders'),
-        body: {'kind': 'injection', 'leadDays': leadDays, 'enabled': true},
-      );
-    } catch (_) {
-      // 可能已存在；MVP 忽略
-    }
-  }
+  // T6：原 ensureInjectionReminderRule（/reminders 同步）为无调用方死代码，
+  // 已删除（本地提醒为权威，local-first 语义；服务端 reminder_rules 表保留不动）。
 
   Future<List<dynamic>> listCurrentMedications() async {
     final res = await _send('GET', config.uri('/api/v1/medications/current'));
