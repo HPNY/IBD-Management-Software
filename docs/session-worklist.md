@@ -104,6 +104,7 @@
 | T5 | 医生端患者侧建议/审计接真实 API | 已完成 | 授权/建议/审计接 /doctor-grants/mine + /doctor-patient/*；修 revoke 传 grantId；空态/错误降级/本地未同步诚实标注；服务端零改动（scope 边界核实）；新增 5 用例，flutter 137 全过 · 证据 docs/audit-evidence/t5-my-doctors-api.md · `task/t5-my-doctors-api` |
 | T6 | 提醒体系补全（用药/复查/当天证件） | 已完成 | 三类提醒（注射 lead=0 当天证件档/用药每日默认关/复查自定义）可创建取消；ReminderScheduler 统一重排；文案全脱敏（禁词表测试固化）；T4 移交两项已处置 · 证据 docs/audit-evidence/t6-reminder-system.md · `task/t6-reminder-system` |
 | T7 | 合规与安全前置 | 已完成 | DisclaimerFooter×5 页（非诊断/非治疗）；DPIA+知情同意模板入 docs/compliance（法务 BLOCKED 如实标注）；security-checklist 30 项 · 证据 docs/audit-evidence/t7-compliance-security.md · `task/t7-compliance-security` |
+| F2 | PRD v1.2 刷新（P0 核对） | 已完成 | 中英两版 V1.2（保留 v1.0/v1.1）：T1–T7 实现状态逐节更正、§7 遗留待办刷新、附录 V1.1→V1.2 修订 9 条 · `task/prd-v1.2-refresh` |
 
 ### P8.2 · P1 夯实（G0 前，按用户指定顺序领取，未点名不开工）
 
@@ -201,6 +202,7 @@
 | 2026-10 | T7 | 已完成 | 合规与安全前置（P0 收口）：非诊断/非治疗声明植入 5 解读页；DPIA+知情同意模板入 docs/compliance（⛔ 法务 BLOCKED，占位符化无真实个人信息）；生产安全 checklist 6 节 30 项；flutter 147 全过、analyze 9（0 新增） |
 | 2026-10 | P0-验收 | 已完成 | T1–T7 独立验收复核（全量验证批重跑 + 验收点抽查 + git/worklist 一致性）：7/7 达标、无代码缺陷；F1 遗留 T6.4 状态更正、F2 PRD v1.2 刷新待点名 · 报告 docs/audit-evidence/p0-acceptance-2026-10-27.md |
 | 2026-10 | P0-签发 | 已完成 | **用户确认签发 P0 验收**（T1–T7 关闭）；裁决：先做 F2「PRD v1.2 刷新」，随后进入 P1（T8 起） |
+| 2026-10 | F2 | 已完成 | PRD v1.2 刷新：中英双版（docs/*PRD-v1.2.md）；14 组状态更正（来源标记/Skill 缓存/提醒体系/腹胀/数据模型/合规/患者端/遗留待办）；中英锚点交叉核验一致（7/7）；英文版原委托子任务失败无产物，由本体补完 |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 
