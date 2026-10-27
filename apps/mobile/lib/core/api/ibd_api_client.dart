@@ -409,6 +409,36 @@ class IbdApiClient {
     return _json(res);
   }
 
+  /// T5：患者侧我的授权列表（/doctor-grants/mine，确认后 code 服务端脱敏为 null）
+  Future<List<Map<String, dynamic>>> myDoctorGrants() async {
+    final res = await _send('GET', config.uri('/api/v1/doctor-grants/mine'));
+    _ensureOk(res, 'myDoctorGrants');
+    return _decodeObjectList(res);
+  }
+
+  /// T5：患者侧医生建议列表（/doctor-patient/notes）
+  Future<List<Map<String, dynamic>>> doctorPatientNotes() async {
+    final res = await _send('GET', config.uri('/api/v1/doctor-patient/notes'));
+    _ensureOk(res, 'doctorPatientNotes');
+    return _decodeObjectList(res);
+  }
+
+  /// T5：患者侧授权审计列表（/doctor-patient/audits）
+  Future<List<Map<String, dynamic>>> doctorPatientAudits() async {
+    final res = await _send('GET', config.uri('/api/v1/doctor-patient/audits'));
+    _ensureOk(res, 'doctorPatientAudits');
+    return _decodeObjectList(res);
+  }
+
+  /// 解码顶层数组（或 {items|notes|audits|grants: [...]} 包装）为对象列表。
+  List<Map<String, dynamic>> _decodeObjectList(http.Response res) {
+    final dynamic data = jsonDecode(utf8.decode(res.bodyBytes));
+    final List<dynamic> list = data is List
+        ? data
+        : (data is Map ? (data['items'] ?? data['notes'] ?? data['audits'] ?? data['grants'] ?? const []) as List<dynamic> : const []);
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
   Future<Map<String, dynamic>> updateMedication(
       String id, Map<String, dynamic> body) async {
     final res = await _send('PATCH', config.uri('/api/v1/medications/$id'),
