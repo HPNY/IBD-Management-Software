@@ -200,6 +200,7 @@
 | 2026-10 | T6 | 已完成 | 提醒体系补全：三类提醒（当天证件档/用药每日/复查自定义）+ ReminderScheduler 统一重排（修 cancelAll 互清隐患）+ 文案全脱敏（reminder_copy 禁词表测试）+ 删 ensureInjectionReminderRule 死代码（T4 移交）；新增 9 用例，flutter 146 全过、analyze 9（0 新增） |
 | 2026-10 | T7 | 已完成 | 合规与安全前置（P0 收口）：非诊断/非治疗声明植入 5 解读页；DPIA+知情同意模板入 docs/compliance（⛔ 法务 BLOCKED，占位符化无真实个人信息）；生产安全 checklist 6 节 30 项；flutter 147 全过、analyze 9（0 新增） |
 | 2026-10 | P0-验收 | 已完成 | T1–T7 独立验收复核（全量验证批重跑 + 验收点抽查 + git/worklist 一致性）：7/7 达标、无代码缺陷；F1 遗留 T6.4 状态更正、F2 PRD v1.2 刷新待点名 · 报告 docs/audit-evidence/p0-acceptance-2026-10-27.md |
+| 2026-10 | P0-签发 | 已完成 | **用户确认签发 P0 验收**（T1–T7 关闭）；裁决：先做 F2「PRD v1.2 刷新」，随后进入 P1（T8 起） |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 
