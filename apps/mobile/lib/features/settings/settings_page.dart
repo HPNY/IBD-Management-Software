@@ -9,7 +9,10 @@ import '../../core/api/sync_api.dart';
 import '../../core/auth/auth_session.dart';
 import '../../core/backup/backup_service.dart';
 import '../../core/db/local_db.dart';
+import '../../core/db/repositories.dart';
 import '../../core/identity/local_identity.dart';
+import '../../core/notify/local_notify.dart';
+import '../../core/notify/reminder_prefs.dart';
 import '../../core/push/push_bootstrap.dart';
 import '../../core/push/push_service.dart';
 import '../../core/skill/local_skill_store.dart';
@@ -45,6 +48,9 @@ class _SettingsPageState extends State<SettingsPage> {
   /// T3：本地 Skill 缓存计数（清理后重建以刷新）
   Future<int> _skillCountF = LocalSkillStore.count();
 
+  /// T4：注射提醒提前量配置（默认 {3} 兼容旧行为）
+  Set<int> _injLeads = ReminderPrefs.defaultInjectionLeads;
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +59,10 @@ class _SettingsPageState extends State<SettingsPage> {
       config: ApiConfig.dev(),
     );
     _pushReady = true;
+    // T4：读取注射提醒提前量配置（默认 {3}）
+    ReminderPrefs.loadInjectionLeads().then((v) {
+      if (mounted) setState(() => _injLeads = v);
+    });
     // 异步升级到 FCM 真令牌；失败则保持 local 占位
     createPushService(identity: context.read<LocalIdentity>()).then((p) {
       if (!mounted) {
@@ -83,6 +93,61 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _onPushChanged() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _editInjectionLeads() async {
+    final temp = Set<int>.from(_injLeads);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('注射提醒提前量'),
+          content: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final d
+                  in ReminderPrefs.allowedInjectionLeads.toList()..sort())
+                FilterChip(
+                  label: Text(d == 0 ? '当天' : '提前 $d 天'),
+                  selected: temp.contains(d),
+                  onSelected: (sel) => setLocal(() {
+                    if (sel) {
+                      temp.add(d);
+                    } else if (temp.length > 1) {
+                      temp.remove(d); // 至少保留一个提前量
+                    }
+                  }),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('保存'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    await ReminderPrefs.saveInjectionLeads(temp);
+    // 保存后立即按新配置重排现有待打提醒（调度读取配置）
+    final saved = await ReminderPrefs.loadInjectionLeads();
+    final pending = await InjectionRepository().listPending(withinDays: 120);
+    await LocalNotifyService.instance.scheduleInjectionReminders(
+      pending,
+      leads: saved,
+    );
+    if (!mounted) return;
+    setState(() {
+      _injLeads = saved;
+      _message = '注射提醒已按「${formatInjectionLeads(saved)}」重排';
+    });
   }
 
   Future<void> _clearSkillCache() async {
@@ -438,13 +503,15 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           const SizedBox(height: 8),
-          const Card(
+          Card(
             child: ListTile(
-              leading: Icon(Icons.notifications_active_rounded),
-              title: Text('注射提醒（本地）'),
+              leading: const Icon(Icons.notifications_active_rounded),
+              title: const Text('注射提醒（本地）'),
               subtitle: Text(
-                '本地通知（提前 3 天）；关网可用，不依赖推送',
+                '本地通知（${formatInjectionLeads(_injLeads)}）；关网可用，不依赖推送',
               ),
+              trailing: const Icon(Icons.tune),
+              onTap: _editInjectionLeads,
             ),
           ),
           const SizedBox(height: 16),
