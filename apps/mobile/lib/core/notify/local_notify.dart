@@ -3,6 +3,7 @@ import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'push_copy.dart';
+import 'reminder_prefs.dart';
 
 /// 本地通知（不依赖服务端推送）+ 远程推送落地为本地通知。
 ///
@@ -93,7 +94,8 @@ class LocalNotifyService {
 
   Future<void> scheduleInjectionReminders(
     List<Map<String, dynamic>> pending, {
-    int leadDays = 3,
+    // T4：提前量集合可配置（默认 {3} 兼容旧行为）；每个提前量一条通知
+    Set<int> leads = ReminderPrefs.defaultInjectionLeads,
   }) async {
     if (!_ready) await init();
     await _plugin.cancelAll();
@@ -101,31 +103,27 @@ class LocalNotifyService {
     for (final row in pending) {
       final planned = DateTime.tryParse('${row['planned_date']}');
       if (planned == null) continue;
-      // 提前 leadDays 上午 9:00；若已过则当天 9:00 或 +1 分钟
-      var fire = DateTime(planned.year, planned.month, planned.day, 9)
-          .subtract(Duration(days: leadDays));
-      if (fire.isBefore(DateTime.now())) {
-        fire = DateTime.now().add(const Duration(minutes: 1));
-      }
-      await _plugin.zonedSchedule(
-        1000 + n++,
-        '注射提醒',
-        '请准备 ${row['drug']}（${row['dose']}）· 计划 ${row['planned_date']}',
-        tz.TZDateTime.from(fire, tz.local),
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'ibd_injection',
-            '注射提醒',
-            channelDescription: '生物制剂注射排期提醒',
-            importance: Importance.high,
-            priority: Priority.high,
+      for (final fire in injectionReminderFireTimes(planned, leads)) {
+        await _plugin.zonedSchedule(
+          1000 + n++,
+          '注射提醒',
+          '请准备 ${row['drug']}（${row['dose']}）· 计划 ${row['planned_date']}',
+          tz.TZDateTime.from(fire, tz.local),
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'ibd_injection',
+              '注射提醒',
+              channelDescription: '生物制剂注射排期提醒',
+              importance: Importance.high,
+              priority: Priority.high,
+            ),
+            iOS: DarwinNotificationDetails(),
           ),
-          iOS: DarwinNotificationDetails(),
-        ),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-      );
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+        );
+      }
     }
   }
 }
