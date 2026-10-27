@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// T4：提醒配置（通用结构，T6 的用药/复查提醒复用本模块）。
@@ -33,6 +35,64 @@ class ReminderPrefs {
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_kInjectionLeads, normalizeLeads(leads).join(','));
   }
+
+  // ---- T6：用药 / 复查提醒配置（复用本模块，T4 裁决⑤）----
+
+  static const _kMedicationEnabled = 'ibd_reminder_medication_enabled';
+  static const _kMedicationHour = 'ibd_reminder_medication_hour';
+  static const _kFollowups = 'ibd_reminder_followups';
+
+  /// 用药提醒默认关（存量行为无用药提醒，不改变默认体验）
+  static Future<bool> loadMedicationEnabled() async {
+    final sp = await SharedPreferences.getInstance();
+    return sp.getBool(_kMedicationEnabled) ?? false;
+  }
+
+  static Future<void> saveMedicationEnabled(bool enabled) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setBool(_kMedicationEnabled, enabled);
+  }
+
+  /// 用药提醒时刻（小时 0-23），默认 9 点
+  static Future<int> loadMedicationHour() async {
+    final sp = await SharedPreferences.getInstance();
+    return normalizeHour(sp.getInt(_kMedicationHour));
+  }
+
+  static Future<void> saveMedicationHour(int hour) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setInt(_kMedicationHour, normalizeHour(hour));
+  }
+
+  static int normalizeHour(int? raw) =>
+      (raw == null || raw < 0 || raw > 23) ? 9 : raw;
+
+  /// 复查/自定义提醒条目：{id, date: 'YYYY-MM-DD', hour: 0-23}
+  static Future<List<Map<String, dynamic>>> loadFollowups() async {
+    final sp = await SharedPreferences.getInstance();
+    final raw = sp.getString(_kFollowups);
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      final decoded = jsonDecode(raw) as List;
+      return decoded
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .where(_validFollowup)
+          .toList();
+    } catch (_) {
+      return []; // 损坏配置安全回退
+    }
+  }
+
+  static Future<void> saveFollowups(List<Map<String, dynamic>> entries) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_kFollowups, jsonEncode(entries.where(_validFollowup).toList()));
+  }
+
+  static bool _validFollowup(Map<String, dynamic> e) {
+    final date = '${e['date'] ?? ''}';
+    return e['id'] != null && RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date);
+  }
 }
 
 /// 注射提醒触发时刻计算（纯函数，可单测）。
@@ -64,4 +124,31 @@ String formatInjectionLeads(Iterable<int> leads) {
   return sorted
       .map((d) => d == 0 ? '当天' : '提前 $d 天')
       .join(' / ');
+}
+
+/// T6：用药每日提醒锚点（纯函数）——下一次 hour:00（今日已过则明日）。
+DateTime medicationDailyAnchor(DateTime now, int hour) {
+  final h = ReminderPrefs.normalizeHour(hour);
+  final today = DateTime(now.year, now.month, now.day, h);
+  return today.isAfter(now) ? today : today.add(const Duration(days: 1));
+}
+
+/// T6：复查/自定义提醒时刻（纯函数）——按条目 date+hour；已过期条目跳过。
+List<DateTime> followupFireTimes(
+  List<Map<String, dynamic>> entries, {
+  DateTime? now,
+}) {
+  final anchor = now ?? DateTime.now();
+  final times = <DateTime>[];
+  for (final e in entries) {
+    final date = DateTime.tryParse('${e['date']}');
+    if (date == null) continue;
+    final h = ReminderPrefs.normalizeHour(
+      e['hour'] is num ? (e['hour'] as num).toInt() : null,
+    );
+    final fire = DateTime(date.year, date.month, date.day, h);
+    if (!fire.isAfter(anchor)) continue;
+    times.add(fire);
+  }
+  return times;
 }

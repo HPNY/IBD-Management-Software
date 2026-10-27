@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/db/repositories.dart';
+import '../../core/notify/reminder_scheduler.dart';
 import '../../core/ui/theme.dart';
 
 /// iOS 健康 App 风格：新增/编辑用药（频次 ↔ 时间点联动）
@@ -221,6 +222,8 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
         'status': 'active',
         'reason': _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
       });
+      // T6：用药变更后重排提醒（用药/注射/复查）
+      await ReminderScheduler.syncAll();
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
