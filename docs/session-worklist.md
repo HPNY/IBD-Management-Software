@@ -53,7 +53,7 @@
 | T6.1 | Skill 社区（匿名模板发布 / 评分 / 协作更新） | 已完成 | C1–C4：community 会话 + 发布脱敏 + 评分 + 协作升版 + Web 入口 · 见 [t61-skill-community](compose/spec/t61-skill-community.md) |
 | T6.2 | 医生端 Web + 患者扫码授权（DEK 再包裹） | 已完成 | M1–M4：医生账号/Grant/只读视图/建议/审计/收回 · App 侧确认与建议 UI 为本地骨架 · 见 [t62-doctor-web](compose/spec/t62-doctor-web.md) |
 | T6.3 | 年度报告（PRD V1.5） | 已完成 | 按年生成概览/用药 + 分享导出 |
-| T6.4 | V2 扩展：饮食 / 药物评价 / 同城病友 / AI 分析 | 待办 | 已拆解为四轨子包 D1–D4 · 见 [t64-v2-expansion](compose/spec/t64-v2-expansion.md) |
+| T6.4 | V2 扩展：饮食 / 药物评价 / 同城病友 / AI 分析 | 已完成 | 四轨子包 D1–D4 均已交付（勾选历史 2026-09 D1–D4；P0 验收 F1 更正状态）· 见 [t64-v2-expansion](compose/spec/t64-v2-expansion.md) |
 | G1 | 疾病活动度仪表盘（状态灯/Limberg/SES-CD/倒计时） | 已完成 | PRD §2.6.1 · V1.5 |
 | G2 | 症状日记补全 + 日历热力 + 快捷模板 | 已完成 | PRD §2.7.1 · 溃疡/关节痛/自定义 · V1.5 |
 | G3 | 年报：补齐原版设计（自动生成/同比/检查手术汇总） | 已完成 | PRD §2.6.2 · 默认最近完整年自动构建 + 同比 + 检查手术汇总 |
@@ -199,6 +199,7 @@
 | 2026-10 | T5 | 已完成 | 患者侧建议/审计/授权接真实 API（替换硬编码骨架，DoctorPatientSource 可注入 seam）；修 revoke 传 code→grantId 缺陷；诚实降级（本地未同步/收回失败不伪称）；测试暴露并修复不可变列表崩溃；新增 5 用例，flutter 137 全过、analyze 9（0 新增） |
 | 2026-10 | T6 | 已完成 | 提醒体系补全：三类提醒（当天证件档/用药每日/复查自定义）+ ReminderScheduler 统一重排（修 cancelAll 互清隐患）+ 文案全脱敏（reminder_copy 禁词表测试）+ 删 ensureInjectionReminderRule 死代码（T4 移交）；新增 9 用例，flutter 146 全过、analyze 9（0 新增） |
 | 2026-10 | T7 | 已完成 | 合规与安全前置（P0 收口）：非诊断/非治疗声明植入 5 解读页；DPIA+知情同意模板入 docs/compliance（⛔ 法务 BLOCKED，占位符化无真实个人信息）；生产安全 checklist 6 节 30 项；flutter 147 全过、analyze 9（0 新增） |
+| 2026-10 | P0-验收 | 已完成 | T1–T7 独立验收复核（全量验证批重跑 + 验收点抽查 + git/worklist 一致性）：7/7 达标、无代码缺陷；F1 遗留 T6.4 状态更正、F2 PRD v1.2 刷新待点名 · 报告 docs/audit-evidence/p0-acceptance-2026-10-27.md |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 
