@@ -101,7 +101,7 @@
 | T0.6 | 优先修复红 CI：AuthModule DI 接线（R0.13 遗留） | 已完成 | 裁决「CI 红优先修复」：TypeOrmModule.forFeature 补 DevicePubKeyEntity；启动探针证实 DI 恢复；推送后 CI + Fullstack E2E **双绿** · `task/t0.6-auth-di-fix` |
 | T3 | App 本地 Skill 缓存可读/可命中/可清理 | 已完成 | txt 报告本地快速通道（全命中才走本地、未命中回落云端）；formatVersion 失效；clear/clearAll+设置页清理入口；不改服务端契约；flutter 123 全过 · 证据 docs/audit-evidence/t3-local-skill-cache.md · `task/t3-local-skill-cache` |
 | T4 | 注射提醒提前天数可配置 | 已完成 | 默认 {3} 兼容；ReminderPrefs 持久化（归一化/损坏回退）；调度读配置多提前量（0/1/2/3/7）；设置页多选入口+保存即重排；调度时刻纯函数测试 · 证据 docs/audit-evidence/t4-injection-lead-config.md · `task/t4-injection-lead-config` |
-| T5 | 医生端患者侧建议/审计接真实 API | 待办 | 真实数据可见；scope 不泄露未授权数据；空态/错误降级；测试或可复现验证 |
+| T5 | 医生端患者侧建议/审计接真实 API | 已完成 | 授权/建议/审计接 /doctor-grants/mine + /doctor-patient/*；修 revoke 传 grantId；空态/错误降级/本地未同步诚实标注；服务端零改动（scope 边界核实）；新增 5 用例，flutter 137 全过 · 证据 docs/audit-evidence/t5-my-doctors-api.md · `task/t5-my-doctors-api` |
 | T6 | 提醒体系补全（用药/复查/当天证件） | 待办 | 三类可创建/取消；复用 T4 配置结构；通知无敏感病历；调度计算测试 |
 | T7 | 合规与安全前置 | 待办 | 非诊断/非治疗声明可见；DPIA/知情同意模板入 docs（法务 BLOCKED）；生产安全 checklist |
 
@@ -196,6 +196,7 @@
 | 2026-10 | T0.6 | 已完成 | 优先修复红 CI（E2E 红根因非 T2，系 R0.13/826d37f 遗留 DI 缺失致 API 起不来）：AuthModule 补 DevicePubKeyEntity 注册；启动探针 + 7 smoke 过；推送后 CI + Fullstack E2E 双绿 |
 | 2026-10 | T3 | 已完成 | 本地 Skill 缓存闭环：txt 快速通道（skill_matcher 纯函数、全命中才本地、engine=skill 与 T2 闭环）、formatVersion 失效、clear/clearAll+设置页清理；不改服务端契约；新增 12 用例，flutter 123 全过、analyze 0 新增 info |
 | 2026-10 | T4 | 已完成 | 注射提醒提前量可配置：ReminderPrefs 通用配置模块（T6 复用）+ 调度时刻纯函数 + 多提前量（含当天/1 天）+ 设置页多选与保存即重排；默认 {3} 兼容；新增 9 用例，flutter 132 全过；遗留：通知文案脱敏归 T6、ensureInjectionReminderRule 死代码归 T6 处置 |
+| 2026-10 | T5 | 已完成 | 患者侧建议/审计/授权接真实 API（替换硬编码骨架，DoctorPatientSource 可注入 seam）；修 revoke 传 code→grantId 缺陷；诚实降级（本地未同步/收回失败不伪称）；测试暴露并修复不可变列表崩溃；新增 5 用例，flutter 137 全过、analyze 9（0 新增） |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 
