@@ -7,6 +7,7 @@ import '../../core/auth/auth_session.dart';
 import '../../core/identity/local_identity.dart';
 import '../../core/db/repositories.dart';
 import '../../core/drug/drug_review_model.dart';
+import '../../core/ui/disclaimer.dart';
 import '../../core/ui/theme.dart';
 
 /// D2：药物评价（本地列表 + 表单 + 匿名上传/聚合）。
@@ -337,6 +338,8 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
                   '社区聚合需联网并由服务端统计；本页先展示「我的评价」。',
                   style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
                 ),
+                // T7：非诊断/非治疗声明
+                const DisclaimerFooter(),
               ],
             ),
     );

@@ -4,6 +4,7 @@ import '../../core/db/repositories.dart';
 import '../../core/food/food_dictionary.dart';
 import '../../core/food/food_nutrition.dart';
 import '../../core/food/food_stool_link.dart';
+import '../../core/ui/disclaimer.dart';
 import '../../core/ui/theme.dart';
 
 /// G6+D1：食物标签日志、营养粗记、词典/食谱、排便关联（本机数据，非诊断）。
@@ -405,6 +406,8 @@ class _FoodStoolPageState extends State<FoodStoolPage> {
                   '仅供自我记录与就医沟通参考，不能替代医生或营养师诊断。',
                   style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
                 ),
+                // T7：非诊断/非治疗声明
+                const DisclaimerFooter(),
               ],
             ),
     );

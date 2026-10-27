@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/ai/ai_rules.dart';
 import '../../core/db/repositories.dart';
+import '../../core/ui/disclaimer.dart';
 import '../../core/ui/theme.dart';
 
 /// D4：AI/规则辅助分析（本地统计，仅供参考，非诊断）。
@@ -215,6 +216,8 @@ class _AiRulesPageState extends State<AiRulesPage> {
                   '规则仅供参考；不自动外发、不推送云端。LLM 总结默认关闭（未启用）。',
                   style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
                 ),
+                // T7：非诊断/非治疗声明
+                const DisclaimerFooter(),
               ],
             ),
     );
