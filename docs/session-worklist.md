@@ -103,7 +103,7 @@
 | T4 | 注射提醒提前天数可配置 | 已完成 | 默认 {3} 兼容；ReminderPrefs 持久化（归一化/损坏回退）；调度读配置多提前量（0/1/2/3/7）；设置页多选入口+保存即重排；调度时刻纯函数测试 · 证据 docs/audit-evidence/t4-injection-lead-config.md · `task/t4-injection-lead-config` |
 | T5 | 医生端患者侧建议/审计接真实 API | 已完成 | 授权/建议/审计接 /doctor-grants/mine + /doctor-patient/*；修 revoke 传 grantId；空态/错误降级/本地未同步诚实标注；服务端零改动（scope 边界核实）；新增 5 用例，flutter 137 全过 · 证据 docs/audit-evidence/t5-my-doctors-api.md · `task/t5-my-doctors-api` |
 | T6 | 提醒体系补全（用药/复查/当天证件） | 已完成 | 三类提醒（注射 lead=0 当天证件档/用药每日默认关/复查自定义）可创建取消；ReminderScheduler 统一重排；文案全脱敏（禁词表测试固化）；T4 移交两项已处置 · 证据 docs/audit-evidence/t6-reminder-system.md · `task/t6-reminder-system` |
-| T7 | 合规与安全前置 | 待办 | 非诊断/非治疗声明可见；DPIA/知情同意模板入 docs（法务 BLOCKED）；生产安全 checklist |
+| T7 | 合规与安全前置 | 已完成 | DisclaimerFooter×5 页（非诊断/非治疗）；DPIA+知情同意模板入 docs/compliance（法务 BLOCKED 如实标注）；security-checklist 30 项 · 证据 docs/audit-evidence/t7-compliance-security.md · `task/t7-compliance-security` |
 
 ### P8.2 · P1 夯实（G0 前，按用户指定顺序领取，未点名不开工）
 
@@ -198,6 +198,7 @@
 | 2026-10 | T4 | 已完成 | 注射提醒提前量可配置：ReminderPrefs 通用配置模块（T6 复用）+ 调度时刻纯函数 + 多提前量（含当天/1 天）+ 设置页多选与保存即重排；默认 {3} 兼容；新增 9 用例，flutter 132 全过；遗留：通知文案脱敏归 T6、ensureInjectionReminderRule 死代码归 T6 处置 |
 | 2026-10 | T5 | 已完成 | 患者侧建议/审计/授权接真实 API（替换硬编码骨架，DoctorPatientSource 可注入 seam）；修 revoke 传 code→grantId 缺陷；诚实降级（本地未同步/收回失败不伪称）；测试暴露并修复不可变列表崩溃；新增 5 用例，flutter 137 全过、analyze 9（0 新增） |
 | 2026-10 | T6 | 已完成 | 提醒体系补全：三类提醒（当天证件档/用药每日/复查自定义）+ ReminderScheduler 统一重排（修 cancelAll 互清隐患）+ 文案全脱敏（reminder_copy 禁词表测试）+ 删 ensureInjectionReminderRule 死代码（T4 移交）；新增 9 用例，flutter 146 全过、analyze 9（0 新增） |
+| 2026-10 | T7 | 已完成 | 合规与安全前置（P0 收口）：非诊断/非治疗声明植入 5 解读页；DPIA+知情同意模板入 docs/compliance（⛔ 法务 BLOCKED，占位符化无真实个人信息）；生产安全 checklist 6 节 30 项；flutter 147 全过、analyze 9（0 新增） |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 
