@@ -17,7 +17,8 @@ class SurveyPage extends StatefulWidget {
 class _SurveyPageState extends State<SurveyPage> {
   final _repo = QualitySurveyRepository();
   String _kind = 'PHQ9';
-  List<int> _scores = [];
+  /// null = 未作答；未答完不允许保存（B-O-08，避免未答被记 0 分）
+  List<int?> _scores = [];
   List<Map<String, dynamic>> _history = [];
 
   @override
@@ -29,11 +30,9 @@ class _SurveyPageState extends State<SurveyPage> {
 
   void _resetKind(String kind) {
     final qs = SurveyKit.questionsFor(kind);
-    final opts = SurveyKit.optionsFor(kind);
-    final def = opts.first.value;
     setState(() {
       _kind = kind;
-      _scores = List.filled(qs.length, def);
+      _scores = List<int?>.filled(qs.length, null);
     });
   }
 
@@ -42,14 +41,49 @@ class _SurveyPageState extends State<SurveyPage> {
     if (mounted) setState(() => _history = h);
   }
 
-  int get _total => _scores.fold(0, (a, b) => a + b);
+  int get _answered => _scores.where((v) => v != null).length;
+  bool get _complete => _scores.isNotEmpty && _answered == _scores.length;
 
-  Sf36DomainResult? get _sf36Domains =>
-      _kind == 'SF36' && _scores.length == 36 ? Sf36Scoring.scoreAll(_scores) : null;
+  int get _total => _scores.fold(0, (a, b) => a + (b ?? 0));
+
+  Sf36DomainResult? get _sf36Domains => _kind == 'SF36' &&
+          _scores.length == 36 &&
+          _complete
+      ? Sf36Scoring.scoreAll(_scores.cast<int>())
+      : null;
 
   List<Sf36TrendPoint> get _sf36Trend => sf36TrendFromHistory(_history);
 
   Future<void> _save() async {
+    if (!_complete) {
+      final left = _scores.length - _answered;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('还有 $left 题未作答，量表需全部完成后才能保存')),
+      );
+      return;
+    }
+    // PHQ-9 第 9 题（自伤念头）≥1 分：先给固定求助卡，不做诊断。
+    if (_kind == 'PHQ9' && (_scores[8] ?? 0) >= 1) {
+      final cont = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('需要一些支持吗？'),
+          content: const Text(
+            '你提到过「不如死掉或伤害自己」的念头。这不是你的错，也不代表必须独自扛。\n\n'
+            '可以现在联系信任的家人/朋友，或拨打当地心理援助热线；'
+            '若有立即伤害自己的风险，请直接前往急诊。\n\n'
+            '本应用只做记录，不能替代专业帮助。',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('我知道了，继续保存'),
+            ),
+          ],
+        ),
+      );
+      if (cont != true) return;
+    }
     final n = DateTime.now();
     final date =
         '${n.year.toString().padLeft(4, '0')}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
@@ -57,10 +91,10 @@ class _SurveyPageState extends State<SurveyPage> {
     final domains = _sf36Domains;
     final detail = <String, dynamic>{
       'band': band,
-      'scores': _scores,
+      'scores': _scores.cast<int>(),
       'labels': [
         for (var i = 0; i < _scores.length; i++)
-          SurveyKit.optionLabel(_kind, _scores[i]),
+          SurveyKit.optionLabel(_kind, _scores[i] ?? 0),
       ],
     };
     if (domains != null) {
@@ -89,7 +123,6 @@ class _SurveyPageState extends State<SurveyPage> {
   Widget build(BuildContext context) {
     final questions = SurveyKit.questionsFor(_kind);
     final options = SurveyKit.optionsFor(_kind);
-    final band = SurveyKit.interpret(_kind, _total);
     final intro = SurveyKit.introFor(_kind);
     final domainResult = _sf36Domains;
 
@@ -140,8 +173,8 @@ class _SurveyPageState extends State<SurveyPage> {
                 const SizedBox(height: 8),
                 Text(
                   domainResult == null
-                      ? '当前合计 $_total 分 · $band'
-                      : '简化合计 $_total 分 · $band',
+                      ? '已答 $_answered/${_scores.length} · 当前合计 $_total 分'
+                      : '已答 $_answered/${_scores.length} · 简化合计 $_total 分',
                   style: const TextStyle(
                     color: IbdColors.textPrimary,
                     fontWeight: FontWeight.w700,
@@ -199,7 +232,8 @@ class _SurveyPageState extends State<SurveyPage> {
           ...List.generate(questions.length, (i) {
             final q = questions[i];
             final score = _scores[i];
-            final label = SurveyKit.optionLabel(_kind, score);
+            final label =
+                score == null ? '未作答' : SurveyKit.optionLabel(_kind, score);
             return Card(
               margin: const EdgeInsets.only(bottom: 10),
               child: Padding(
@@ -225,7 +259,7 @@ class _SurveyPageState extends State<SurveyPage> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      '选：$score · $label',
+                      score == null ? '尚未选择' : '选：$score · $label',
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         color: IbdColors.primaryDark,

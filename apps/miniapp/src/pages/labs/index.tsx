@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { View, Text } from "@tarojs/components";
 import { CORE_LAB_NAMES } from "@ibd/domain-types";
-import { api } from "../../lib/api";
+import { apiWithSession } from "../../lib/api";
 import "./index.scss";
 
 export default function Labs() {
@@ -15,7 +15,8 @@ export default function Labs() {
     setLoading(true);
     setErr(null);
     try {
-      const labs = (await api().listLabs()) as Array<{
+      const client = await apiWithSession();
+      const labs = (await client.listLabs()) as Array<{
         date: string;
         items: Array<{ nameNorm: string; value: number; unit?: string }>;
       }>;
@@ -27,9 +28,7 @@ export default function Labs() {
           date: l.date,
         })),
       );
-      const core = flat.filter((r) =>
-        (CORE_LAB_NAMES as readonly string[]).includes(r.nameNorm),
-      );
+      const core = flat.filter((r) => (CORE_LAB_NAMES as readonly string[]).includes(r.nameNorm));
       setRows(core.slice(0, 40));
     } catch (e) {
       setErr(String(e));

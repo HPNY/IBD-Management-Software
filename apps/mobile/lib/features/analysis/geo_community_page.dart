@@ -42,9 +42,9 @@ class _GeoCommunityPageState extends State<GeoCommunityPage> {
     super.dispose();
   }
 
-  IbdApiClient _api() {
+  Future<IbdApiClient> _api() async {
     final identity = context.read<LocalIdentity>();
-    final session = AuthSession.parseSession('', identity.uuid);
+    final session = await AuthSession.mintParseSession(identity.uuid);
     return IbdApiClient(ApiConfig.dev(), session);
   }
 
@@ -66,7 +66,7 @@ class _GeoCommunityPageState extends State<GeoCommunityPage> {
   Future<void> _refreshRemote() async {
     final city = _savedCity ?? _city;
     try {
-      final api = _api();
+      final api = await _api();
       final cities = await api.geoCities();
       final posts = await api.geoPosts(city);
       if (!mounted) return;
@@ -108,7 +108,7 @@ class _GeoCommunityPageState extends State<GeoCommunityPage> {
     if (t.isEmpty) return;
     final city = _savedCity ?? _city;
     try {
-      final api = _api();
+      final api = await _api();
       await api.createGeoPost(
         city: city,
         content: t,

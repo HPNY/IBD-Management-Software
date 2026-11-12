@@ -8,6 +8,7 @@ import '../../core/ui/accessibility.dart';
 import '../../core/ui/theme.dart';
 import '../analysis/trend_page.dart';
 import '../lab/lab_entry_page.dart';
+import '../lab/lab_records_page.dart';
 import '../medication/medication_page.dart';
 import '../shell_page.dart';
 import 'activity_detail_page.dart';
@@ -225,6 +226,14 @@ class _DashboardTabState extends State<DashboardTab> {
                       label: '检验记录',
                       value: '$_labCount',
                       icon: Icons.biotech_rounded,
+                      onTap: () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const LabRecordsPage(),
+                          ),
+                        );
+                        _loadStats();
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -661,15 +670,17 @@ class _StatChip extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: IbdColors.card,
@@ -703,6 +714,12 @@ class _StatChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+    if (onTap == null) return card;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: card,
     );
   }
 }

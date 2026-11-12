@@ -300,7 +300,7 @@ class _SettingsPageState extends State<SettingsPage> {
     if (ok != true || ctrl.text.trim().isEmpty) return;
     await _backup.savePassphrase(ctrl.text.trim());
     await identity.setSyncOptIn(true);
-    if (mounted) setState(() => _message = '已开启云同步（密文）');
+    if (mounted) setState(() => _message = '已开启密文备份');
   }
 
   Future<void> _pushCipher() async {
@@ -620,7 +620,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                         ),
                         Text(
-                          identity.syncOptIn ? '云同步已开启' : '仅本机 · 未同步',
+                          identity.syncOptIn ? '密文备份已开启' : '仅本机 · 未备份',
                           style: const TextStyle(color: Colors.white70, fontSize: 12),
                         ),
                       ],
@@ -834,11 +834,11 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           const SizedBox(height: 16),
-          Text('云同步（可选）', style: Theme.of(context).textTheme.titleSmall),
+          Text('密文备份 / 恢复（可选）', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 4),
           Text(
-            '病历默认只存在本机，不上传服务器。开启同步或关联手机号前，'
-            '数据完全留在你的设备上；可随时关闭、注销关联、删除云端副本。',
+            '病历默认只存在本机。这里做的是「手动密文快照」，不是实时多端同步；'
+            '恢复为按记录去重追加，不会清空现有数据。',
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontSize: 12,
@@ -847,7 +847,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 8),
           SwitchListTile(
-            title: const Text('启用云同步（端到端密文）'),
+            title: const Text('启用密文备份'),
             subtitle: const Text('需设置备份口令；服务端无法解密病历'),
             value: identity.syncOptIn,
             onChanged: (v) async {
@@ -879,7 +879,17 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 8),
           OutlinedButton(
             onPressed: _busy ? null : _export,
-            child: const Text('导出本地备份 JSON'),
+            child: const Text('导出本地备份 JSON（明文）'),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '导出的 JSON 是明文，离开加密库后请勿长期留在聊天/网盘；'
+            '传给医生前先核对内容。',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.error,
+              fontSize: 12,
+              height: 1.5,
+            ),
           ),
           OutlinedButton(
             onPressed: _busy ? null : _import,

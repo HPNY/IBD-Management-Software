@@ -20,6 +20,37 @@ class AuthSession extends ChangeNotifier {
     return s;
   }
 
+  /// 匿名只读会话：真正向 API 换取短时 token。
+  ///
+  /// P0-1：此前多处用 `parseSession('', uuid)` 造了空 token 的假会话，
+  /// 请求头变成 `Bearer `，接口恒 401。要么换真 token，要么隐藏入口。
+  static Future<AuthSession> mintParseSession(String appUserId) async {
+    final config = ApiConfig.dev();
+    final client = http.Client();
+    try {
+      final res = await client.post(
+        config.uri('/api/v1/auth/parse-session'),
+        headers: {'content-type': 'application/json'},
+        body: jsonEncode({'appUserId': appUserId}),
+      );
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw Exception(
+          'parse-session failed: HTTP ${res.statusCode} '
+          '${utf8.decode(res.bodyBytes, allowMalformed: true)}',
+        );
+      }
+      final json =
+          jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final token = json['accessToken'] as String?;
+      if (token == null || token.isEmpty) {
+        throw Exception('parse-session returned empty token');
+      }
+      return AuthSession.parseSession(token, appUserId);
+    } finally {
+      client.close();
+    }
+  }
+
   final ApiConfig _config;
   final TokenStore _store;
   final http.Client _client = http.Client();

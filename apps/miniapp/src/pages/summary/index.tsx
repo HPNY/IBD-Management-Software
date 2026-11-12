@@ -1,21 +1,17 @@
 import { useState } from "react";
 import { View, Text, Button } from "@tarojs/components";
 import Taro from "@tarojs/taro";
-import { getAppUserId } from "../../lib/api";
 import "./index.scss";
 
 export default function Summary() {
-  const uid = getAppUserId();
   const [text] = useState(() => {
     const date = new Date().toISOString().slice(0, 10);
     const checkins = (wx.getStorageSync("ibd_mini_checkins") as unknown[]) ?? [];
     const last = checkins[0] as
-      | { painLevel?: number; bowelCount?: number; overallFeeling?: string }
-      | undefined;
+      { painLevel?: number; bowelCount?: number; overallFeeling?: string } | undefined;
     return [
       "IBDers 就诊摘要（小程序轻量版）",
       `日期：${date}`,
-      `标识：${uid}`,
       last
         ? `最近打卡：腹痛 ${last.painLevel ?? "-"} · 排便 ${last.bowelCount ?? "-"} · 整体 ${last.overallFeeling ?? "-"}`
         : "最近打卡：暂无",

@@ -74,11 +74,12 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
     _loadAll();
   }
 
-  DoctorPatientSource _src() {
+  Future<DoctorPatientSource> _src() async {
     final injected = widget.source;
     if (injected != null) return injected;
     final identity = context.read<LocalIdentity>();
-    final session = AuthSession.parseSession('', identity.uuid);
+    // P0-1：换真 token；失败由调用方进入错误态，不伪造数据。
+    final session = await AuthSession.mintParseSession(identity.uuid);
     return ApiDoctorPatientSource(IbdApiClient(ApiConfig.dev(), session));
   }
 
@@ -89,7 +90,7 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
       _loadError = null;
     });
     try {
-      final src = _src();
+      final src = await _src();
       final results = await Future.wait([
         src.loadGrants(),
         src.loadNotes(),
@@ -133,7 +134,7 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
     setState(() => _busy = true);
     var synced = false;
     try {
-      await _src().confirm(
+      await (await _src()).confirm(
         code,
         scope: _picked.toList(),
         wrappedDek: _useWrappedDek && _dekCtrl.text.trim().isNotEmpty
@@ -187,7 +188,7 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
     }
     // T5：收回传 grantId（此前误传 code）；失败如实提示，不伪称已收回
     try {
-      await _src().revoke(id);
+      await (await _src()).revoke(id);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
