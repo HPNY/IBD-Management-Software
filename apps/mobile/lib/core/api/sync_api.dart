@@ -40,6 +40,8 @@ class SyncApi {
     required String cipher,
     required String nonce,
     String? mac,
+    /// H2：base64 PBKDF2 盐（随快照保存，换机后可解密）
+    String? salt,
     required String clientUpdatedAt,
     int? version,
   }) async {
@@ -55,6 +57,7 @@ class SyncApi {
         'cipher': cipher,
         'nonce': nonce,
         if (mac != null) 'mac': mac,
+        if (salt != null) 'kdfSalt': salt,
         'clientUpdatedAt': clientUpdatedAt,
         if (version != null) 'version': version,
       }),

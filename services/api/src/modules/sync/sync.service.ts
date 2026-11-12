@@ -9,6 +9,8 @@ export interface PutSnapshotInput {
   cipher: string;
   nonce: string;
   mac?: string;
+  /** H2：base64 PBKDF2 盐；旧客户端不传则保持 NULL（兼容） */
+  kdfSalt?: string;
   clientUpdatedAt: string;
   /** 本地 version，冲突时取较大者 */
   version?: number;
@@ -44,6 +46,7 @@ export class SyncService {
         cipher: input.cipher,
         nonce: input.nonce,
         mac: input.mac ?? null,
+        kdfSalt: input.kdfSalt ?? existing.kdfSalt ?? null,
         version,
         clientUpdatedAt: new Date(input.clientUpdatedAt),
       });
@@ -55,6 +58,7 @@ export class SyncService {
         cipher: input.cipher,
         nonce: input.nonce,
         mac: input.mac ?? null,
+        kdfSalt: input.kdfSalt ?? null,
         version,
         clientUpdatedAt: new Date(input.clientUpdatedAt),
       }),
