@@ -27,6 +27,7 @@ class _InjectionPageState extends State<InjectionPage> {
   Set<String> _plannedIso = {};
   List<Map<String, dynamic>> _rows = [];
   bool _busy = false;
+  bool _startEdited = false;
   String? _error;
 
   @override
@@ -38,6 +39,8 @@ class _InjectionPageState extends State<InjectionPage> {
     final n = DateTime.now();
     _startCtrl.text = isoDate(n);
     _rebuildPreview();
+    // H4：首屏加载已保存排期（此前只有手动刷新才可见，重启后像是"排期丢了"）
+    _loadRows(prefillStart: true);
   }
 
   @override
@@ -91,6 +94,7 @@ class _InjectionPageState extends State<InjectionPage> {
     );
     if (picked == null) return;
     _startCtrl.text = isoDate(picked);
+    _startEdited = true;
     _rebuildPreview();
   }
 
@@ -114,6 +118,36 @@ class _InjectionPageState extends State<InjectionPage> {
       );
       final cat = _category;
       final drugLabel = '${cat.genericName}（$_brand）';
+      // 覆盖确认：生成会清空同药名未完成针次，不能静默删除。
+      final existing = await _repo.listAll();
+      if (!mounted) return;
+      final pendingCount = existing
+          .where((r) =>
+              r['drug'] == drugLabel && r['actual_date'] == null)
+          .length;
+      if (pendingCount > 0) {
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('覆盖现有排期？'),
+            content: Text('$drugLabel 还有 $pendingCount 针未完成，重新生成会删除这些计划。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('覆盖生成'),
+              ),
+            ],
+          ),
+        );
+        if (ok != true) {
+          if (mounted) setState(() => _busy = false);
+          return;
+        }
+      }
       // 旧计划先清空同药名未完成针次
       await _repo.clearPendingForDrug(drugLabel);
       await _repo.insertMany([
@@ -151,9 +185,23 @@ class _InjectionPageState extends State<InjectionPage> {
     }
   }
 
-  Future<void> _loadRows() async {
+  Future<void> _loadRows({bool prefillStart = false}) async {
     final rows = await _repo.listAll();
-    if (mounted) setState(() => _rows = rows);
+    if (!mounted) return;
+    setState(() {
+      _rows = rows;
+      if (prefillStart && rows.isNotEmpty && !_startEdited) {
+        // 用最近一针的计划日回填起始日；若已过期则从今天起算。
+        final last = rows.last;
+        final planned = DateTime.tryParse('${last['planned_date']}');
+        final today = DateTime.now();
+        final base = planned == null || planned.isBefore(today) ? today : planned;
+        _startCtrl.text = isoDate(base);
+      }
+    });
+    if (prefillStart && rows.isNotEmpty && !_startEdited) {
+      _rebuildPreview();
+    }
   }
 
   Future<void> _complete(Map<String, dynamic> row) async {
