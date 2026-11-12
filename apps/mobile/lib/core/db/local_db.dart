@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
@@ -93,7 +95,9 @@ class LocalDb {
     try {
       plain = await openDatabase(path);
     } catch (_) {
-      // 已是加密或损坏，走正常加密打开
+      // 已是加密或损坏，走正常加密打开。
+      // C2：旧版本迁移可能残留明文全库副本，这里主动清理，避免永久留存。
+      await deleteLegacyPlainBackup(path);
       return;
     }
 
@@ -111,9 +115,9 @@ class LocalDb {
       await plain.close();
       plain = null;
 
-      final bak = '$path.plain.bak';
-      if (await File(bak).exists()) await File(bak).delete();
-      await file.copy(bak);
+      // C2：不再保留 .plain.bak。加密副本 rename 失败时原明文库仍在原位，
+      // 因此无需额外明文备份；成功后立即用密文替换。
+      await deleteLegacyPlainBackup(path);
       await File(tmp).rename(path);
     } catch (_) {
       if (await File(tmp).exists()) {
@@ -124,6 +128,16 @@ class LocalDb {
       if (plain != null && plain.isOpen) {
         await plain.close();
       }
+    }
+  }
+
+  /// C2：删除旧版迁移残留的明文全库副本（`<db>.plain.bak`）。
+  /// 单独暴露以便测试；幂等，不存在时直接返回。
+  @visibleForTesting
+  static Future<void> deleteLegacyPlainBackup(String dbPath) async {
+    final stale = File('$dbPath.plain.bak');
+    if (await stale.exists()) {
+      await stale.delete();
     }
   }
 
