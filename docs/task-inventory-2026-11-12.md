@@ -326,6 +326,6 @@ AI 预测疾病活动趋势 · 自动医疗建议 · PDF/DOCX 导出 · 手术�
 | 注射首屏 | 已完成 | `injection_page.dart` init 加载 + 覆盖确认 |
 | UI P0 八组 | 已完成 | 匿名会话、打卡 null/停自动细表、检验记录页、小程序空态/摘要、量表完整性、密文备份文案 |
 
-**验证**：`flutter test` 152 全过；`flutter analyze` 0 error/0 warning；`pnpm typecheck` 7 包全过；`pnpm lint` 0 error；`pnpm format:check` 通过；web build 通过（需将 TMP 指向工作区，沙箱对系统临时目录无权限）；parse-worker 测试 ALL_PASS。
+**验证**：`flutter test` 153 全过；`flutter analyze` 0 error/0 warning；`pnpm typecheck` 7 包全过；`pnpm lint` 0 error；`pnpm format:check` 通过；web build 通过（需将 TMP 指向工作区，沙箱对系统临时目录无权限）；parse-worker 测试 ALL_PASS。
 
 **未覆盖**：C1 的 E2E 需 DB/Redis（本机无 Docker，未执行；已接入 CI fullstack）；换机云恢复需真机 + 后端联调；检验合并为手动操作。C3 已有 `parse-items-smoke` 9 项断言 + CI 门禁。
