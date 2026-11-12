@@ -8,9 +8,12 @@ Map<String, dynamic> normalizeParseLabItem(Map<dynamic, dynamic> raw) {
       _str(raw['name_raw']) ??
       _str(raw['alias']) ??
       nameNorm;
-  final valueNum = raw['value'] is num
+  final parsed = raw['value'] is num
       ? (raw['value'] as num).toDouble()
       : double.tryParse('${raw['value'] ?? ''}'.trim());
+  // C4：NaN/Infinity 不是合法检验值；定性结果保留原文（value_text）。
+  final valueNum = (parsed != null && parsed.isFinite) ? parsed : null;
+  final valueText = _str(raw['value_text']) ?? _str(raw['valueText']);
   final unit = _str(raw['unit']) ?? '';
   final refMin = _num(raw['refMin'] ?? raw['ref_min']);
   final refMax = _num(raw['refMax'] ?? raw['ref_max']);
@@ -18,7 +21,8 @@ Map<String, dynamic> normalizeParseLabItem(Map<dynamic, dynamic> raw) {
     'nameNorm': nameNorm,
     'nameRaw': nameRaw,
     'value': valueNum,
-    'valueText': valueNum == null ? '' : _fmt(valueNum),
+    'valueText': valueNum == null ? (valueText ?? '') : _fmt(valueNum),
+    'qualitative': valueNum == null,
     'unit': unit,
     'refMin': refMin,
     'refMax': refMax,
@@ -41,8 +45,8 @@ String? _str(Object? v) {
 
 double? _num(Object? v) {
   if (v == null) return null;
-  if (v is num) return v.toDouble();
-  return double.tryParse(v.toString().trim());
+  final n = v is num ? v.toDouble() : double.tryParse(v.toString().trim());
+  return (n != null && n.isFinite) ? n : null;
 }
 
 String _fmt(double v) {

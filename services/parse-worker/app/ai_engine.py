@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import re
 from typing import Any
 
@@ -29,7 +30,9 @@ SCHEMA_HINT = (
 class AiItemIn(BaseModel):
     name: str = Field(min_length=1, max_length=64)
     name_raw: str | None = None
-    value: float
+    # C4：允许定性结果（value=None, value_text 保留原文）
+    value: float | None = None
+    value_text: str | None = None
     unit: str | None = None
     ref_min: float | None = None
     ref_max: float | None = None
@@ -66,6 +69,42 @@ def _normalize_date(raw: str | None) -> str | None:
     return s[:10] if len(s) >= 10 else s
 
 
+def _coerce_value(raw: Any) -> tuple[float | None, str | None] | None:
+    """把 LLM 返回的 value 归一化为 (数值, 定性原文)。
+
+    - 数值/可解析字符串 → (float, None)
+    - 定性文本（阴性/未见异常等）→ (None, 原文)
+    - 运算符值（>1800 / <0.5）→ (None, 原文)，不做数值比较（V13-10）
+    - 空值 → None（调用方丢弃该条）
+    """
+    if raw is None or isinstance(raw, bool):
+        return None
+    if isinstance(raw, (int, float)):
+        value = float(raw)
+        if not math.isfinite(value):
+            return None
+        return value, None
+    if not isinstance(raw, str):
+        return None
+
+    s = raw.strip()
+    if not s:
+        return None
+    # 运算符值只保留原文：无法确认边界，不能当精确值参与 flag 判定
+    if s[0] in "<>≥≤":
+        return None, s
+    numeric = re.sub(r"[^0-9.\-]", "", s)
+    if not any(ch.isdigit() for ch in numeric):
+        return None, s
+    try:
+        value = float(numeric)
+    except ValueError:
+        return None, s
+    if not math.isfinite(value):
+        return None, s
+    return value, None
+
+
 def _coerce_payload(data: dict[str, Any]) -> AiEnvelope:
     items_in: list[dict[str, Any]] = []
     raw_items = data.get("items") or data.get("results") or []
@@ -73,20 +112,16 @@ def _coerce_payload(data: dict[str, Any]) -> AiEnvelope:
         for it in raw_items:
             if not isinstance(it, dict):
                 continue
-            value = it.get("value", it.get("result"))
-            if value is None:
+            coerced = _coerce_value(it.get("value", it.get("result")))
+            if coerced is None:
                 continue
-            try:
-                if isinstance(value, str):
-                    value = float(re.sub(r"[^0-9.\-]", "", value) or "nan")
-                value = float(value)
-            except (TypeError, ValueError):
-                continue
+            value, value_text = coerced
             items_in.append(
                 {
                     "name": it.get("name") or it.get("name_norm") or it.get("nameNorm") or "",
                     "name_raw": it.get("name_raw") or it.get("nameRaw") or it.get("alias"),
                     "value": value,
+                    "value_text": value_text,
                     "unit": it.get("unit"),
                     "ref_min": it.get("ref_min", it.get("refMin", it.get("min"))),
                     "ref_max": it.get("ref_max", it.get("refMax", it.get("max"))),
@@ -126,6 +161,7 @@ def ai_parse(*, text: str, images: list[bytes]) -> AiParseResult:
                 name=it.name,
                 name_raw=it.name_raw or it.name,
                 value=it.value,
+                value_text=it.value_text,
                 unit=it.unit,
                 ref_min=it.ref_min,
                 ref_max=it.ref_max,
