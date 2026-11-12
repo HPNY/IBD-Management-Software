@@ -7,7 +7,12 @@ import '../lab/lab_panels.dart';
 import 'local_db.dart';
 
 class LabRepository {
-  Future<Database> get _db => LocalDb.instance.database;
+  /// 测试可注入 Database，生产走 LocalDb。
+  LabRepository({Database? database}) : _dbOverride = database;
+
+  final Database? _dbOverride;
+  Future<Database> get _db async =>
+      _dbOverride ?? await LocalDb.instance.database;
 
   Future<String> insert({
     required String date,
@@ -470,9 +475,16 @@ class SurgeryRepository {
 
 /// 本地检验指标序列（趋势图）
 class LabSeriesRepository {
-  Future<Database> get _db => LocalDb.instance.database;
+  LabSeriesRepository({Database? database}) : _dbOverride = database;
 
-  /// 按规范名提取时间序列，如 CRP / 钙卫蛋白
+  final Database? _dbOverride;
+  Future<Database> get _db async =>
+      _dbOverride ?? await LocalDb.instance.database;
+
+  /// 按规范名提取时间序列，如 CRP / 钙卫蛋白。
+  ///
+  /// H17：必须精确匹配 `name_norm`。此前用 `LIKE '%白蛋白%'` 会把
+  /// 「前白蛋白」混进白蛋白趋势（量级差 5–10 倍），医生摘要与活动度卡同受影响。
   Future<List<Map<String, dynamic>>> seriesByName(String nameNorm) async {
     final db = await _db;
     final rows = await db.rawQuery(
@@ -480,10 +492,10 @@ class LabSeriesRepository {
       SELECT labs.date AS date, lab_items.value AS value, lab_items.unit AS unit
       FROM lab_items
       INNER JOIN labs ON labs.id = lab_items.lab_id
-      WHERE lab_items.name_norm LIKE ?
+      WHERE lab_items.name_norm = ?
       ORDER BY labs.date ASC
       ''',
-      ['%$nameNorm%'],
+      [nameNorm],
     );
     return rows;
   }
