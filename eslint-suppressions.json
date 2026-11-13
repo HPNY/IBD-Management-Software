@@ -21,7 +21,7 @@
   },
   "apps/web/src/pages/ParseBatch.tsx": {
     "@typescript-eslint/no-misused-promises": {
-      "count": 2
+      "count": 1
     }
   },
   "services/api/scripts/storage-queue-smoke.mjs": {
