@@ -1,0 +1,23 @@
+# 依赖与产物
+node_modules/
+**/dist/
+**/build/
+**/coverage/
+.pnpm/
+
+# 本地临时与审阅产物
+var/
+.worktrees/
+
+# 锁文件与生成物（体积大、机器生成，不参与格式检查）
+pnpm-lock.yaml
+eslint-suppressions.json
+**/*.d.ts
+apps/miniapp/dist/
+
+# 非 JS/TS 生态
+apps/mobile/
+services/parse-worker/
+
+# 文档：表格与手写排版会被 Prettier 重排，不纳入自动格式化
+**/*.md

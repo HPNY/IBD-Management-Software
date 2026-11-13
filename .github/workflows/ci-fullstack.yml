@@ -8,6 +8,21 @@ on:
       - "services/**"
       - "scripts/ci-fullstack.sh"
       - ".github/workflows/ci-fullstack.yml"
+  # PR 阶段必须跑：此前只在 push main 触发，导致回归问题绕过审查直接进主干
+  # （见 docs/code-review-standard.md §7 G0 缺口）
+  pull_request:
+    branches: [main]
+    paths:
+      - "services/**"
+      - "apps/web/src/**"
+      - "apps/doctor-web/src/**"
+      - "packages/**"
+      - "scripts/ci-fullstack.sh"
+      - ".github/workflows/ci-fullstack.yml"
+
+concurrency:
+  group: fullstack-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   e2e-fullstack:
