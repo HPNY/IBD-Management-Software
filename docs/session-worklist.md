@@ -96,6 +96,7 @@
 | T1.1 | T1 审阅修复：修复标记清除语义改 B + v10 补偿脚本 | 已完成 | 裁决「问题1 B」：仅实际录入腹胀才解除标记；关态保存写 null；补 `docs/migrations/local-db-v10-compensation.sql`（幂等）· `task/t1.1-bloat-flag-semantics` |
 | T1.2 | T1 审阅修复：疲劳开关关闭不残留滑块旧值 | 已完成 | 裁决「问题5 立疲劳小任务」：关态保存写 null；新增 `checkin_fatigue_ui_test` 回归 · `task/t1.2-fatigue-toggle-fix` |
 | T0.4 | 依赖安全治理（CI 门禁修复） | 已完成 | 裁决「T0.4 开工，2a，3a」：overrides 治本生产链 high+critical（--prod 门禁清零）；dev 链 patch 级修复；遗留项与 swiper 验证 BLOCKED 记录于 docs/dependency-audit-notes.md · `task/t0.4-dependency-audit` |
+| T0.4b | 解除 joi 新增 high 公告导致的基线红（2026-11-13） | 已完成 | overrides 定向提升 `joi` 17.13.8→17.13.9（仅补丁级）；`pnpm audit --prod --audit-level=high` 0 high/critical、15 moderate；记录见 docs/dependency-audit-notes.md · `task/t0.4b-joi-audit` |
 | T0.5 | 修复 miniapp 构建 + swiper 限期集成验证 | 已完成 | 裁决「点名 T0.5；swiper 先保留限期验证」：补 babel.config.js + babel-preset-taro + 工作区 TS loader；build:weapp 编译成功，swiper 12.2.0 进产物验证通过；运行时验证随真机验收 · `task/t0.5-miniapp-build-fix` |
 | T2 | 修复检验来源标记失真 | 已完成 | confirm 按任务真实引擎写 source（skill\|ai）；App 三档标记；旧数据不回填（裁决④）；smoke:parse-source 9 断言 + 迁移行为级探针 + flutter 111 全过 · 证据 docs/audit-evidence/t2-lab-source.md · `task/t2-lab-source-accuracy` |
 | T0.6 | 优先修复红 CI：AuthModule DI 接线（R0.13 遗留） | 已完成 | 裁决「CI 红优先修复」：TypeOrmModule.forFeature 补 DevicePubKeyEntity；启动探针证实 DI 恢复；推送后 CI + Fullstack E2E **双绿** · `task/t0.6-auth-di-fix` |

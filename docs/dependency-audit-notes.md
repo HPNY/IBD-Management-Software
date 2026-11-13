@@ -40,3 +40,12 @@ dev 链 patch 级：follow-redirects 1.16.x、glob@10 10.5.x。
 
 - ~~T0.5：修复 miniapp 构建~~ **已完成**（2026-10-26，`task/t0.5-miniapp-build-fix`）。
 - T21（裁决 3，P1 之后执行）：dev 工具链升级（Taro/Vite/webpack 链）消化上表遗留项，**完成后门禁收紧回全量 `pnpm audit --audit-level=high`**。
+
+## 2026-11-13 新增 high：joi（Taro 生产链）
+
+- **公告**：GHSA-4528-x5fx-h6hg —— `joi` 的 `string().email({ multiple: true })` 存在二次时间复杂度，可被构造输入造成 DoS。
+- **影响版本**：`>=17.1.1 <17.13.9`；修复版本 `>=17.13.9`。
+- **进入路径**：`apps/miniapp > @tarojs/plugin-framework-react@3.6.34 > @tarojs/service@3.6.34 > joi@17.13.8`（另有 `plugin-platform-weapp` 同源路径）。
+- **处置**：根 `pnpm.overrides` 增加 `"joi@>=17.1.1 <17.13.9": "17.13.9"`，仅提升补丁版本，不跨主版本。
+- **验证（2026-11-13）**：`pnpm install` 成功；`pnpm audit --prod --audit-level=high` → **0 high / 0 critical，15 moderate**（moderate 低于门禁阈值）。
+- **说明**：该公告在 2026-11-13 的 advisory 库更新后出现，导致 main 及所有分支的 `API build & smoke` 在「Dependency audit」步骤统一变红；本修复解除该基线阻塞。
