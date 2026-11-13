@@ -71,3 +71,70 @@ Compiled successfully in 7.73s
 | 证据归档 | 命中问题时：截图/控制台日志 + 本文追加结论段 |
 | override 到期日 | 与截止日同（2026-11-09）：届时无结论 → 上报，二选一裁决（继续保留 / ignoreCves 豁免） |
 | 回滚预案 | ① 删 `package.json` 的 `"swiper": "^12.1.2"` override + `pnpm install`（回到 6.8.0，**注意 critical 漏洞复现**，需同步走豁免裁决）；② 或保留 override + `pnpm.auditConfig.ignoreCves` 记录（裁决后执行）；均 revert 单 commit 可回退 |
+
+## 证据 E · 2026-11-13 静态取证（覆盖「运行时污染」假设，不覆盖真机渲染）
+
+背景：截止日 2026-11-09 已逾期，用户 2026-11-13 裁决「继续限期验证，不回滚 override」。本轮先做不需要真机的静态取证。
+
+### E1 · override 确实生效
+
+`pnpm why swiper -r`（`task/ui-review-u1u17` @ `89f6109`）：
+
+```
+@ibd/miniapp@0.1.0
+dependencies:
+@tarojs/components 3.6.34
+└── swiper 12.2.0
+@tarojs/plugin-platform-weapp 3.6.34
+└─┬ @tarojs/components 3.6.34 peer
+  └── swiper 12.2.0
+```
+
+即 `@tarojs/components@3.6.34` 的 `package.json` 虽声明 `"swiper": "6.8.0"`，实际解析到根 `pnpm.overrides` 的 `^12.1.2` → **12.2.0**。`node_modules/.pnpm/swiper@12.2.0/` 存在，无 6.8.0 副本。
+
+### E2 · 小程序源码不使用 Swiper 组件
+
+`Select-String -Path apps/miniapp/src/**/*.tsx,*.ts -Pattern "Swiper|swiper"` → **0 命中**。小程序 5 个页面（index/checkin/injection/labs/summary）与 `lib/api.ts`、`wx_auth.ts` 均无 Swiper 引用。
+
+### E3 · weapp 产物不含 swiper 12 运行时
+
+`pnpm --filter @ibd/miniapp build:weapp` → `Compiled successfully in 9.70s`，产物 `apps/miniapp/dist/`。
+
+`swiper` 在 `dist/*.js` 中仅 **7 处，全部位于 `taro.js`**：
+
+| 位置 | 内容 | 性质 |
+|------|------|------|
+| 15263 / 15319 | `Swiper:{"snap-to-edge":u,"easing-function":"'default'"},SwiperItem:{"skip-hidden-item-layout":u}` | 组件属性映射表 |
+| 38984 | `""!==u&&"swiper-item"!==n&&(i["st"]=u)` | hydrate 时的样式判断 |
+| 106403 / 106412 | `ScrollView:V,Swiper:W,SwiperItem:H,Navigator:z` | 组件名 → 实现映射 |
+| 107035 / 107048 | `["scroll-view",4],["swiper",4],["swiper-item",4]` | 标签名表 |
+
+**以下 swiper 12 运行时符号在 `dist/*.js` 中全部 0 命中**：`SwiperCore`、`swiper-wrapper`、`swiper-container`、`swiper-slide`、`swiper-button-next`、`slidesPerView`、`wrapperEl`、`slidesEl`、`onAny`、`swiperSlideSize`、`watchSlidesProgress`、`virtualTranslate`、`params.watchOverflow`、`Swiper/A11y`、`swiper/modules`、`swiper/dist`。
+
+`@tarojs/components` 中引用 swiper 的文件仅为 stencil/web-components 路径：`dist/cjs/taro-swiper-core_2.cjs.entry.js`、`dist/collection/components/swiper/swiper.js`、`dist/esm/taro-swiper-core_2.entry.js`、`dist/hydrate/index.js`、`dist/taro-components/p-87b0d22f.entry.js` —— 这些是 **web 平台**产物，weapp 平台不加载。
+
+旁证：`hammer` / `hls.js` / `stencil` 在同一批 `dist/*.js` 中同样 0 命中（`IntersectionObserver` 2 处、`snap-to-edge` 1 处属 Taro 自身实现）。
+
+### E4 · 仍未闭环的部分
+
+| 矩阵项 | 状态 | 原因 |
+|--------|------|------|
+| ① Tab 渲染与切换 | ⏳ | 需微信开发者工具或真机 |
+| ② 滚动/列表交互（swiper 运行时污染） | ✅ 产物层面已证伪（E3） | —— |
+| ③ 订阅消息/登录页打开 | ⏳ | 依赖微信 appid（T20 阻塞） |
+| ④ 冷启动 + 弱网 | ⏳ | 需真机 |
+| 微信基础库 ≥2.30 兼容 | ⏳ | 本机无微信开发者工具（`C:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat`、`C:\Program Files\Tencent\...`、`%LOCALAPPDATA%\Programs\...` 三路径 `Test-Path` 均 False） |
+
+结论：场景 ② 的风险假设已被产物证据推翻；其余三项仍需真机/开发者工具环境，本项**不得**据此标记完成。
+
+### E5 · 复现命令（可重跑）
+
+```powershell
+pnpm why swiper -r
+Select-String -Path apps/miniapp/src/**/*.tsx -Pattern "Swiper"
+$env:http_proxy=''; pnpm --filter @ibd/miniapp build:weapp
+foreach ($p in @('SwiperCore','swiper-wrapper','slidesPerView','wrapperEl','watchSlidesProgress')) {
+  "$p => $((@(Select-String -Path apps/miniapp/dist/*.js -Pattern $p -AllMatches)).Count)"
+}
+```
+

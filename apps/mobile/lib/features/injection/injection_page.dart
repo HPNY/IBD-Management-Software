@@ -27,6 +27,7 @@ class _InjectionPageState extends State<InjectionPage> {
   Set<String> _plannedIso = {};
   List<Map<String, dynamic>> _rows = [];
   bool _busy = false;
+  bool _startEdited = false;
   String? _error;
 
   @override
@@ -38,6 +39,8 @@ class _InjectionPageState extends State<InjectionPage> {
     final n = DateTime.now();
     _startCtrl.text = isoDate(n);
     _rebuildPreview();
+    // H4：首屏加载已保存排期（此前只有手动刷新才可见，重启后像是"排期丢了"）
+    _loadRows(prefillStart: true);
   }
 
   @override
@@ -91,6 +94,7 @@ class _InjectionPageState extends State<InjectionPage> {
     );
     if (picked == null) return;
     _startCtrl.text = isoDate(picked);
+    _startEdited = true;
     _rebuildPreview();
   }
 
@@ -114,6 +118,36 @@ class _InjectionPageState extends State<InjectionPage> {
       );
       final cat = _category;
       final drugLabel = '${cat.genericName}（$_brand）';
+      // 覆盖确认：生成会清空同药名未完成针次，不能静默删除。
+      final existing = await _repo.listAll();
+      if (!mounted) return;
+      final pendingCount = existing
+          .where((r) =>
+              r['drug'] == drugLabel && r['actual_date'] == null)
+          .length;
+      if (pendingCount > 0) {
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('覆盖现有排期？'),
+            content: Text('$drugLabel 还有 $pendingCount 针未完成，重新生成会删除这些计划。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('覆盖生成'),
+              ),
+            ],
+          ),
+        );
+        if (ok != true) {
+          if (mounted) setState(() => _busy = false);
+          return;
+        }
+      }
       // 旧计划先清空同药名未完成针次
       await _repo.clearPendingForDrug(drugLabel);
       await _repo.insertMany([
@@ -151,9 +185,23 @@ class _InjectionPageState extends State<InjectionPage> {
     }
   }
 
-  Future<void> _loadRows() async {
+  Future<void> _loadRows({bool prefillStart = false}) async {
     final rows = await _repo.listAll();
-    if (mounted) setState(() => _rows = rows);
+    if (!mounted) return;
+    setState(() {
+      _rows = rows;
+      if (prefillStart && rows.isNotEmpty && !_startEdited) {
+        // 用最近一针的计划日回填起始日；若已过期则从今天起算。
+        final last = rows.last;
+        final planned = DateTime.tryParse('${last['planned_date']}');
+        final today = DateTime.now();
+        final base = planned == null || planned.isBefore(today) ? today : planned;
+        _startCtrl.text = isoDate(base);
+      }
+    });
+    if (prefillStart && rows.isNotEmpty && !_startEdited) {
+      _rebuildPreview();
+    }
   }
 
   Future<void> _complete(Map<String, dynamic> row) async {
@@ -167,7 +215,7 @@ class _InjectionPageState extends State<InjectionPage> {
     final brands = cat.brands;
 
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(
         automaticallyImplyLeading: !widget.embedded,
         title: const Text('注射排期'),
@@ -183,9 +231,9 @@ class _InjectionPageState extends State<InjectionPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: IbdColors.card,
+                color: context.ibd.surface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+                border: Border.all(color: context.ibd.outline),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,13 +245,13 @@ class _InjectionPageState extends State<InjectionPage> {
                   const SizedBox(height: 4),
                   Text(
                     cat.mechanism,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: IbdColors.textSecondary,
+                      color: context.ibd.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 14),
-                  const Text('药品大类（通用名）', style: _label),
+                  Text('药品大类（通用名）', style: _labelOf(context)),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
                     initialValue: _categoryKey,
@@ -225,7 +273,7 @@ class _InjectionPageState extends State<InjectionPage> {
                     onChanged: _onCategoryChanged,
                   ),
                   const SizedBox(height: 12),
-                  const Text('商品名', style: _label),
+                  Text('商品名', style: _labelOf(context)),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
                     initialValue: _brand,
@@ -266,7 +314,7 @@ class _InjectionPageState extends State<InjectionPage> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Text('给药间隔', style: _label),
+                  Text('给药间隔', style: _labelOf(context)),
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -298,18 +346,21 @@ class _InjectionPageState extends State<InjectionPage> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     '例：每隔 8 周打一次；或每隔 14 天。默认值来自所选药品。',
                     style: TextStyle(
                       fontSize: 12,
-                      color: IbdColors.textSecondary,
+                      color: context.ibd.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 14),
-                  FilledButton.icon(
-                    onPressed: _busy ? null : _generate,
-                    icon: const Icon(Icons.event_available_rounded),
-                    label: Text(_busy ? '生成中…' : '生成排期并写入本机'),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _busy ? null : _generate,
+                      icon: const Icon(Icons.event_available_rounded),
+                      label: Text(_busy ? '生成中…' : '生成排期并写入本机'),
+                    ),
                   ),
                 ],
               ),
@@ -334,21 +385,21 @@ class _InjectionPageState extends State<InjectionPage> {
               }),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               '圆点为按当前间隔预览的注射日（生成前仅为预览）。',
-              style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+              style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
             ),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text(_error!, style: const TextStyle(color: IbdColors.danger)),
+                child: Text(_error!, style: TextStyle(color: context.ibd.danger)),
               ),
             const SizedBox(height: 16),
             const Text('已生成计划',
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             const SizedBox(height: 8),
             if (_rows.isEmpty)
-              const Text('暂无数据，生成后在此列出', style: TextStyle(color: IbdColors.textSecondary)),
+              Text('暂无数据，生成后在此列出', style: TextStyle(color: context.ibd.textSecondary)),
             ..._rows.map((row) {
               final done = row['actual_date'] != null;
               return Card(
@@ -357,7 +408,7 @@ class _InjectionPageState extends State<InjectionPage> {
                   dense: true,
                   leading: Icon(
                     done ? Icons.check_circle_rounded : Icons.vaccines_rounded,
-                    color: done ? IbdColors.success : IbdColors.primary,
+                    color: done ? context.ibd.success : context.ibd.brandInk,
                   ),
                   title: Text('${row['drug']}'),
                   subtitle: Text(
@@ -381,10 +432,10 @@ class _InjectionPageState extends State<InjectionPage> {
   }
 }
 
-const _label = TextStyle(
+TextStyle _labelOf(BuildContext context) => TextStyle(
   fontWeight: FontWeight.w600,
   fontSize: 13,
-  color: IbdColors.textPrimary,
+  color: context.ibd.textPrimary,
 );
 
 class _MonthCalendar extends StatelessWidget {
@@ -423,9 +474,11 @@ class _MonthCalendar extends StatelessWidget {
           margin: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            color: marked ? IbdColors.primary.withValues(alpha: 0.12) : null,
+            color: marked
+                ? context.ibd.brandInk.withValues(alpha: 0.12)
+                : null,
             border: Border.all(
-              color: isToday ? IbdColors.primary : Colors.transparent,
+              color: isToday ? context.ibd.brandInk : Colors.transparent,
               width: 1.2,
             ),
           ),
@@ -437,7 +490,7 @@ class _MonthCalendar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: marked || isToday ? FontWeight.w800 : FontWeight.w500,
-                  color: marked ? IbdColors.primaryDark : IbdColors.textPrimary,
+                  color: marked ? context.ibd.brandInk : context.ibd.textPrimary,
                 ),
               ),
               const SizedBox(height: 2),
@@ -446,7 +499,7 @@ class _MonthCalendar extends StatelessWidget {
                 height: 6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: marked ? IbdColors.primary : Colors.transparent,
+                  color: marked ? context.ibd.brandInk : Colors.transparent,
                 ),
               ),
             ],
@@ -458,9 +511,9 @@ class _MonthCalendar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: IbdColors.card,
+        color: context.ibd.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+        border: Border.all(color: context.ibd.outline),
       ),
       child: Column(
         children: [
@@ -522,9 +575,9 @@ class _Dow extends StatelessWidget {
       child: Text(
         t,
         textAlign: TextAlign.center,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
-          color: IbdColors.textSecondary,
+          color: context.ibd.textSecondary,
           fontWeight: FontWeight.w600,
         ),
       ),

@@ -60,7 +60,7 @@ class _TrendPageState extends State<TrendPage> {
     final minV = values.isEmpty ? 0.0 : values.reduce((a, b) => a < b ? a : b);
 
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(
         automaticallyImplyLeading: !widget.embedded,
         title: const Text('指标趋势'),
@@ -98,7 +98,7 @@ class _TrendPageState extends State<TrendPage> {
                   height: 240,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: IbdColors.card,
+                    color: context.ibd.surface,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: _series.isEmpty
@@ -106,7 +106,7 @@ class _TrendPageState extends State<TrendPage> {
                           child: Text(
                             '暂无「$_metric」数据\n可到首页手动录入检验',
                             textAlign: TextAlign.center,
-                            style: const TextStyle(color: IbdColors.textSecondary),
+                            style: TextStyle(color: context.ibd.textSecondary),
                           ),
                         )
                       : CustomPaint(
@@ -115,6 +115,9 @@ class _TrendPageState extends State<TrendPage> {
                             minV: minV,
                             maxV: maxV,
                             dates: _series.map((e) => '${e['date']}').toList(),
+                            dotColor: context.ibd.brandInk,
+                            labelColor: context.ibd.textSecondary,
+                            gridColor: context.ibd.divider,
                           ),
                           size: const Size(double.infinity, 240),
                         ),
@@ -124,9 +127,9 @@ class _TrendPageState extends State<TrendPage> {
                   Text(
                     '$_metric：min ${minV.toStringAsFixed(2)} · max ${maxV.toStringAsFixed(2)} · '
                     '${_series.length} 个点',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: IbdColors.textSecondary,
+                      color: context.ibd.textSecondary,
                     ),
                   ),
                 const SizedBox(height: 20),
@@ -136,8 +139,8 @@ class _TrendPageState extends State<TrendPage> {
                 ),
                 const SizedBox(height: 8),
                 if (_latest.isEmpty)
-                  const Text('暂无数据',
-                      style: TextStyle(color: IbdColors.textSecondary)),
+                  Text('暂无数据',
+                      style: TextStyle(color: context.ibd.textSecondary)),
                 ..._latest.entries.map((e) {
                   final v = e.value['value'];
                   return Card(
@@ -164,6 +167,9 @@ class _LineChartPainter extends CustomPainter {
     required this.minV,
     required this.maxV,
     required this.dates,
+    required this.dotColor,
+    required this.labelColor,
+    required this.gridColor,
   });
 
   final List<double> values;
@@ -171,16 +177,21 @@ class _LineChartPainter extends CustomPainter {
   final double maxV;
   final List<String> dates;
 
+  /// CustomPainter 拿不到 BuildContext，颜色由 build 处注入（U5）。
+  final Color dotColor;
+  final Color labelColor;
+  final Color gridColor;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (values.isEmpty) return;
     final paintLine = Paint()
-      ..color = IbdColors.primary
+      ..color = dotColor
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
-    final paintDot = Paint()..color = IbdColors.primaryDark;
+    final paintDot = Paint()..color = dotColor;
     final paintGrid = Paint()
-      ..color = const Color(0xFFE2E8F0)
+      ..color = gridColor
       ..strokeWidth = 1;
 
     const pad = 24.0;
@@ -211,7 +222,7 @@ class _LineChartPainter extends CustomPainter {
     final tp = TextPainter(
       text: TextSpan(
         text: maxV.toStringAsFixed(1),
-        style: const TextStyle(fontSize: 10, color: IbdColors.textSecondary),
+        style: TextStyle(fontSize: 10, color: labelColor),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
@@ -222,5 +233,8 @@ class _LineChartPainter extends CustomPainter {
   bool shouldRepaint(covariant _LineChartPainter old) =>
       old.values != values ||
       old.minV != minV ||
-      old.maxV != maxV;
+      old.maxV != maxV ||
+      old.dotColor != dotColor ||
+      old.labelColor != labelColor ||
+      old.gridColor != gridColor;
 }

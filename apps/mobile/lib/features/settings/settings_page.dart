@@ -18,6 +18,7 @@ import '../../core/skill/local_skill_store.dart';
 import '../../core/diagnostics/diagnostics_prefs.dart';
 import '../../core/i18n/app_locale.dart';
 import '../../core/ui/accessibility.dart';
+import '../../core/ui/cards.dart';
 import '../../core/ui/theme.dart';
 import '../auth/login_page.dart';
 
@@ -300,7 +301,7 @@ class _SettingsPageState extends State<SettingsPage> {
     if (ok != true || ctrl.text.trim().isEmpty) return;
     await _backup.savePassphrase(ctrl.text.trim());
     await identity.setSyncOptIn(true);
-    if (mounted) setState(() => _message = '已开启云同步（密文）');
+    if (mounted) setState(() => _message = '已开启密文备份');
   }
 
   Future<void> _pushCipher() async {
@@ -328,6 +329,7 @@ class _SettingsPageState extends State<SettingsPage> {
         cipher: snap['cipher']!,
         nonce: snap['nonce']!,
         mac: snap['mac']!,
+        salt: snap['salt'],
         clientUpdatedAt: DateTime.now().toIso8601String(),
         version: DateTime.now().millisecondsSinceEpoch,
       );
@@ -346,28 +348,92 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() => _message = '请先设置备份口令');
       return;
     }
+    if (!mounted) return;
+    // H2：换机后本机 UUID 已变，必须能指定原设备标识才能找回旧快照。
+    final idCtrl = TextEditingController(text: identity.uuid);
+    final sourceId = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('从云端恢复（换机）'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '填写备份时那台设备的「应用标识」。同一台设备直接确定即可。',
+              style: TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: idCtrl,
+              decoration: const InputDecoration(labelText: '原设备应用标识'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, idCtrl.text.trim()),
+            child: const Text('查询快照'),
+          ),
+        ],
+      ),
+    );
+    if (sourceId == null || sourceId.isEmpty || !mounted) return;
     setState(() {
       _busy = true;
       _message = null;
     });
     try {
-      final session = await SyncApi(ApiConfig.dev()).syncSession(identity.uuid);
+      final session = await SyncApi(ApiConfig.dev()).syncSession(sourceId);
       final list = await SyncApi(ApiConfig.dev()).listCipher(
         token: session['accessToken'] as String,
-        appUserId: identity.uuid,
+        appUserId: sourceId,
       );
       if (list.isEmpty) {
-        setState(() => _message = '云端暂无快照');
+        setState(() => _message = '该标识下暂无云端快照');
         return;
       }
-      final snap = Map<String, dynamic>.from(list.first as Map);
+      final snap = Map<String, dynamic>.from(
+        list.firstWhere(
+              (e) => (e as Map)['dataType'] == 'full',
+              orElse: () => list.first,
+            ) as Map,
+      );
+      final at = '${snap['clientUpdatedAt'] ?? snap['updatedAt'] ?? '未知时间'}';
+      if (!mounted) return;
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('确认恢复？'),
+          content: Text(
+            '快照时间：$at\n恢复会按记录去重追加，不会清空现有数据。',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('恢复'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
       final n = await _backup.restoreFromCloud(
         passphrase: pass,
         cipher: snap['cipher'] as String,
         nonce: snap['nonce'] as String,
         mac: (snap['mac'] as String?) ?? '',
+        salt: snap['kdfSalt'] as String?,
+        sourceAppUserId: sourceId,
       );
-      setState(() => _message = '已从云端恢复 $n 条记录');
+      setState(() => _message = '已从云端恢复 $n 条记录（重复项已跳过）');
     } catch (e) {
       setState(() => _message = '恢复失败：$e');
     } finally {
@@ -510,7 +576,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final identity = context.watch<LocalIdentity>();
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(
         automaticallyImplyLeading: !widget.embedded,
         title: Text(widget.embedded ? '我的' : '隐私与备份'),
@@ -555,7 +621,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                         ),
                         Text(
-                          identity.syncOptIn ? '云同步已开启' : '仅本机 · 未同步',
+                          identity.syncOptIn ? '密文备份已开启' : '仅本机 · 未备份',
                           style: const TextStyle(color: Colors.white70, fontSize: 12),
                         ),
                       ],
@@ -570,6 +636,8 @@ class _SettingsPageState extends State<SettingsPage> {
               title: const Text('AI 解析（可选）'),
               subtitle: const Text(
                 '未配置 LLM_API_KEY 时走 Skill；否则 Skill 未命中走 LLM',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -597,6 +665,8 @@ class _SettingsPageState extends State<SettingsPage> {
               title: const Text('注射提醒（本地）'),
               subtitle: Text(
                 '本地通知（${formatInjectionLeads(_injLeads)}）；关网可用，不依赖推送',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               trailing: const Icon(Icons.tune),
               onTap: _editInjectionLeads,
@@ -607,7 +677,11 @@ class _SettingsPageState extends State<SettingsPage> {
             child: SwitchListTile(
               secondary: const Icon(Icons.medication_liquid_outlined),
               title: const Text('用药提醒（每日）'),
-              subtitle: Text('在用药物每日 $_medHour:00 提醒；通知不含药名/剂量'),
+              subtitle: Text(
+                '在用药物每日 $_medHour:00 提醒；通知不含药名/剂量',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
               value: _medReminders,
               onChanged: _toggleMedicationReminders,
             ),
@@ -631,12 +705,12 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
                 if (_followups.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                     child: Text(
                       '暂无复查提醒；复查项目与频率请遵医嘱',
                       style: TextStyle(
-                          fontSize: 12, color: IbdColors.textSecondary),
+                          fontSize: 12, color: context.ibd.textSecondary),
                     ),
                   ),
                 for (final e in _followups)
@@ -655,18 +729,26 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           const SizedBox(height: 16),
-          Text('诊断（崩溃/性能）', style: Theme.of(context).textTheme.titleSmall),
+          const IbdSectionHeader(
+            '诊断（崩溃/性能）',
+            padding: EdgeInsets.only(top: 4, bottom: 10),
+          ),
           Consumer<DiagnosticsPrefs>(
             builder: (context, diag, _) => SwitchListTile(
               title: const Text('允许匿名诊断上报'),
               subtitle: const Text(
                 '默认关闭；关闭时数据只留本机，绝不上传。不含病历。',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               value: diag.enabled,
               onChanged: (v) => diag.setEnabled(v),
             ),
           ),
-          Text('语言 / Language', style: Theme.of(context).textTheme.titleSmall),
+          const IbdSectionHeader(
+            '语言 / Language',
+            padding: EdgeInsets.only(top: 4, bottom: 10),
+          ),
           Consumer<AppLocale>(
             builder: (context, loc, _) => RadioGroup<String>(
               groupValue: loc.locale.languageCode,
@@ -685,26 +767,40 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
-          Text('可用性（大字/简洁）', style: Theme.of(context).textTheme.titleSmall),
+          const IbdSectionHeader(
+            '可用性（大字/简洁）',
+            padding: EdgeInsets.only(top: 4, bottom: 10),
+          ),
           Consumer<AccessibilityPrefs>(
             builder: (context, a11y, _) => Column(
               children: [
                 SwitchListTile(
                   title: const Text('大字体模式'),
-                  subtitle: const Text('文字放大 1.25×，方便阅读'),
+                  subtitle: const Text(
+                    '文字放大 1.25×，方便阅读',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   value: a11y.largeFont,
                   onChanged: (v) => a11y.setLargeFont(v),
                 ),
                 SwitchListTile(
                   title: const Text('简洁模式'),
-                  subtitle: const Text('首页只显核心指标与今日待办'),
+                  subtitle: const Text(
+                    '首页只显核心指标与今日待办',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   value: a11y.simpleMode,
                   onChanged: (v) => a11y.setSimpleMode(v),
                 ),
               ],
             ),
           ),
-          Text('系统推送（可选）', style: Theme.of(context).textTheme.titleSmall),
+          const IbdSectionHeader(
+            '系统推送（可选）',
+            padding: EdgeInsets.only(top: 4, bottom: 10),
+          ),
           const SizedBox(height: 4),
           Text(
             '远程推送默认关闭。开启后仅注册设备令牌（只绑本机 app_user_uuid，'
@@ -723,6 +819,8 @@ class _SettingsPageState extends State<SettingsPage> {
               _push.optIn
                   ? '已开启 · 令牌 ${_push.registeredTokenPrefix ?? '—'}…'
                   : '关闭时零远程注册；本地注射提醒不受影响',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             value: _push.optIn,
             onChanged: _busy || _push.busy ? null : _toggleSystemPush,
@@ -747,7 +845,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
           const SizedBox(height: 12),
-          Text('应用标识（本机）', style: Theme.of(context).textTheme.titleSmall),
+          const IbdSectionHeader(
+            '应用标识（本机）',
+            padding: EdgeInsets.only(top: 4, bottom: 10),
+          ),
           SelectableText(identity.uuid),
           const SizedBox(height: 12),
           if (_dbProbe != null)
@@ -761,6 +862,8 @@ class _SettingsPageState extends State<SettingsPage> {
                       : 'provider=${_dbProbe!['cipherProvider']} · '
                           'key=${_dbProbe!['hasKey'] == true ? '已生成' : '缺失'} · '
                           'size=${_dbProbe!['sizeBytes']}',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 trailing: IconButton(
                   icon: const Icon(Icons.refresh),
@@ -769,11 +872,16 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           const SizedBox(height: 16),
-          Text('云同步（可选）', style: Theme.of(context).textTheme.titleSmall),
+          // U6：区块标题统一走 IbdSectionHeader；标题沿用「密文备份 / 恢复」，
+          // 因为下方说明明确写了「不是实时多端同步」，叫「云同步」会误导用户。
+          const IbdSectionHeader(
+            '密文备份 / 恢复（可选）',
+            padding: EdgeInsets.only(top: 4, bottom: 10),
+          ),
           const SizedBox(height: 4),
           Text(
-            '病历默认只存在本机，不上传服务器。开启同步或关联手机号前，'
-            '数据完全留在你的设备上；可随时关闭、注销关联、删除云端副本。',
+            '病历默认只存在本机。这里做的是「手动密文快照」，不是实时多端同步；'
+            '恢复为按记录去重追加，不会清空现有数据。',
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontSize: 12,
@@ -782,8 +890,12 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 8),
           SwitchListTile(
-            title: const Text('启用云同步（端到端密文）'),
-            subtitle: const Text('需设置备份口令；服务端无法解密病历'),
+            title: const Text('启用密文备份'),
+            subtitle: const Text(
+              '需设置备份口令；服务端无法解密病历',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
             value: identity.syncOptIn,
             onChanged: (v) async {
               if (v) {
@@ -814,7 +926,17 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 8),
           OutlinedButton(
             onPressed: _busy ? null : _export,
-            child: const Text('导出本地备份 JSON'),
+            child: const Text('导出本地备份 JSON（明文）'),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '导出的 JSON 是明文，离开加密库后请勿长期留在聊天/网盘；'
+            '传给医生前先核对内容。',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.error,
+              fontSize: 12,
+              height: 1.5,
+            ),
           ),
           OutlinedButton(
             onPressed: _busy ? null : _import,
@@ -861,6 +983,8 @@ class _PhoneLinkCard extends StatelessWidget {
           linked
               ? '${phone != null && phone.isNotEmpty ? maskPhone(phone) : '已关联'} · 仅用于换机恢复 / 多端密文同步，可随时注销。病历仍在本机。'
               : '可选能力，不是登录墙。未关联也可完整使用本机功能；关联仅服务换机恢复与密文同步。',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         trailing: linked
             ? TextButton(

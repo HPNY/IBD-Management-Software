@@ -20,6 +20,11 @@ void main() {
   });
 
   testWidgets('设置页展示大字体/简洁/语言/诊断开关', (tester) async {
+    // 设置页是长 ListView，懒加载只构建可视区 + cacheExtent。
+    // 靠 skipOffstage:false 拿不到未构建的子节点，故放大视口让整页一次建完。
+    tester.view.physicalSize = const Size(390, 4200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final identity = LocalIdentity();
     await identity.load();
     final auth = AuthSession(ApiConfig.dev(), TokenStore());

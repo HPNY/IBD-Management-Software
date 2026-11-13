@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,6 +10,7 @@ import '../../core/identity/local_identity.dart';
 import '../../core/db/repositories.dart';
 import '../../core/drug/drug_review_model.dart';
 import '../../core/ui/disclaimer.dart';
+import '../../core/ui/state_views.dart';
 import '../../core/ui/theme.dart';
 
 /// D2：药物评价（本地列表 + 表单 + 匿名上传/聚合）。
@@ -40,6 +43,9 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
   List<String> _drugNames = [];
   bool _busy = false;
 
+  /// 读取失败原因（U14）：非空时必须显示错误态，不能留空白。
+  String? _error;
+
   @override
   void initState() {
     super.initState();
@@ -59,7 +65,7 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
     // C 组 T5：优先社区聚合 API，失败回落本地
     try {
       final identity = context.read<LocalIdentity>();
-      final session = AuthSession.parseSession('', identity.uuid);
+      final session = await AuthSession.mintParseSession(identity.uuid);
       final api = IbdApiClient(ApiConfig.dev(), session);
       final remote = await api.drugReviewSummary(drug);
       if (!mounted) return;
@@ -108,14 +114,16 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
   Future<void> _load() async {
     setState(() => _busy = true);
     try {
-      final rows = await _repo.listAll();
-      final meds = await _meds.listAll();
+      final rows = await _repo.listAll().timeout(const Duration(seconds: 8));
+      final meds = await _meds.listAll().timeout(const Duration(seconds: 8));
       final names = <String>{for (final m in meds) '${m['drug_name']}'};
       if (!mounted) return;
       setState(() {
         _rows = rows;
         _drugNames = names.where((e) => e.isNotEmpty).toList();
       });
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -163,7 +171,7 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(
         title: const Text('药物评价'),
         actions: [
@@ -171,13 +179,19 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
         ],
       ),
       body: _busy
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
+          ? const IbdLoadingView(label: '正在读取本机评价…')
+          : _error != null
+              ? IbdErrorView(
+                  message: '读不到本机评价数据，可能是本地库打开失败。',
+                  detail: _error,
+                  onRetry: _load,
+                )
+              : ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                const Text(
+                Text(
                   '主观评价仅供病友参考，不替代医生建议。不含检验值/病历。',
-                  style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
                 ),
                 const SizedBox(height: 12),
                 const Text('写下我的评价',
@@ -268,7 +282,13 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                FilledButton(onPressed: _save, child: const Text('保存评价')),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _save,
+                    child: const Text('保存评价'),
+                  ),
+                ),
                 const SizedBox(height: 20),
                 const Text('社区聚合（需联网）',
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
@@ -287,6 +307,12 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
                     ),
                     const SizedBox(width: 8),
                     OutlinedButton(
+                      // 主题里 OutlinedButton 的 minimumSize 是 Size.fromHeight(48)
+                      // ＝ 无限最小宽度；放进 Row（横向无界）会让整页布局失败。
+                      // 这里显式覆盖为有限尺寸（U14 根因）。
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(64, 44),
+                      ),
                       onPressed: () => _loadSummary(_searchCtrl.text.trim()),
                       child: const Text('查询'),
                     ),
@@ -309,8 +335,8 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                 const SizedBox(height: 8),
                 if (_rows.isEmpty)
-                  const Text('暂无评价',
-                      style: TextStyle(color: IbdColors.textSecondary)),
+                  Text('暂无评价',
+                      style: TextStyle(color: context.ibd.textSecondary)),
                 ..._rows.map((r) {
                   return Card(
                     child: ListTile(
@@ -334,9 +360,9 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
                   );
                 }),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   '社区聚合需联网并由服务端统计；本页先展示「我的评价」。',
-                  style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
                 ),
                 // T7：非诊断/非治疗声明
                 const DisclaimerFooter(),

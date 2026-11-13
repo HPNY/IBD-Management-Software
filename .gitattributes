@@ -1,0 +1,19 @@
+# 换行策略（2026-11-10）
+#
+# 背景：仓库启用 core.autocrlf=true，检出为 CRLF；但 `flutter pub get`
+# 每次都会以 LF 重写下列「插件注册」生成文件，导致工作区反复出现 7 个
+# 仅换行差异的改动，干扰 `git status` 与提交前审查。
+#
+# 处理：把这几个生成文件固定为 LF（与 index 中实际存储的 LF 一致），
+# 使 flutter 重写后不再产生差异。其余源码仍沿用 autocrlf 的 CRLF 检出。
+#
+# 注意：这些文件由 Flutter 工具生成，不要手工编辑；也不要在此处加
+# `-text`（那样会关闭换行归一化，反而让 LF/CRLF 变成真实字节差异）。
+
+apps/mobile/windows/flutter/generated_plugin_registrant.cc   text eol=lf
+apps/mobile/windows/flutter/generated_plugin_registrant.h    text eol=lf
+apps/mobile/windows/flutter/generated_plugins.cmake          text eol=lf
+apps/mobile/linux/flutter/generated_plugin_registrant.cc     text eol=lf
+apps/mobile/linux/flutter/generated_plugin_registrant.h      text eol=lf
+apps/mobile/linux/flutter/generated_plugins.cmake            text eol=lf
+apps/mobile/macos/Flutter/GeneratedPluginRegistrant.swift    text eol=lf

@@ -6,7 +6,14 @@ import re
 from typing import Any
 
 
-def flag_value(value: float, ref_min: float | None, ref_max: float | None) -> str | None:
+def flag_value(
+    value: float | None,
+    ref_min: float | None,
+    ref_max: float | None,
+) -> str | None:
+    # 定性结果没有数值：不参与高低判定（C4 / V13-10）。
+    if value is None:
+        return None
     if ref_min is not None and value < ref_min:
         return "low"
     if ref_max is not None and value > ref_max:
@@ -27,8 +34,10 @@ def apply_special_rules(
     return items
 
 
-def _looks_like_case_number(value: float) -> bool:
+def _looks_like_case_number(value: float | None) -> bool:
     # 病案号误匹配：整数且位数过长
+    if value is None:
+        return False
     return value.is_integer() and abs(int(value)) > 10_000_000
 
 

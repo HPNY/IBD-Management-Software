@@ -16,6 +16,15 @@ String inflammationLight(String? flag) {
   return 'green';
 }
 
+/// 灯态的文字表达：颜色之外的第二重编码（WCAG 1.4.1）。
+///
+/// 只靠颜色区分状态，色盲与灰度打印下信息会丢失；状态灯必须同时给文字。
+String inflammationStateText(String light) => switch (light) {
+      'red' => '偏高',
+      'green' => '正常',
+      _ => '未测',
+    };
+
 /// 从最近检验行列表挑出某规范名的最新一条 item。
 /// labs: 每项含 items: List，item 含 nameNorm/value/unit/flag；按 date 降序传入更稳妥。
 Map<String, dynamic>? latestLabItem(

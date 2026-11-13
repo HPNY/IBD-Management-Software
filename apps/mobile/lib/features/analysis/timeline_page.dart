@@ -70,10 +70,10 @@ class _TimelinePageState extends State<TimelinePage> {
     }
   }
 
-  Color _color(String type) {
+  Color _color(BuildContext context, String type) {
     if (type.startsWith('inj')) return const Color(0xFF8B5CF6);
     if (type.startsWith('med')) return const Color(0xFFF59E0B);
-    if (type == 'lab') return IbdColors.primary;
+    if (type == 'lab') return context.ibd.brandInk;
     if (type == 'qol') return const Color(0xFF0EA5E9);
     return const Color(0xFF6366F1);
   }
@@ -81,7 +81,7 @@ class _TimelinePageState extends State<TimelinePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(
         automaticallyImplyLeading: !widget.embedded,
         title: const Text('病程时间线'),
@@ -121,11 +121,11 @@ class _TimelinePageState extends State<TimelinePage> {
           ),
           Expanded(
             child: _events.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       '暂无病程事件\n录入检验/用药/注射/检查后自动生成',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: IbdColors.textSecondary),
+                      style: TextStyle(color: context.ibd.textSecondary),
                     ),
                   )
                 : ListView.builder(
@@ -134,7 +134,7 @@ class _TimelinePageState extends State<TimelinePage> {
                     itemBuilder: (context, i) {
                       final e = _events[i];
                       final type = '${e['type']}';
-                      final color = _color(type);
+                      final color = _color(context, type);
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -153,7 +153,7 @@ class _TimelinePageState extends State<TimelinePage> {
                                 Container(
                                   width: 2,
                                   height: 36,
-                                  color: const Color(0xFFE2E8F0),
+                                  color: context.ibd.divider,
                                 ),
                             ],
                           ),
@@ -163,7 +163,7 @@ class _TimelinePageState extends State<TimelinePage> {
                               margin: const EdgeInsets.only(bottom: 10),
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: IbdColors.card,
+                                color: context.ibd.surface,
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: Column(
@@ -171,9 +171,9 @@ class _TimelinePageState extends State<TimelinePage> {
                                 children: [
                                   Text(
                                     '${e['date']}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 11,
-                                      color: IbdColors.textSecondary,
+                                      color: context.ibd.textSecondary,
                                     ),
                                   ),
                                   Text(
@@ -186,9 +186,9 @@ class _TimelinePageState extends State<TimelinePage> {
                                   if ('${e['subtitle'] ?? ''}'.trim().isNotEmpty)
                                     Text(
                                       '${e['subtitle']}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
-                                        color: IbdColors.textSecondary,
+                                        color: context.ibd.textSecondary,
                                       ),
                                     ),
                                 ],

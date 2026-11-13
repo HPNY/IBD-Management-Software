@@ -110,7 +110,7 @@ void main() {
     );
   });
 
-  test('完成打卡后，排便细表出现同步历史', () async {
+  test('P0-3：打卡只写日记，不再自动生成排便细表记录', () async {
     await symptoms.upsert(
       date: date,
       painLevel: 4,
@@ -134,20 +134,10 @@ void main() {
     expect(diary['bloody_stool'], 'trace');
 
     final rows = await bathroom.listByDate(date);
-    expect(rows, hasLength(1));
-    final row = rows.first;
-    expect(row['source'], 'checkin');
-    expect(row['stool_type'], 6);
-    expect(row['urgency'], 1);
-    expect(row['mucus'], 1);
-    expect(row['blood'], 1); // trace
-    expect(row['daily_count'], 5);
-    expect(row['diarrhea_count'], 3);
-    expect(row['notes'], '打卡同步');
-    expect(row['time'], isNotNull);
+    expect(rows, isEmpty, reason: '打卡不再写入排便细表，避免双份记录');
   });
 
-  test('同日重复打卡会替换同步记录，不堆重复行', () async {
+  test('同日重复打卡只替换日记，不产生细表行', () async {
     await symptoms.upsert(
       date: date,
       stoolType: 5,
@@ -173,17 +163,13 @@ void main() {
     expect(diaries, hasLength(1), reason: '打卡表按日唯一，应被替换');
 
     final rows = await bathroom.listByDate(date);
-    expect(rows, hasLength(1), reason: '同步记录同日只保留一条');
-    final row = rows.first;
-    expect(row['source'], 'checkin');
-    expect(row['stool_type'], 7);
-    expect(row['blood'], 2); // obvious
-    expect(row['daily_count'], 8);
-    expect(row['urgency'], 1);
-    expect(row['mucus'], 1);
+    expect(rows, isEmpty, reason: '打卡不写细表，重复保存也不堆行');
+    final diary = (await symptoms.getByDate(date))!;
+    expect(diary['stool_type'], 7);
+    expect(diary['bowel_count'], 8);
   });
 
-  test('细表手记不会被打卡同步覆盖', () async {
+  test('细表手记不受打卡影响', () async {
     await bathroom.insert(
       date: date,
       time: '08:30',
@@ -205,14 +191,24 @@ void main() {
     );
 
     final rows = await bathroom.listByDate(date);
-    expect(rows, hasLength(2));
-
-    final sources = rows.map((r) => '${r['source']}').toSet();
-    expect(sources, containsAll(['manual', 'checkin']));
+    expect(rows, hasLength(1), reason: '只剩用户手记，无打卡同步行');
 
     final manual = rows.firstWhere((r) => r['source'] == 'manual');
     expect(manual['notes'], '早餐后');
     expect(manual['time'], '08:30');
+  });
+
+  test('P0-3：未触碰字段写 null，不把默认值当真实症状', () async {
+    await symptoms.upsert(date: date, painLevel: 3);
+    final row = (await symptoms.getByDate(date))!;
+    expect(row['pain_level'], 3);
+    expect(row['diarrhea_count'], isNull);
+    expect(row['stool_type'], isNull);
+    expect(row['bowel_count'], isNull);
+    expect(row['bloody_stool'], isNull);
+    expect(row['urgency'], isNull);
+    expect(row['mucus'], isNull);
+    expect(row['overall_feeling'], isNull);
   });
 
   test('打卡回显：getByDate 能读回新字段', () async {

@@ -7,7 +7,12 @@ import '../lab/lab_panels.dart';
 import 'local_db.dart';
 
 class LabRepository {
-  Future<Database> get _db => LocalDb.instance.database;
+  /// 测试可注入 Database，生产走 LocalDb。
+  LabRepository({Database? database}) : _dbOverride = database;
+
+  final Database? _dbOverride;
+  Future<Database> get _db async =>
+      _dbOverride ?? await LocalDb.instance.database;
 
   Future<String> insert({
     required String date,
@@ -58,6 +63,44 @@ class LabRepository {
         'items': items.where((i) => i['lab_id'] == id).toList(),
       };
     }).toList();
+  }
+
+  /// P0-4：编辑检验记录的日期/医院（错录可就地修正）。
+  Future<void> updateMeta(
+    String labId, {
+    required String date,
+    String? hospital,
+  }) async {
+    final db = await _db;
+    await db.update(
+      'labs',
+      {'date': date, 'hospital': hospital},
+      where: 'id = ?',
+      whereArgs: [labId],
+    );
+  }
+
+  /// P0-4：删除整份检验记录（lab_items 由外键级联删除）。
+  Future<void> delete(String labId) async {
+    final db = await _db;
+    await db.delete('labs', where: 'id = ?', whereArgs: [labId]);
+  }
+
+  /// P0-4：同日同院、指标与数值完全相同的记录视为重复，返回可合并的组。
+  Future<List<List<Map<String, dynamic>>>> duplicateGroups() async {
+    final all = await listAll();
+    final byKey = <String, List<Map<String, dynamic>>>{};
+    for (final lab in all) {
+      final items = (lab['items'] as List).cast<Map<String, dynamic>>();
+      final sig = items
+          .map((i) =>
+              '${i['name_norm']}:${i['value']}:${i['unit'] ?? ''}')
+          .toList()
+        ..sort();
+      final key = '${lab['date']}|${lab['hospital'] ?? ''}|${sig.join(',')}';
+      byKey.putIfAbsent(key, () => []).add(lab);
+    }
+    return byKey.values.where((g) => g.length > 1).toList();
   }
 }
 
@@ -222,8 +265,9 @@ class SymptomRepository {
     }
   }
 
-  /// 保存打卡，并把排便相关字段同步写入排便细表历史。
-  /// 同日重复保存时替换 source=checkin 的同步记录，避免细表里堆重复行。
+  /// 保存打卡。P0-3：**不再自动生成排便细表记录**——
+  /// 打卡与细表是两套录入，自动同步会造成双份记录、两套便血档位。
+  /// 历史 `source=checkin` 行在同一日期保存时清理，数据仍保留在本表。
   Future<void> upsert({
     required String date,
     int? painLevel,
@@ -251,16 +295,6 @@ class SymptomRepository {
     String? stressSource,
   }) async {
     final db = await _db;
-    final now = DateTime.now();
-    final time =
-        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    final hasBathroomPayload = stoolType != null ||
-        urgency != null ||
-        mucus != null ||
-        bloodyStool != null ||
-        bowelCount != null ||
-        diarrheaCount != null;
-
     await db.transaction((txn) async {
       // data_flags 随 replace 语义保留：未提供新腹胀值时沿用旧标记，
       // 提供真实腹胀值（T1 修复后的新数据）则解除 bloating 修复标记。
@@ -309,26 +343,12 @@ class SymptomRepository {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
-      if (!hasBathroomPayload) return;
-
+      // P0-3：清理历史自动同步行（仅当日），不再写入新行。
       await txn.delete(
         'bathroom_records',
         where: "date = ? AND source = 'checkin'",
         whereArgs: [date],
       );
-      await txn.insert('bathroom_records', {
-        'id': const Uuid().v4(),
-        'date': date,
-        'time': time,
-        'stool_type': stoolType,
-        'urgency': urgency == null ? null : (urgency ? 1 : 0),
-        'blood': bloodToBathroomFlag(bloodyStool),
-        'mucus': mucus == null ? null : (mucus ? 1 : 0),
-        'source': 'checkin',
-        'daily_count': bowelCount,
-        'diarrhea_count': diarrheaCount,
-        'notes': '打卡同步',
-      });
     });
   }
 
@@ -470,9 +490,16 @@ class SurgeryRepository {
 
 /// 本地检验指标序列（趋势图）
 class LabSeriesRepository {
-  Future<Database> get _db => LocalDb.instance.database;
+  LabSeriesRepository({Database? database}) : _dbOverride = database;
 
-  /// 按规范名提取时间序列，如 CRP / 钙卫蛋白
+  final Database? _dbOverride;
+  Future<Database> get _db async =>
+      _dbOverride ?? await LocalDb.instance.database;
+
+  /// 按规范名提取时间序列，如 CRP / 钙卫蛋白。
+  ///
+  /// H17：必须精确匹配 `name_norm`。此前用 `LIKE '%白蛋白%'` 会把
+  /// 「前白蛋白」混进白蛋白趋势（量级差 5–10 倍），医生摘要与活动度卡同受影响。
   Future<List<Map<String, dynamic>>> seriesByName(String nameNorm) async {
     final db = await _db;
     final rows = await db.rawQuery(
@@ -480,10 +507,10 @@ class LabSeriesRepository {
       SELECT labs.date AS date, lab_items.value AS value, lab_items.unit AS unit
       FROM lab_items
       INNER JOIN labs ON labs.id = lab_items.lab_id
-      WHERE lab_items.name_norm LIKE ?
+      WHERE lab_items.name_norm = ?
       ORDER BY labs.date ASC
       ''',
-      ['%$nameNorm%'],
+      [nameNorm],
     );
     return rows;
   }

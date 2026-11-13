@@ -237,7 +237,7 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
     final need = _requiredSlots;
 
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(
         title: Text(_isEdit ? '编辑用药' : '添加用药'),
         actions: [
@@ -302,9 +302,9 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
                 const SizedBox(height: 18),
                 const _FieldLabel('频次'),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   '选定频次后，下方时间点数量会与之对应；可点时间改钟点。',
-                  style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -328,10 +328,10 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
                       need == null
                           ? '可选 ${_slots.length} 个'
                           : '已选 ${_slots.length} / $need',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: IbdColors.primaryDark,
+                        color: context.ibd.brandInk,
                       ),
                     ),
                   ],
@@ -355,12 +355,12 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
                           color: selected
-                              ? IbdColors.primary.withValues(alpha: 0.10)
-                              : const Color(0xFFF8FAFC),
+                              ? context.ibd.brandInk.withValues(alpha: 0.10)
+                              : context.ibd.surfaceAlt,
                           border: Border.all(
                             color: selected
-                                ? IbdColors.primary
-                                : const Color(0xFFE2E8F0),
+                                ? context.ibd.brandInk
+                                : context.ibd.divider,
                           ),
                         ),
                         child: Row(
@@ -370,8 +370,8 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
                                   ? Icons.check_circle_rounded
                                   : Icons.circle_outlined,
                               color: selected
-                                  ? IbdColors.primary
-                                  : IbdColors.textSecondary,
+                                  ? context.ibd.brandInk
+                                  : context.ibd.textSecondary,
                               size: 20,
                             ),
                             const SizedBox(width: 10),
@@ -381,8 +381,8 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   color: selected
-                                      ? IbdColors.primaryDark
-                                      : IbdColors.textPrimary,
+                                      ? context.ibd.brandInk
+                                      : context.ibd.textPrimary,
                                 ),
                               ),
                             ),
@@ -399,9 +399,9 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
                 const SizedBox(height: 6),
                 Text(
                   '当前：$_scheduleLabel',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: IbdColors.textSecondary,
+                    color: context.ibd.textSecondary,
                   ),
                 ),
               ],
@@ -442,14 +442,17 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
             ),
           ),
           const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _busy ? null : _save,
-            child: Text(_busy ? '保存中…' : (_isEdit ? '保存修改' : '添加到本机')),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _busy ? null : _save,
+              child: Text(_busy ? '保存中…' : (_isEdit ? '保存修改' : '添加到本机')),
+            ),
           ),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: Text(_error!, style: const TextStyle(color: IbdColors.danger)),
+              child: Text(_error!, style: TextStyle(color: context.ibd.danger)),
             ),
         ],
       ),
@@ -466,9 +469,9 @@ class _IosCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.ibd.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+        border: Border.all(color: context.ibd.outline),
       ),
       child: child,
     );
@@ -485,10 +488,10 @@ class _FieldLabel extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: IbdColors.textSecondary,
+          color: context.ibd.textSecondary,
         ),
       ),
     );
