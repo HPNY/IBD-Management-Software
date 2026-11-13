@@ -19,8 +19,28 @@ const prNumber = process.env.PR_NUMBER ?? "?";
 const author = process.env.PR_AUTHOR ?? "?";
 const isDraft = (process.env.PR_IS_DRAFT ?? "").toLowerCase() === "true";
 
-/** 任务号形态：T8.2 / T0.3 / F1 / G2（与 docs/session-worklist.md 一致） */
-const TASK_RE = /\b(?:T\d+(?:\.\d+)?|F\d+(?:\.\d+)?|G\d+)\b/;
+/**
+ * 任务号形态（与 docs/session-worklist.md 实际使用的编号体系一致）
+ *
+ * 2026-11-13 修正两处：
+ *  1. 原正则只认 `T/F/G` 三种前缀，但 worklist 里同时存在 `P1–P11`（阶段）、
+ *     `U1–U17`（UI 评审）、`V13-01…44`（PRD 对齐）、`W0-01…08`（评审 P0）、
+ *     `M1–M8`（合并收口）、`R0.6`（二次验证）、`D1–D4`（V2 四轨）等前缀，
+ *     合法 PR 被判成「缺少任务号」。
+ *  2. 原正则区分大小写，但分支名按 `task/<任务号>-<简述>` 约定全部小写
+ *     （`task/t8-review-mechanism`、`task/w0-review-p0-fixes` …），
+ *     导致「任务号只写在分支名里」的情况永远匹配不上。改为大小写不敏感。
+ *
+ * `(?<![A-Za-z0-9])` / `(?![A-Za-z0-9])` 前后夹逼，避免匹配到单词内部
+ * （如 `XP11`、`P11x` 不算）。
+ */
+const TASK_PREFIXES = ["T", "P", "U", "V", "W", "M", "R", "D", "F", "G"];
+const TASK_RE = new RegExp(
+  `(?<![A-Za-z0-9])(?:${TASK_PREFIXES.join("|")})\\d+(?:\\.\\d+)?(?:-\\d+)?(?![A-Za-z0-9])`,
+  "i",
+);
+/** 具名任务号（无数字编号，如 SWIPER-R1），单独列出以免放宽主正则 */
+const NAMED_TASK_RE = /\bSWIPER-R\d+\b/i;
 
 /** PR 描述必须出现的章节（与 .github/pull_request_template.md 对齐） */
 const REQUIRED_SECTIONS = ["变更概要", "影响范围", "证据", "自查清单", "回滚方式"];
@@ -32,18 +52,23 @@ const problems = [];
 const notes = [];
 
 // ---- 规则 1：任务号 ----
-const inTitle = TASK_RE.test(title);
-const inBranch = TASK_RE.test(headRef);
+const matchesTask = (s) => TASK_RE.test(s) || NAMED_TASK_RE.test(s);
+const inTitle = matchesTask(title);
+const inBranch = matchesTask(headRef);
 const branchConvention = /^(task|fix|feature|docs|chore)\/[A-Za-z0-9._-]+$/.test(headRef);
 
 if (!inTitle && !inBranch) {
   problems.push(
-    "缺少任务号：PR 标题或分支名中必须包含任务号（形如 T8.2 / T0.3 / F1 / G2）。\n" +
+    "缺少任务号：PR 标题或分支名中必须包含任务号。\n" +
+      "    可用形态：T8.2 / P11 / U7 / V13-05 / W0-03 / M4 / R0.6 / D2 / F1 / G2 / SWIPER-R1\n" +
       `    当前标题：「${title || "(空)"}」  当前分支：「${headRef || "(空)"}」\n` +
       "    依据：docs/code-review-process.md §4 步骤 0「没有任务号的 PR 直接关闭」",
   );
 } else {
-  const found = (title.match(TASK_RE) ?? headRef.match(TASK_RE) ?? [])[0];
+  const found = (title.match(TASK_RE) ??
+    title.match(NAMED_TASK_RE) ??
+    headRef.match(TASK_RE) ??
+    headRef.match(NAMED_TASK_RE))[0];
   notes.push(`任务号：${found}`);
 }
 
