@@ -1,0 +1,27 @@
+# IBD Management Software · 编辑器统一配置
+# 作用：消除 CRLF/LF、Tab/空格、编码差异导致的"整文件 diff"。
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,yml,yaml,css,html}]
+indent_size = 2
+
+[*.py]
+indent_size = 4
+
+[*.dart]
+indent_size = 2
+
+[*.md]
+# 文档中的硬换行与表格对齐需要保留
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab

@@ -1,0 +1,52 @@
+{
+  "app.js": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/miniapp/src/pages/index/index.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 4
+    }
+  },
+  "apps/miniapp/src/pages/labs/index.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "apps/miniapp/src/pages/summary/index.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    }
+  },
+  "apps/web/src/pages/ParseBatch.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 2
+    }
+  },
+  "services/api/scripts/storage-queue-smoke.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "services/api/src/database/entities/doctor.entity.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "services/api/src/main.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "services/api/src/modules/doctor/doctor.controller.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "services/api/src/modules/parse/parse-events.service.ts": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 2
+    }
+  }
+}

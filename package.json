@@ -23,9 +23,27 @@
   "scripts": {
     "build:api": "pnpm --filter @ibd/api build",
     "start:api": "pnpm --filter @ibd/api start:dev",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:prune": "eslint . --prune-suppressions",
+    "format": "prettier --write .",
+    "format:check": "node scripts/check-format-changed.mjs",
+    "format:check:all": "prettier --check .",
+    "secrets:scan": "node scripts/scan-secrets.mjs",
+    "pr:guard": "node scripts/pr-guard.mjs",
+    "quality": "pnpm lint && pnpm typecheck"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "5.2.0",
+    "globals": "15.15.0",
+    "prettier": "3.10.0",
+    "typescript-eslint": "8.72.2"
   }
 }
