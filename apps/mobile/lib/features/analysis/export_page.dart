@@ -59,15 +59,20 @@ class _ExportPageState extends State<ExportPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(title: const Text('数据导出')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const Card(
+          Card(
             child: ListTile(
-              leading: Icon(Icons.lock_rounded),
-
+              leading: Icon(Icons.lock_rounded, color: context.ibd.brandInk),
+              // 原来这里只有 leading 图标、没有 title/subtitle，
+              // 渲染成一个空白胶囊 + 锁图标（视觉回归发现，U13）
+              title: const Text('导出前须知'),
+              subtitle: const Text(
+                'CSV 为明文，导出后请自行保管；应用不会上传这些文件。',
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -78,21 +83,24 @@ class _ExportPageState extends State<ExportPage> {
                 .map(
                   (e) => Chip(
                     label: Text('${e.key} ${e.value}'),
-                    backgroundColor: IbdColors.chipBg,
+                    backgroundColor: context.ibd.brandSoft,
                   ),
                 )
                 .toList(),
           ),
           const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _busy ? null : _exportCsv,
-            icon: const Icon(Icons.ios_share_rounded),
-            label: Text(_busy ? '导出中…' : '导出 CSV 并分享'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _busy ? null : _exportCsv,
+              icon: const Icon(Icons.ios_share_rounded),
+              label: Text(_busy ? '导出中…' : '导出 CSV 并分享'),
+            ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             '包含：labs.csv · medications.csv · symptoms.csv · surveys.csv',
-            style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
           ),
           if (_message != null)
             Padding(

@@ -132,7 +132,7 @@ class _FoodStoolPageState extends State<FoodStoolPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(
         title: const Text('食物与排便'),
         actions: [
@@ -149,9 +149,9 @@ class _FoodStoolPageState extends State<FoodStoolPage> {
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   '用逗号分隔食物标签，例如：牛奶、辣火锅、冷饮。仅保存在本机，用于自我观察。',
-                  style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -208,7 +208,13 @@ class _FoodStoolPageState extends State<FoodStoolPage> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                FilledButton(onPressed: _add, child: const Text('记一笔')),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _add,
+                    child: const Text('记一笔'),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 const Text('营养粗记汇总（自管参考）',
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
@@ -229,9 +235,9 @@ class _FoodStoolPageState extends State<FoodStoolPage> {
                       Text(
                         '近 7 日 · 均 ${avg.avgKcal.toStringAsFixed(0)} kcal / ${avg.avgProtein.toStringAsFixed(0)} g 蛋白'
                         '（有记录 ${avg.daysWithKcal} / ${avg.daysWithProtein} 天）',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: IbdColors.textSecondary,
+                          color: context.ibd.textSecondary,
                         ),
                       ),
                     ],
@@ -282,9 +288,9 @@ class _FoodStoolPageState extends State<FoodStoolPage> {
                           if (r.description != null)
                             Text(
                               r.description!,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: IbdColors.textSecondary,
+                                color: context.ibd.textSecondary,
                               ),
                             ),
                           const SizedBox(height: 6),
@@ -313,15 +319,15 @@ class _FoodStoolPageState extends State<FoodStoolPage> {
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   '对比「吃过该标签的排便日」与「未吃该标签的日子」：腹泻率（次数≥3 或 Bristol≥6）、便血率、平均次数。样本少时仅供参考。',
-                  style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
                 ),
                 const SizedBox(height: 10),
                 if (_links.isEmpty)
-                  const Text(
+                  Text(
                     '暂无分析：先记录食物，并完成症状打卡/排便细表',
-                    style: TextStyle(color: IbdColors.textSecondary),
+                    style: TextStyle(color: context.ibd.textSecondary),
                   ),
                 ..._links.map((l) {
                   final dDelta = l.diarrheaRateEaten - l.diarrheaRateBase;
@@ -368,9 +374,9 @@ class _FoodStoolPageState extends State<FoodStoolPage> {
                             '（对照 ${l.avgCountBase.toStringAsFixed(1)}）'
                             '${dDelta > 0 ? ' · 腹泻差 +${(dDelta * 100).round()}pp' : ''}'
                             '${bDelta > 0 ? ' · 便血差 +${(bDelta * 100).round()}pp' : ''}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11.5,
-                              color: IbdColors.textSecondary,
+                              color: context.ibd.textSecondary,
                             ),
                           ),
                         ],
@@ -383,8 +389,8 @@ class _FoodStoolPageState extends State<FoodStoolPage> {
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                 const SizedBox(height: 8),
                 if (_logs.isEmpty)
-                  const Text('暂无记录',
-                      style: TextStyle(color: IbdColors.textSecondary)),
+                  Text('暂无记录',
+                      style: TextStyle(color: context.ibd.textSecondary)),
                 ..._logs.map((r) {
                   return Card(
                     child: ListTile(
@@ -402,9 +408,9 @@ class _FoodStoolPageState extends State<FoodStoolPage> {
                   );
                 }),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   '仅供自我记录与就医沟通参考，不能替代医生或营养师诊断。',
-                  style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
                 ),
                 // T7：非诊断/非治疗声明
                 const DisclaimerFooter(),

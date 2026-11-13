@@ -42,6 +42,13 @@ class DbKeyService {
     return key;
   }
 
+  /// 丢弃本机密钥（U16：仅在「重建本地库」时调用）。
+  /// 密钥一旦丢失，旧库永久不可解密——调用方必须先确认用户同意清空。
+  Future<void> clearKey() async {
+    _cached = null;
+    await _storage.delete(key: _kKey);
+  }
+
   /// 轮换密钥：需在打开明文/旧密钥库后调用 rekey。
   Future<void> rotateKey(Uint8List newKey) async {
     await _storage.write(key: _kKey, value: base64Encode(newKey));

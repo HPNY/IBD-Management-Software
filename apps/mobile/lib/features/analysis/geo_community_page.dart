@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,6 +9,7 @@ import '../../core/api/ibd_api_client.dart';
 import '../../core/auth/auth_session.dart';
 import '../../core/geo/geo_profile.dart';
 import '../../core/identity/local_identity.dart';
+import '../../core/ui/state_views.dart';
 import '../../core/ui/theme.dart';
 
 /// D3：同城病友 + 就诊指南（匿名昵称+城市，无精确位置）。
@@ -24,6 +27,9 @@ class _GeoCommunityPageState extends State<GeoCommunityPage> {
   String? _savedNick;
   String? _savedCity;
   bool _inited = false;
+
+  /// 初始化失败原因（U14）：非空时必须显示错误态而不是空白页。
+  String? _initError;
   final List<String> _localPosts = [];
   List<Map<String, dynamic>> _remotePosts = [];
   List<Map<String, dynamic>> _cityStats = [];
@@ -49,7 +55,16 @@ class _GeoCommunityPageState extends State<GeoCommunityPage> {
   }
 
   Future<void> _loadProfile() async {
-    final sp = await SharedPreferences.getInstance();
+    try {
+      await _loadProfileInner();
+    } catch (e) {
+      if (mounted) setState(() => _initError = e.toString());
+    }
+  }
+
+  Future<void> _loadProfileInner() async {
+    final sp = await SharedPreferences.getInstance()
+        .timeout(const Duration(seconds: 8));
     final nick = sp.getString('geo_nickname');
     final city = sp.getString('geo_city') ?? '北京';
     if (!mounted) return;
@@ -135,19 +150,37 @@ class _GeoCommunityPageState extends State<GeoCommunityPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_initError != null) {
+      return Scaffold(
+        backgroundColor: context.ibd.bg,
+        appBar: AppBar(title: const Text('同城病友 · 就诊指南')),
+        body: IbdErrorView(
+          message: '同城信息初始化失败，可能是本机存储不可用。',
+          detail: _initError,
+          onRetry: () {
+            setState(() => _initError = null);
+            _loadProfile();
+          },
+        ),
+      );
+    }
     if (!_inited) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: context.ibd.bg,
+        appBar: AppBar(title: const Text('同城病友 · 就诊指南')),
+        body: const IbdLoadingView(label: '正在加载同城信息…'),
+      );
     }
     final guides = guidesForCity(_savedCity ?? _city);
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(title: const Text('同城病友 · 就诊指南')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const Text(
+          Text(
             '匿名显示（昵称+城市），不采集精确位置。帖子默认公开匿名，请勿写真实病历。',
-            style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
           ),
           const SizedBox(height: 12),
           const Text('我的城市与昵称',
@@ -176,7 +209,13 @@ class _GeoCommunityPageState extends State<GeoCommunityPage> {
             onChanged: (v) => setState(() => _city = v ?? _city),
           ),
           const SizedBox(height: 8),
-          FilledButton(onPressed: _saveProfile, child: const Text('保存档案')),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _saveProfile,
+              child: const Text('保存档案'),
+            ),
+          ),
           if (_savedNick != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -189,8 +228,8 @@ class _GeoCommunityPageState extends State<GeoCommunityPage> {
           ),
           const SizedBox(height: 8),
           if (guides.isEmpty)
-            const Text('暂无该城市指南，可换城市查看',
-                style: TextStyle(color: IbdColors.textSecondary)),
+            Text('暂无该城市指南，可换城市查看',
+                style: TextStyle(color: context.ibd.textSecondary)),
           ...guides.map(
             (g) => Card(
               child: ListTile(
@@ -210,8 +249,8 @@ class _GeoCommunityPageState extends State<GeoCommunityPage> {
           ),
           const SizedBox(height: 6),
           if (_cityStats.isEmpty)
-            const Text('暂无城市统计（离线或无数据）',
-                style: TextStyle(color: IbdColors.textSecondary)),
+            Text('暂无城市统计（离线或无数据）',
+                style: TextStyle(color: context.ibd.textSecondary)),
           ..._cityStats.map(
             (s) => ListTile(
               dense: true,
@@ -240,6 +279,10 @@ class _GeoCommunityPageState extends State<GeoCommunityPage> {
               ),
               const SizedBox(width: 8),
               OutlinedButton(
+                // 同上：Row 内必须给有限最小宽度（U14 根因）
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(64, 44),
+                ),
                 onPressed: () => _submitPost(),
                 child: const Text('发帖'),
               ),
@@ -247,8 +290,8 @@ class _GeoCommunityPageState extends State<GeoCommunityPage> {
           ),
           const SizedBox(height: 8),
           if (_remotePosts.isEmpty && _localPosts.isEmpty)
-            const Text('暂无帖',
-                style: TextStyle(color: IbdColors.textSecondary)),
+            Text('暂无帖',
+                style: TextStyle(color: context.ibd.textSecondary)),
           ..._remotePosts.map(
             (p) => Card(
               child: ListTile(
@@ -269,9 +312,9 @@ class _GeoCommunityPageState extends State<GeoCommunityPage> {
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             '城市计数/帖流需联网服务端；失败自动降级本机草稿。',
-            style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
           ),
         ],
       ),

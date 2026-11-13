@@ -14,12 +14,12 @@ class DisclaimerFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(16, 24, 16, 12),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
       child: Text(
         kNonMedicalDisclaimer,
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 11, color: IbdColors.textSecondary),
+        style: TextStyle(fontSize: 11, color: context.ibd.textSecondary),
       ),
     );
   }

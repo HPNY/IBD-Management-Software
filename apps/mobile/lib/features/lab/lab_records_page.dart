@@ -152,7 +152,7 @@ class _LabRecordsPageState extends State<LabRecordsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(
         title: const Text('检验记录'),
         actions: [
@@ -170,11 +170,11 @@ class _LabRecordsPageState extends State<LabRecordsPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _labs.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
                     '还没有检验记录。\n可在首页「检验录入」添加，或从报告解析导入。',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: IbdColors.textSecondary),
+                    style: TextStyle(color: context.ibd.textSecondary),
                   ),
                 )
               : ListView.separated(

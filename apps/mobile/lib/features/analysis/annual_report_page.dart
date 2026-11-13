@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/report/annual_report.dart';
+import '../../core/ui/state_views.dart';
 
 /// 年度报告：默认最近完整年自动构建 + 同比/检查手术汇总 + 分享（G3）。
 class AnnualReportPage extends StatefulWidget {
@@ -51,6 +52,22 @@ class _AnnualReportPageState extends State<AnnualReportPage> {
   Widget build(BuildContext context) {
     final text = _report?.toText() ?? '';
     final delta = _report?.delta;
+    if (_busy && _report == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text('$_year 年度报告')),
+        body: IbdLoadingView(label: '正在生成 $_year 年度报告…'),
+      );
+    }
+    if (_msg != null && _report == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text('$_year 年度报告')),
+        body: IbdErrorView(
+          message: '这一年还没有可汇总的记录，或生成过程出错。',
+          detail: _msg,
+          onRetry: _build,
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: Text('$_year 年度报告')),
       body: ListView(
@@ -73,6 +90,10 @@ class _AnnualReportPageState extends State<AnnualReportPage> {
               ),
               const Spacer(),
               FilledButton(
+                // 同上：Row 内必须给有限最小宽度（U14 根因）
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(64, 44),
+                ),
                 onPressed: _busy ? null : _build,
                 child: Text(_busy ? '生成中…' : '重新生成'),
               ),

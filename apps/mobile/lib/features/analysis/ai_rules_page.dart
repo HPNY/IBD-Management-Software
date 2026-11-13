@@ -117,7 +117,7 @@ class _AiRulesPageState extends State<AiRulesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(
         title: const Text('AI / 规则分析'),
         actions: [
@@ -129,20 +129,20 @@ class _AiRulesPageState extends State<AiRulesPage> {
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                const Text(
+                Text(
                   '本机规则统计，不能替代医生诊断。',
-                  style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
                 ),
                 if (_error != null)
                   Text('加载失败：$_error',
-                      style: const TextStyle(color: IbdColors.danger)),
+                      style: TextStyle(color: context.ibd.danger)),
                 const SizedBox(height: 12),
                 const Text('指标趋势',
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                 const SizedBox(height: 8),
                 if (_trends.isEmpty)
-                  const Text('暂无检验序列，可先录入检验',
-                      style: TextStyle(color: IbdColors.textSecondary)),
+                  Text('暂无检验序列，可先录入检验',
+                      style: TextStyle(color: context.ibd.textSecondary)),
                 ..._trends.map(
                   (t) => Card(
                     child: ListTile(
@@ -160,10 +160,10 @@ class _AiRulesPageState extends State<AiRulesPage> {
                                 ? Icons.trending_down_rounded
                                 : Icons.trending_flat_rounded,
                         color: t.direction == TrendDirection.rising
-                            ? IbdColors.warning
+                            ? context.ibd.warning
                             : t.direction == TrendDirection.falling
-                                ? IbdColors.success
-                                : IbdColors.textSecondary,
+                                ? context.ibd.success
+                                : context.ibd.textSecondary,
                       ),
                     ),
                   ),
@@ -173,8 +173,8 @@ class _AiRulesPageState extends State<AiRulesPage> {
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                 const SizedBox(height: 8),
                 if (_alerts.isEmpty)
-                  const Text('未触发规则',
-                      style: TextStyle(color: IbdColors.textSecondary)),
+                  Text('未触发规则',
+                      style: TextStyle(color: context.ibd.textSecondary)),
                 ..._alerts.map(
                   (a) => Card(
                     child: Padding(
@@ -196,8 +196,8 @@ class _AiRulesPageState extends State<AiRulesPage> {
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                 const SizedBox(height: 8),
                 if (_medDeltas.isEmpty)
-                  const Text('暂无足够检验点做前后对比',
-                      style: TextStyle(color: IbdColors.textSecondary)),
+                  Text('暂无足够检验点做前后对比',
+                      style: TextStyle(color: context.ibd.textSecondary)),
                 ..._medDeltas.map(
                   (m) => Card(
                     child: ListTile(
@@ -212,9 +212,9 @@ class _AiRulesPageState extends State<AiRulesPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   '规则仅供参考；不自动外发、不推送云端。LLM 总结默认关闭（未启用）。',
-                  style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
                 ),
                 // T7：非诊断/非治疗声明
                 const DisclaimerFooter(),

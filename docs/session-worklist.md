@@ -288,7 +288,7 @@
 | R0.3 | 检验套餐数据单一数据源（app.js/domain-types/lab_panels.dart 三处重复） | 已完成 | Dart 加 `kCoreLabNames`、`latestCore()` 复用；app.js exportDart 输出权威 `kCoreLabNames` + 转义修复；新增跨副本一致性守卫 `test_lab_data_consistency.py` 挂 CI（正/负向均已验证） |
 | R0.4 | 本地全链路验证（装 git/node/pnpm/python3.12 工具链） | 已完成 | build:api + typecheck（@ibd/api 等 4 包零 error）· flutter test 98 全过 · flutter analyze 0 warning/0 error · parse-worker 一致性守卫 + test_ai_engine ALL_PASS |
 | R0.5 | 清理既有 analyze warning（避免 CI 卡既有问题） | 已完成 | 删 `ibd_api_client.dart` 4 处冗余 cast + `my_doctors_page.dart` 未用 import；analyze warning 16→0；my_doctors_page 未用 import 已补 |
-| R0.6 | 修复 miniapp 既有 wx 类型错误（审查 M1） | 已完成 | 装 miniprogram-api-typings + tsconfig types 引入 + 
+| R0.6 | 修复 miniapp 既有 wx 类型错误（审查 M1） | 已完成 | 装 miniprogram-api-typings + tsconfig types 引入 + requestSubscribeMessage 参数按微信语义断言（规避 Taro 类型 entityIds 支付宝必填缺陷）；miniapp typecheck 15 error→0；全仓 5 包 typecheck 全绿 |
 | R0.7 | README 英文化（英文为主 + 中文切换链接） | 已完成 | `README.md` 改为英文主版（含 `简体中文` 切换链接）；原中文版移至 `README.zh-CN.md`（含 `English` 切换链接）；session-worklist 锚点改指 zh 版；两版对齐（补 SF-36、CI 表述更准确）；审阅并修正 docs 夸大实现 |
 | R0.8 | 安全审查修复轮2（H3 依赖治本 + C1 文件穿越 + C2 文档诚实） | 进行中 | H3 xlsx→exceljs（消无补丁 critical）；C1 resolveSafe 加固 + meta IDOR 形状校验（8 穿越向量全拦）；C2 PRD 虚假 AES-256/PIPL 声明如实修正；后续 H1-H8/M 待办 |
 | R0.9 | 安全加固（H1 CORS/Swagger + H5 端口/Redis + H6 compose 默认 + H7 parse 穿越/大小 + H8 SSRF） | 已完成 | H1 CORS 白名单+Swagger 生产禁用；H5 端口绑 127.0.0.1+Redis requirepass；H6 NODE_ENV 强制/DEV_SMS 无默认；H7 load_skill 白名单+uploads 大小/PDF 魔数；H8 拒 URL/绝对路径 objectKey；py_compile+回归全过；余 H2 限流/H3 会话绑定/H4 审核角色/M 待办 |
@@ -296,14 +296,13 @@
 | R0.11 | M 系列加固（M1 gitignore 密钥 + M3 grant code 脱敏 + M5 ReDoS 防护） | 已完成 | M1 .gitignore 补 Firebase/jks/pem（修 firebase-setup 虚假声明）；M3 listForPatient 确认后 code 脱敏；M5 skill_engine safe_re_search 拒灾难性回溯正则；typecheck+py_compile+回归全过；余 H3 会话绑定/H4 审核角色/M4,M6,M7 待办 |
 | R0.12 | M 系列收尾（M2 venv 确认 + M4 fetch 大小上限 + M6 grant 限流/wrappedDek 校验 + M7 客户端 PII 文档） | 已完成 | M2 git 确认 venv 0 追踪；M4 fetch_object_bytes 三处 read 加 20MB 上限；M6 grantLimiter 限流 + wrappedDek base64 校验；M7 web README 客户端 PII 暴露提示；typecheck+build+py_compile+回归全过；余 H3 会话绑定/H4 审核角色 待办 |
 | R0.13 | H3 DPoP-lite 设备绑定 + H4 医生审核轻量加固 | 进行中 | H3: device_pubkeys 表 + Ed25519 持有证明 + JWT 绑定公钥 + X-PoP 校验 + REQUIRE_POP 渐进开关（默认关）；H4: approve 审计日志 + 限流 + HTTPS 告警 |
-equestSubscribeMessage 参数按微信语义断言（规避 Taro 类型 entityIds 支付宝必填缺陷）；miniapp typecheck 15 error→0；全仓 5 包 typecheck 全绿 |
 | T4.2b | PC Web 批量解析接真上传（presign/enqueue/confirm） | 已完成 | 真 API：presign→PUT→enqueue→轮询→confirm(deleteSource) |
 | T2.6 | `GET /parse/jobs/:id` 补归属校验（getForUser） | 已完成 | 他人 jobId 返回 404 · tsc 通过 |
 | T2.7 | Web 装依赖后跑 `tsc --noEmit` | 已完成 | 零 error · 顺带修复 api-client 重复方法（prd-v15-gaps） |
 | T2.8 | 真机/模拟器 UI 回归（analyze 通过后） | 已完成 | Widget 回归全过（五 Tab/设置大字/语言/诊断）· 真机残留见 T2.4/T2.5 |
 | T2.9 | 清理 info：`const FirebaseOptions` · Radio 弃用改 RadioGroup | 已完成 | analyze **No issues found** |
 | T4.2a | T4.2 清单措辞：与真上传行为一致 | 已完成 | 已改为「真上传链路」描述 |
-| SWIPER-R1 | swiper 12 override 运行时真机兼容（限期验证风险项） | 进行中 | 裁决（2026-10-26）：接受风险、不直接豁免；**owner：lead（协调）+ 真机执行人待指派；截止 2026-11-09**；矩阵/场景/回滚预案见 [audit-evidence/t05-build-and-swiper.md](audit-evidence/t05-build-and-swiper.md)；逾期未验立即上报裁决 |
+| SWIPER-R1 | swiper 12 override 运行时真机兼容（限期验证风险项） | 进行中（2026-11-13 补静态证据，真机项仍缺） | 裁决（2026-10-26）：接受风险、不直接豁免；**owner：lead（协调）+ 真机执行人待指派；截止 2026-11-09 已逾期，按用户 2026-11-13 裁决继续限期、不回滚 override**；矩阵/场景/回滚预案见 [audit-evidence/t05-build-and-swiper.md](audit-evidence/t05-build-and-swiper.md)。**2026-11-13 静态取证结论**：① `pnpm why swiper -r` 确认 override 生效（`@tarojs/components 3.6.34` → swiper 12.2.0，其 package.json 原声明 6.8.0）；② `apps/miniapp/src` **零** `Swiper`/`swiper` 引用，小程序代码不用该组件；③ `apps/miniapp/dist/*.js` 中 `swiper` 仅 7 处、**全在 `taro.js`**，且全为组件属性表/组件映射/标签名表/hydrate 判断，`SwiperCore`/`swiper-wrapper`/`slidesPerView`/`wrapperEl`/`watchSlidesProgress`/`swiper-button-next` 等 swiper 12 运行时符号 **0 命中**；`hammer`/`hls.js`/`stencil` 亦 0 命中 → weapp 打包不加载 swiper 运行时，**运行时污染风险在产物层面不成立**。**未闭环部分**：本机未安装微信开发者工具（三处常见安装路径均不存在），矩阵里「微信基础库 ≥2.30 真机渲染 / 冷启动 + 弱网」仍无证据，需在装有开发者工具或真机的环境补做后才能把本项置为已完成 |
 
 ## P9 · 评审 P0 修复（2026-11-12）
 
@@ -331,5 +330,60 @@ equestSubscribeMessage 参数按微信语义断言（规避 Taro 类型 entityId
 - C1 的 E2E 需 DB/Redis（本机无 Docker，标 BLOCKED）；CI fullstack 已接入。C3 已有纯函数回归 + CI 门禁。
 - 云快照换机恢复需真机 + 后端联调（本机仅验证加解密单元逻辑与迁移编译）。
 - 检验记录页的「合并重复」为手动触发，未做自动入库去重（避免静默合并不同报告）。
+
+## P10 · UI 设计评审遗留（2026-11-10 走查 → 2026-11-12 落地）
+
+> 报告：[design/ui-review-2026-11-10.html](design/ui-review-2026-11-10.html)。走查阶段 U1–U9 为设计目标；2026-11-12 已完成 U1–U6、U8–U14、U16、U17 的落地，2026-11-13 补齐 U7、U15 —— **U1–U17 全部已完成**（验证见各行）。
+
+| ID | 事项 | 状态 | 验收 |
+|----|------|------|------|
+| U0 | UI 设计评审与优化方案（文档） | 已完成 | 9 项诊断（含代码位置与 WCAG 实测对比度）+ 令牌/组件规范 + 3 组改版线框 + 路线图 |
+| U1 | P0 首页错误态：`dashboard_tab.dart` `catch (_) {}` → 错误提示 + 重试 | 已完成 | 新增 `_loadError` + `_LoadErrorBanner`（dangerSoft 底 + 重试按钮 44 高）；读取失败不再渲染为 0 值；`dart analyze lib` 0 error/0 warning |
+| U2 | P0 暗色模式二选一：先「关掉」，U5 后再恢复 | 已完成 | 先 `themeMode: light` 止血；**U5 完成后已改回 `ThemeMode.system`**，真机明暗双模式验收通过 |
+| U3 | P0 对比度修复（6 处低于 AA） | 已完成 | `theme.dart`：textSecondary→#475569(7.03)、success→#047857(5.48)、warning→#B45309(5.02)、danger→#B91C1C(6.47)、FilledButton 底→primaryDark(5.47)；首页渐变改 #0F766E→#115E59 + 白字（≥5.47）；次按钮由「提亮」改「压暗」(7.1) |
+| U4 | P0 打卡页底部吸附保存 + 草稿持久化 | 已完成 | `symptom_page.dart`：`_CheckinSaveBar` 常驻底部（含草稿状态文案）；草稿节流落盘 `ibd_checkin_draft_v1`（≤1 次/800ms + 退后台补写）；跨日草稿丢弃；保存成功清除；存储不可用静默降级；草稿**异步套用**不阻塞首屏。新增 `test/checkin_draft_test.dart`（2 例）。验证：`flutter test` **149 全过**、`flutter analyze --no-pub` 0 error/0 warning |
+| U5 | P1 设计令牌落地（`IbdTokens` + `context.ibd`，取代 `packages/ui-tokens` 占位） | 已完成 | 新增 `IbdPalette extends ThemeExtension`（bg/surface/surfaceAlt/textPrimary/textSecondary/outline/divider/brandInk/brandSoft/success/warning/danger/dangerSoft，明暗两套）+ `extension IbdThemeX on BuildContext { ibd }`；20 个页面文件 243 处硬编码色迁移到 `context.ibd.*`；`_LineChartPainter`/`_DomainSparkPainter` 改为注入颜色（painter 无 BuildContext）；暗色主题补齐 inputDecoration/filledButton/navigationBar 三项。验证：`dart analyze lib` 0 error/0 warning；`flutter test` **149 全过**；真机明暗双模式截图（`.workbuddy-ai/screens/21~24`）无不可读文字 |
+| U6 | P1 组件收敛（IbdCard / IbdSectionHeader / IbdChoiceChip / IbdScoreChip / IbdStickyAction / IbdMetric / IbdEmptyView / IbdEmptyInline） | **已完成** | **第一刀**：`IbdCard` + `IbdSectionHeader` 收敛 4 套卡片（`_SectionCard`/`_NavCard`/`_ModuleCard`/`_StatChip`），删 `IbdSectionTitle`。 **第二刀**：`IbdChoiceChip`（替代逐字相同的 `_BloodChip`/`_FeelingChip`）、`IbdScoreChip`、`IbdStickyAction`（打卡吸附栏）、主题 `chipTheme`（统一 9 处 Material chip）、`IbdEmptyInline`（6 处空态，含 CTA）、设置页 6 处标题统一。 **第三刀**：`IbdMetric`（`stat` 数值块 / `status` 状态灯两种命名构造）替代首页三灯 + 首页统计块 + 活动度详情页三灯三份实现；新增 `IbdMetricTone` 与 `IbdMetricTone.ofLight()`；领域层补 `inflammationStateText()`；删 `_lightColor`×2、`_lightTextColor`、`_lightState`、`_StatChip`。 **顺带修掉的暗色缺陷**：Bristol 量表选项写死 `Colors.white` 底、症状日历严重度格白字压亮底、服药打卡日期格 `primary` 底（3.74:1）——统一走新增的 `onBrand` 令牌。 **活动度详情页原来只有圆点颜色、没有状态文字**（WCAG 1.4.1 违规），第三刀补上「偏高/正常/未测」。 验证：`flutter test` **158 全过**（新增 `test/ibd_metric_test.dart` 7 例，钉住「状态灯必须有文字 + 语义合并」）、`dart analyze` **2 info / 0 error / 0 warning**；真机明暗双模式目视首页/详情/设置/空态（`.workbuddy-ai/screens/u6_*.png`、`u6b_*.png`） |
+| U7 | P2 分析 Tab 四组分层 + 三组合并 | **已完成**（2026-11-13） | 14 张平铺 `_NavCard` → 4 组（趋势与时间线 2 项 / 记录与明细 3 项 / 就诊与报告 5 项 / 分析与参考 4 项），每组一张 `IbdCard` 内嵌 `_NavRow`（`InkWell` + 36dp 图标块 + 标题 + 2 行副标题 + chevron），组间 `IbdSectionHeader` 分隔。合并：**发作预警→分析与参考**（与 AI/规则分析同为"系统替你看"）、**年度报告→就诊与报告**（与就诊摘要同为"拿去给别人看"）、**食物与排便→记录与明细**（与排便细表同一套数据）。`_NavCard` 类删除，改为 `_NavRow` + `_RowDivider`（左侧 62 对齐图标列）。验证：`flutter test` **177 全过**（含新增 `test/analysis_tab_groups_test.dart` 4 例：分组标题唯一 / 14 入口无漏迁 / 分组顺序 / 行内 InkWell 可点）、`flutter analyze --no-pub` 2 info / 0 error / 0 warning |
+| U8 | P2 无障碍专项（Semantics 覆盖 / 非颜色编码 / 字号自适应 / 触控区） | **已完成** | **语义覆盖**：3 个滑块加 `Semantics(container:false, label:…)` + `semanticFormatterCallback`（读屏念「腹痛程度 5 分」而非「50%」）；Bristol 选项与日历格加 `button`/`selected`/完整标签；夜醒加减 `IconButton` 补 tooltip（原本只念「按钮」）；`IbdCard(onTap)` 加 `MergeSemantics`（整卡读成一句）。 **修掉一个自己引入的缺陷**：`Semantics(button:true, excludeSemantics:true)` 会连 InkWell 的 tap 动作一起丢掉——读屏念「按钮」但双击无效，比不加语义更糟。给 `IbdChoiceChip`/`IbdScoreChip`/日历格/Bristol 补回 `onTap`，并写了一条遍历语义树的守卫测试防复发。 **非颜色编码**：日历格有记录时印出严重度数值（「11」下方「5」），图例改为「1–3 轻 / 4–6 中 / 7–10 重」——灰度截图下「5 → 4–6 中」可纯文字推出（实测转灰度验证）。 **触控区**：日历格 34→40（含外边距 44），满足 ≥44。 **简洁模式真正生效**：原来只藏一条横幅；现在收掉「快捷入口 + 本机数据」，只留今日待办 + 活动度，并补一行「简洁模式已开启…可在我的→可用性关闭」避免误认为页面坏了。 验证：`flutter test` **167 全过**（新增 `test/a11y_test.dart` 9 例：滑块/选项/开关/保存按钮标签、按钮可激活守卫、日历语义与触控区、分档文案边界）；`dart analyze` 2 info / 0 error / 0 warning；真机：1.25× 打卡页三屏无溢出条纹、简洁模式开关前后、日历灰度可辨（`.workbuddy-ai/screens/u8_*.png`） |
+| U9 | P1 PC Web 工具栏分组 + 删除可撤销 + 去 `AI生成` 水印 + 脏状态 | **已完成** | **去水印**：删除 `<!-- AI生成 -->` 注释与 `<p data-aigc-mark>` 渲染节点（该节点原本直接显示在页面顶部）。 **工具栏分组**：8 个按钮平铺 → 3 组（套餐：新建/复制/删除；数据：导入/导出 JSON/导出 Dart/重置；保存：状态 chip + 主按钮），删除与重置不再和常规操作并排。 **删除可撤销**：`confirm()` 全部移除（4 处），改为执行后 6 秒「撤销」提示条；`pushUndo()` 存整份 panels 快照（上限 10），删除小项 / 删除套餐 / 重置默认 / 导入 JSON 共用同一条撤销路径；另支持 Ctrl+S 保存、Ctrl+Z 撤销。 **脏状态**：工具栏新增「已保存 / ● 未保存」chip（琥珀色）+ 标签页标题前缀 `•`；`dirty` 由 11 处散落赋值收敛为 `markDirty()/markClean()`；`beforeunload` 保持拦截。 顺带：内联 SVG favicon（消除每次加载的 404）、`:focus-visible` 焦点环、toast 加 `role=status aria-live=polite`、导入按钮从行内 `onclick` 改为统一绑定。 验证：Playwright（真实 Chromium）**18/18 通过** + 3 项补充（保存重载保留、撤销后保存落盘、控制台无报错）；截图 `.workbuddy-ai/screens/web/w*.png`。过程中脚本抓到一个自己引入的缺陷：全局替换 `dirty = true;` 把 `markDirty()` 函数体也换成了自调用，导致递归爆栈、脏状态永不生效——已修。 |
+| U10 | **构建阻塞修复**：`android/build.gradle.kts` 的 `buildscript` 块缺 `repositories`，`google-services:4.4.2` 无法解析（`no repositories are defined`），APK 构建失败 | 已完成 | 在 `buildscript` 内补 aliyun + google + mavenCentral 仓库；`flutter run -d emulator-5554` 成功安装并启动；真机走查见下 |
+| U11 | 首页四宫格定高（去 `childAspectRatio: 1.15`，改 IntrinsicHeight + 内容定高）+ 活动度灯加状态文字 | 已完成 | 真机验证（`.workbuddy-ai/screens/17_final_normal.png`、`15_final_largefont.png`）：卡片高度 ~156→~110dp，两行完整可见、「本机数据」进入首屏；CRP/ESR/钙卫 下增「偏高/正常/未测」文字（dot 颜色 + 文字双编码 + Semantics label）；1.25× 大字无溢出条纹；无药物时不渲染摘要（原被截成「暂无在用…」） |
+| U13 | 真机视觉回归（明暗双模式）：5 Tab + 14 个二级页 | 已完成 | 覆盖 5 Tab × 明/暗 + 11 个二级页（明）+ 4 个二级页（暗）。修复 2 处：① 数据导出页顶部「空白胶囊 + 锁图标」（ListTile 缺 title/subtitle）→ 补「导出前须知 / CSV 为明文…」；② 量表未作答即显示「当前合计 0 分 · 无或极轻微」→ 改为「尚未作答」（`_answered` 集合区分"选了 0 分"与"没答"）。截图存 `.workbuddy-ai/screens/reg/` |
+| U14 | **P1 空白页**：药物评价 / 同城病友·就诊指南 / 2025 年度报告 整页无内容 | **已完成** | **根因**：主题里 `filledButtonTheme`/`outlinedButtonTheme` 的 `minimumSize: Size.fromHeight(48)` 实为 `Size(∞, 48)`（无限最小宽度）。三页都把按钮放在 `Row` 里（drug「查询」、geo「发帖」、annual「重新生成」），Row 横向无界 → 按钮要求无限宽 → 布局失败 → **整个 ListView 静默不绘制**（不报错、不留红框）。**修复**：给这三处按钮显式 `styleFrom(minimumSize: Size(64, 44))`。另新增 `core/ui/state_views.dart`（加载/错误/空态）并接入三页 + `Future.timeout(8s)` 兜底。**验证**：真机三页内容像素占比 0.0 → 40.3% / 46.5% / 75.5%；`flutter test` 149 全过；`dart analyze` 0 error。定位方法：用 `--dart-define=BISECT=N` 对 children 做二分（20 正常 / 21 白屏）锁定到具体子组件 |
+| U16 | **P1 本地库密钥不匹配无恢复路径**：重装/覆盖安装后 SQLCipher 报 `file is not a database`，App 停在满屏空白 | **已完成** | `main.dart` 启动时 `LocalDb.instance.database.timeout(10s)` 探测；失败则进 `features/recovery/db_failure_page.dart`（说明成因 + 重试 + 清空重建 + 可复制的排查线索）。新增 `DbKeyService.clearKey()` 与 `LocalDb.resetLocalDb()`（关连接 → 删 db/-wal/-shm → 丢密钥）；重建需二次确认，文案明确「无法撤销、可事后从 JSON 备份/密文同步恢复」。验证：新增 `test/db_failure_page_test.dart` 2 例（内容完整、取消不执行）→ **151 全过**；真机明暗两套截图（`.workbuddy-ai/screens/reg/sheet_R.png`）文字可读、按钮无溢出 |
+| U17 | **P1 主题隐患根治**：`minimumSize: Size.fromHeight(48)`（无限宽）导致按钮进 Row 就整页静默空白 | **已完成** | ① 主题 3 处改 `Size(64, 48)`（`grep -c Size.fromHeight` = 0，仅注释保留历史说明）；② 按「按钮分层」迁移 12 处 Block CTA 为 `SizedBox(width: double.infinity, child: ...)`：打卡保存 / 注射生成排期 / 检验保存 / 导出 CSV / 量表保存 / 用药保存 / 药物评价保存 / 同城保存档案 / 排便记一笔 / 食物记一笔 / 我的医生确认授权 / 登录关联手机号；其余内联按钮（查询、发帖、重新生成、分享、弹窗动作）回归内容宽。验证：`flutter test` **151 全过**、`dart analyze` 0 error；真机目视 5 Tab + 药物评价/年报/导出（`.workbuddy-ai/screens/reg/sheet_U*.png`）——Block CTA 仍整行宽、内联按钮层级清晰、无溢出 |
+| U15 | P2 细节：检查与手术空态无 CTA；设置页若干 subtitle 被截断 | **已完成**（2026-11-13） | ✅ 检查与手术「检查/手术」空态已升级为 `IbdEmptyInline`（图标 + 说明 + 「添加检查/添加手术」CTA）；排便细表历史、我的医生三处空态同步升级。 ✅ 设置页 10 处 `ListTile`/`SwitchListTile` 的 `subtitle` 全部补 `maxLines: 2` + `overflow: TextOverflow.ellipsis`（AI 解析 / 注射提醒 / 用药提醒 / 匿名诊断上报 / 大字体 / 简洁模式 / 系统推送 / 本地库 / 密文备份 / 关联手机号），长文案改为 2 行不再被腰斩。验证：`flutter test` **177 全过**、`flutter analyze --no-pub` 2 info / 0 error / 0 warning |
+| U12 | 无障碍缺陷：`main.dart` 覆盖系统字体缩放（WCAG 1.4.4） | 已完成 | 改为 `TextScaler.linear(system.scale(1.0) * appScale)` 相乘；系统 1.5× × 应用 1.25× 同时生效；`flutter test` 149 全过 |
+
+> **本机跑 Flutter 测试/分析的可用命令（2026-11-10 实测，开发者模式已开启）**：
+>
+> | 命令 | 是否可用 | 说明 |
+> |------|----------|------|
+> | `flutter analyze` | ✅ 可直接跑 | 开发者模式开启后 symlink 报错消失；当前 9 info / 0 error / 0 warning |
+> | `flutter test` | ⚠️ 需清代理 | 本机 `http_proxy=127.0.0.1:64466` 会拦截 `flutter_tester` 的本地 WebSocket（`Invalid WebSocket upgrade request`） |
+> | `flutter devices` / `flutter run` | ✅ 已恢复 | 放行 `reg.exe` 后设备枚举正常（Windows / Chrome / Edge / 模拟器） |
+>
+> **在模拟器上跑 App 的完整命令（2026-11-10 实测）**：Gradle 需要联网下载依赖，而 `flutter run` 的 VM service 走 localhost，二者对代理的需求相反，故**只给 Gradle 传代理、Dart 侧不设代理**：
+>
+> ```bash
+> # 1) 启动模拟器（AVD: ibd_api34）
+> /c/dev/android-sdk/emulator/emulator.exe -avd ibd_api34 -no-boot-anim -no-audio
+> # 2) 构建并运行：清空代理变量，仅用 GRADLE_OPTS 给 Gradle 代理
+> env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
+>   GRADLE_OPTS="-Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=64466 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=64466" \
+>   flutter run -d emulator-5554 --no-pub --dart-define=IBD_API_BASE=http://10.0.2.2:3000
+> # 3) 截图
+> adb exec-out screencap -p > shot.png
+> ```
+>
+> 坑：`GRADLE_OPTS` 里的 `|`（如 `nonProxyHosts=localhost|127.0.0.1`）会被 cmd 当成管道，报“不是内部或外部命令”，不要带该参数。
+>
+> ```bash
+> # 测试（唯一需要清代理的一步）
+> env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY flutter test
+> ```
+>
+> 注：`flutter pub get` 会以 LF 重写 `windows/linux/macos` 下 7 个 generated 文件。已用根目录 `.gitattributes` 把这 7 个文件固定为 `text eol=lf`，`pub get` 后不再产生「仅换行差异」的脏文件（2026-11-10 实测：pub get + 全量测试后 `git status` 无 generated 改动）。
 
 **规范提醒**：任何新增工作（含审阅遗留、bugfix、文档）必须**同时**写入本清单（ID/任务/状态/验收），避免会话切换丢失。

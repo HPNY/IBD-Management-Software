@@ -93,7 +93,7 @@ class _MedicationCheckinPageState extends State<MedicationCheckinPage> {
     final today = DateTime.now();
 
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(title: const Text('服药打卡')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
@@ -131,9 +131,9 @@ class _MedicationCheckinPageState extends State<MedicationCheckinPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: IbdColors.card,
+              color: context.ibd.surface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+              border: Border.all(color: context.ibd.outline),
             ),
             child: Column(
               children: [
@@ -202,13 +202,14 @@ class _MedicationCheckinPageState extends State<MedicationCheckinPage> {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(10),
                               color: selected
-                                  ? IbdColors.primary
+                                  ? context.ibd.brandInk
                                   : (count > 0
-                                      ? IbdColors.primary.withValues(alpha: 0.15)
+                                      ? context.ibd.brandInk
+                                          .withValues(alpha: 0.15)
                                       : null),
                               border: Border.all(
                                 color: isToday && !selected
-                                    ? IbdColors.primary
+                                    ? context.ibd.brandInk
                                     : Colors.transparent,
                                 width: 1.2,
                               ),
@@ -222,8 +223,8 @@ class _MedicationCheckinPageState extends State<MedicationCheckinPage> {
                                     fontWeight: FontWeight.w600,
                                     fontSize: 12,
                                     color: selected
-                                        ? Colors.white
-                                        : IbdColors.textPrimary,
+                                        ? context.ibd.onBrand
+                                        : context.ibd.textPrimary,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
@@ -232,8 +233,9 @@ class _MedicationCheckinPageState extends State<MedicationCheckinPage> {
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: selected
-                                        ? Colors.white70
-                                        : IbdColors.primaryDark,
+                                        ? context.ibd.onBrand
+                                            .withValues(alpha: 0.75)
+                                        : context.ibd.brandInk,
                                   ),
                                 ),
                               ],
@@ -244,9 +246,9 @@ class _MedicationCheckinPageState extends State<MedicationCheckinPage> {
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   '深色为选中日期；浅色数字为当日已打卡次数',
-                  style: TextStyle(fontSize: 11, color: IbdColors.textSecondary),
+                  style: TextStyle(fontSize: 11, color: context.ibd.textSecondary),
                 ),
               ],
             ),
@@ -258,7 +260,7 @@ class _MedicationCheckinPageState extends State<MedicationCheckinPage> {
           ),
           const SizedBox(height: 8),
           if (_medId == null)
-            const Text('请选择药品', style: TextStyle(color: IbdColors.textSecondary))
+            Text('请选择药品', style: TextStyle(color: context.ibd.textSecondary))
           else
             ...slotLabels.entries.map((e) {
               final taken = _todaySlots.contains(e.key);
@@ -273,7 +275,7 @@ class _MedicationCheckinPageState extends State<MedicationCheckinPage> {
                   ),
                   subtitle: Text(taken ? '已服用' : '未打卡'),
                   controlAffinity: ListTileControlAffinity.leading,
-                  activeColor: IbdColors.primary,
+                  activeColor: context.ibd.brandInk,
                 ),
               );
             }),
@@ -293,9 +295,9 @@ class _Dow extends StatelessWidget {
       child: Text(
         t,
         textAlign: TextAlign.center,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
-          color: IbdColors.textSecondary,
+          color: context.ibd.textSecondary,
           fontWeight: FontWeight.w600,
         ),
       ),
