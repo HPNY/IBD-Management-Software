@@ -654,7 +654,7 @@ class _ActivityCard extends StatelessWidget {
                     size: 16,
                     color: countdownWarn
                         ? context.ibd.warning
-                        : IbdColors.primary,
+                        : context.ibd.brandInk,
                   ),
                   const SizedBox(width: 6),
                   Text(

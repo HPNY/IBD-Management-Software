@@ -70,10 +70,10 @@ class _TimelinePageState extends State<TimelinePage> {
     }
   }
 
-  Color _color(String type) {
+  Color _color(BuildContext context, String type) {
     if (type.startsWith('inj')) return const Color(0xFF8B5CF6);
     if (type.startsWith('med')) return const Color(0xFFF59E0B);
-    if (type == 'lab') return IbdColors.primary;
+    if (type == 'lab') return context.ibd.brandInk;
     if (type == 'qol') return const Color(0xFF0EA5E9);
     return const Color(0xFF6366F1);
   }
@@ -134,7 +134,7 @@ class _TimelinePageState extends State<TimelinePage> {
                     itemBuilder: (context, i) {
                       final e = _events[i];
                       final type = '${e['type']}';
-                      final color = _color(type);
+                      final color = _color(context, type);
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

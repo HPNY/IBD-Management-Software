@@ -186,7 +186,7 @@ class _LineChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (values.isEmpty) return;
     final paintLine = Paint()
-      ..color = IbdColors.primary
+      ..color = dotColor
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
     final paintDot = Paint()..color = dotColor;

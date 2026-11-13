@@ -171,7 +171,7 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(
         title: const Text('药物评价'),
         actions: [
@@ -189,9 +189,9 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
               : ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                const Text(
+                Text(
                   '主观评价仅供病友参考，不替代医生建议。不含检验值/病历。',
-                  style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
                 ),
                 const SizedBox(height: 12),
                 const Text('写下我的评价',
@@ -335,8 +335,8 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                 const SizedBox(height: 8),
                 if (_rows.isEmpty)
-                  const Text('暂无评价',
-                      style: TextStyle(color: IbdColors.textSecondary)),
+                  Text('暂无评价',
+                      style: TextStyle(color: context.ibd.textSecondary)),
                 ..._rows.map((r) {
                   return Card(
                     child: ListTile(
@@ -360,9 +360,9 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
                   );
                 }),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   '社区聚合需联网并由服务端统计；本页先展示「我的评价」。',
-                  style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
                 ),
                 // T7：非诊断/非治疗声明
                 const DisclaimerFooter(),

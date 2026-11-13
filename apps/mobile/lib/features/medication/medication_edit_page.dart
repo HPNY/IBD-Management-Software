@@ -355,11 +355,11 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
                           color: selected
-                              ? IbdColors.primary.withValues(alpha: 0.10)
-                              : const Color(0xFFF8FAFC),
+                              ? context.ibd.brandInk.withValues(alpha: 0.10)
+                              : context.ibd.surfaceAlt,
                           border: Border.all(
                             color: selected
-                                ? IbdColors.primary
+                                ? context.ibd.brandInk
                                 : context.ibd.divider,
                           ),
                         ),
@@ -370,7 +370,7 @@ class _MedicationEditPageState extends State<MedicationEditPage> {
                                   ? Icons.check_circle_rounded
                                   : Icons.circle_outlined,
                               color: selected
-                                  ? IbdColors.primary
+                                  ? context.ibd.brandInk
                                   : context.ibd.textSecondary,
                               size: 20,
                             ),

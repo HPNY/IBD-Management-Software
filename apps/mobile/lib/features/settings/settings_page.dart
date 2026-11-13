@@ -636,6 +636,8 @@ class _SettingsPageState extends State<SettingsPage> {
               title: const Text('AI 解析（可选）'),
               subtitle: const Text(
                 '未配置 LLM_API_KEY 时走 Skill；否则 Skill 未命中走 LLM',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -663,6 +665,8 @@ class _SettingsPageState extends State<SettingsPage> {
               title: const Text('注射提醒（本地）'),
               subtitle: Text(
                 '本地通知（${formatInjectionLeads(_injLeads)}）；关网可用，不依赖推送',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               trailing: const Icon(Icons.tune),
               onTap: _editInjectionLeads,
@@ -673,7 +677,11 @@ class _SettingsPageState extends State<SettingsPage> {
             child: SwitchListTile(
               secondary: const Icon(Icons.medication_liquid_outlined),
               title: const Text('用药提醒（每日）'),
-              subtitle: Text('在用药物每日 $_medHour:00 提醒；通知不含药名/剂量'),
+              subtitle: Text(
+                '在用药物每日 $_medHour:00 提醒；通知不含药名/剂量',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
               value: _medReminders,
               onChanged: _toggleMedicationReminders,
             ),
@@ -730,6 +738,8 @@ class _SettingsPageState extends State<SettingsPage> {
               title: const Text('允许匿名诊断上报'),
               subtitle: const Text(
                 '默认关闭；关闭时数据只留本机，绝不上传。不含病历。',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               value: diag.enabled,
               onChanged: (v) => diag.setEnabled(v),
@@ -766,13 +776,21 @@ class _SettingsPageState extends State<SettingsPage> {
               children: [
                 SwitchListTile(
                   title: const Text('大字体模式'),
-                  subtitle: const Text('文字放大 1.25×，方便阅读'),
+                  subtitle: const Text(
+                    '文字放大 1.25×，方便阅读',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   value: a11y.largeFont,
                   onChanged: (v) => a11y.setLargeFont(v),
                 ),
                 SwitchListTile(
                   title: const Text('简洁模式'),
-                  subtitle: const Text('首页只显核心指标与今日待办'),
+                  subtitle: const Text(
+                    '首页只显核心指标与今日待办',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   value: a11y.simpleMode,
                   onChanged: (v) => a11y.setSimpleMode(v),
                 ),
@@ -801,6 +819,8 @@ class _SettingsPageState extends State<SettingsPage> {
               _push.optIn
                   ? '已开启 · 令牌 ${_push.registeredTokenPrefix ?? '—'}…'
                   : '关闭时零远程注册；本地注射提醒不受影响',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             value: _push.optIn,
             onChanged: _busy || _push.busy ? null : _toggleSystemPush,
@@ -842,6 +862,8 @@ class _SettingsPageState extends State<SettingsPage> {
                       : 'provider=${_dbProbe!['cipherProvider']} · '
                           'key=${_dbProbe!['hasKey'] == true ? '已生成' : '缺失'} · '
                           'size=${_dbProbe!['sizeBytes']}',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 trailing: IconButton(
                   icon: const Icon(Icons.refresh),
@@ -869,7 +891,11 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 8),
           SwitchListTile(
             title: const Text('启用密文备份'),
-            subtitle: const Text('需设置备份口令；服务端无法解密病历'),
+            subtitle: const Text(
+              '需设置备份口令；服务端无法解密病历',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
             value: identity.syncOptIn,
             onChanged: (v) async {
               if (v) {
@@ -957,6 +983,8 @@ class _PhoneLinkCard extends StatelessWidget {
           linked
               ? '${phone != null && phone.isNotEmpty ? maskPhone(phone) : '已关联'} · 仅用于换机恢复 / 多端密文同步，可随时注销。病历仍在本机。'
               : '可选能力，不是登录墙。未关联也可完整使用本机功能；关联仅服务换机恢复与密文同步。',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         trailing: linked
             ? TextButton(

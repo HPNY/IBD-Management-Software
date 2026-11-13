@@ -209,7 +209,7 @@ class _MedicationCheckinPageState extends State<MedicationCheckinPage> {
                                       : null),
                               border: Border.all(
                                 color: isToday && !selected
-                                    ? IbdColors.primary
+                                    ? context.ibd.brandInk
                                     : Colors.transparent,
                                 width: 1.2,
                               ),
@@ -275,7 +275,7 @@ class _MedicationCheckinPageState extends State<MedicationCheckinPage> {
                   ),
                   subtitle: Text(taken ? '已服用' : '未打卡'),
                   controlAffinity: ListTileControlAffinity.leading,
-                  activeColor: IbdColors.primary,
+                  activeColor: context.ibd.brandInk,
                 ),
               );
             }),

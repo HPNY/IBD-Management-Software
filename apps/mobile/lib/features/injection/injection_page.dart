@@ -408,7 +408,7 @@ class _InjectionPageState extends State<InjectionPage> {
                   dense: true,
                   leading: Icon(
                     done ? Icons.check_circle_rounded : Icons.vaccines_rounded,
-                    color: done ? context.ibd.success : IbdColors.primary,
+                    color: done ? context.ibd.success : context.ibd.brandInk,
                   ),
                   title: Text('${row['drug']}'),
                   subtitle: Text(
@@ -474,9 +474,11 @@ class _MonthCalendar extends StatelessWidget {
           margin: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            color: marked ? IbdColors.primary.withValues(alpha: 0.12) : null,
+            color: marked
+                ? context.ibd.brandInk.withValues(alpha: 0.12)
+                : null,
             border: Border.all(
-              color: isToday ? IbdColors.primary : Colors.transparent,
+              color: isToday ? context.ibd.brandInk : Colors.transparent,
               width: 1.2,
             ),
           ),
@@ -497,7 +499,7 @@ class _MonthCalendar extends StatelessWidget {
                 height: 6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: marked ? IbdColors.primary : Colors.transparent,
+                  color: marked ? context.ibd.brandInk : Colors.transparent,
                 ),
               ),
             ],

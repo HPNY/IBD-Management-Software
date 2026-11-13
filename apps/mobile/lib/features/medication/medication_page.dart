@@ -195,7 +195,7 @@ class _MedicationPageState extends State<MedicationPage> {
                         decoration: BoxDecoration(
                           color: stopped
                               ? context.ibd.divider
-                              : IbdColors.primary.withValues(alpha: 0.15),
+                              : context.ibd.brandInk.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -203,7 +203,7 @@ class _MedicationPageState extends State<MedicationPage> {
                           size: 14,
                           color: stopped
                               ? context.ibd.textSecondary
-                              : IbdColors.primary,
+                              : context.ibd.brandInk,
                         ),
                       ),
                       if (!last)

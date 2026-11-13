@@ -848,10 +848,10 @@ class _SymptomPageState extends State<SymptomPage> with WidgetsBindingObserver {
                   title: '排便次数',
                   trailing: Text(
                     '$_bowelCount 次',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
-                      color: IbdColors.primary,
+                      color: context.ibd.brandInk,
                     ),
                   ),
                   child: Column(
@@ -864,8 +864,8 @@ class _SymptomPageState extends State<SymptomPage> with WidgetsBindingObserver {
                       const SizedBox(height: 6),
                       SliderTheme(
                         data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: IbdColors.primary,
-                          thumbColor: IbdColors.primary,
+                          activeTrackColor: context.ibd.brandInk,
+                          thumbColor: context.ibd.brandInk,
                           inactiveTrackColor: context.ibd.divider,
                           trackHeight: 6,
                         ),
@@ -893,10 +893,10 @@ class _SymptomPageState extends State<SymptomPage> with WidgetsBindingObserver {
                   title: '腹泻次数',
                   trailing: Text(
                     '$_diarrhea 次',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
-                      color: IbdColors.primary,
+                      color: context.ibd.brandInk,
                     ),
                   ),
                   child: Column(
@@ -909,8 +909,8 @@ class _SymptomPageState extends State<SymptomPage> with WidgetsBindingObserver {
                       const SizedBox(height: 6),
                       SliderTheme(
                         data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: IbdColors.primary,
-                          thumbColor: IbdColors.primary,
+                          activeTrackColor: context.ibd.brandInk,
+                          thumbColor: context.ibd.brandInk,
                           inactiveTrackColor: context.ibd.divider,
                           trackHeight: 6,
                         ),
@@ -938,10 +938,10 @@ class _SymptomPageState extends State<SymptomPage> with WidgetsBindingObserver {
                   title: 'Bristol 粪便量表',
                   trailing: Text(
                     '$_stoolType 型',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
-                      color: IbdColors.primary,
+                      color: context.ibd.brandInk,
                     ),
                   ),
                   child: Column(
@@ -1275,7 +1275,7 @@ class _SymptomPageState extends State<SymptomPage> with WidgetsBindingObserver {
                                   _markDirty();
                                 }),
                                 selectedColor:
-                                    IbdColors.primary.withValues(alpha: 0.18),
+                                    context.ibd.brandInk.withValues(alpha: 0.18),
                                 checkmarkColor: context.ibd.brandInk,
                                 labelStyle: TextStyle(
                                   color: _jointSites.contains(site)
@@ -1451,7 +1451,7 @@ class _SymptomPageState extends State<SymptomPage> with WidgetsBindingObserver {
                                 _markDirty();
                               }),
                               selectedColor:
-                                  IbdColors.primary.withValues(alpha: 0.18),
+                                  context.ibd.brandInk.withValues(alpha: 0.18),
                               labelStyle: TextStyle(
                                 color: _stressSource == s
                                     ? context.ibd.brandInk
@@ -1650,7 +1650,7 @@ class _SwitchRow extends StatelessWidget {
             ? null
             : Text(hint!, style: const TextStyle(fontSize: 12)),
         value: value,
-        activeThumbColor: IbdColors.primary,
+        activeThumbColor: context.ibd.brandInk,
         onChanged: onChanged,
       ),
     );
@@ -1667,7 +1667,7 @@ class _QuickBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Material(
-        color: IbdColors.primary.withValues(alpha: 0.08),
+        color: context.ibd.brandInk.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: onTap,
