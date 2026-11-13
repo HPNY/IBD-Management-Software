@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/checkin/diary_severity.dart';
 import '../../core/checkin/quick_template.dart';
 import '../../core/db/local_db.dart';
 import '../../core/db/repositories.dart';
+import '../../core/ui/cards.dart';
 import '../../core/ui/theme.dart';
 
 class SymptomPage extends StatefulWidget {
@@ -27,7 +30,7 @@ class SymptomPage extends StatefulWidget {
   State<SymptomPage> createState() => _SymptomPageState();
 }
 
-class _SymptomPageState extends State<SymptomPage> {
+class _SymptomPageState extends State<SymptomPage> with WidgetsBindingObserver {
   late final SymptomRepository _repo =
       widget.symptomRepo ?? SymptomRepository();
   late final BathroomRepository _bathRepo =
@@ -85,12 +88,21 @@ class _SymptomPageState extends State<SymptomPage> {
   /// 睡眠/压力区是否被用户改过或本日本来有值；否则保存为 null（可选不填）。
   bool _wellnessTouched = false;
 
+  // U4：草稿。未保存的编辑节流写入 SharedPreferences（≤1 次/800ms），
+  // 应用退到后台时补写一次；下次进入当日打卡时恢复，保存成功后清除。
+  // 草稿只存本机，不上传；取不到存储时静默降级。
+  static const _draftKey = 'ibd_checkin_draft_v1';
+  DateTime? _lastDraftWrite;
+  DateTime? _draftSavedAt;
+  bool _draftRestored = false;
+
   static const _jointSiteOptions = ['膝', '踝', '手', '肘', '背', '其他'];
   static const _stressSources = ['工作', '家庭', '疾病', '其他'];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadExisting();
   }
 
@@ -187,6 +199,199 @@ class _SymptomPageState extends State<SymptomPage> {
       _todayBathSummary = bathRows.isEmpty ? null : _formatBathSummary(bathRows);
       _loading = false;
     });
+    // 草稿异步套用，不阻塞首屏：存储不可用时（如测试环境无插件实现）
+    // 只是没有草稿，绝不会把页面卡在 loading。
+    unawaited(_restoreDraft());
+  }
+
+  Future<void> _restoreDraft() async {
+    final draft = await _readDraft();
+    if (draft == null || !mounted) return;
+    setState(() {
+      _applyDraft(draft);
+      _draftRestored = true;
+    });
+  }
+
+  /// 标记"有未保存改动"，并按 800ms 节流落盘草稿。
+  /// 不用 Timer：避免 widget 测试里留下 pending timer，也避免 dispose 竞态。
+  /// U8：Bristol 选项同时被读屏（Semantics.onTap）与手指（InkWell.onTap）触发，
+  /// 两处共用同一个处理器，避免重复 setState 造成状态不一致。
+  void _selectStoolType(int type) {
+    setState(() {
+      _stoolType = type;
+      _stoolTouched = true;
+      _markDirty();
+    });
+  }
+
+  void _markDirty() {
+    _saved = false;
+    final now = DateTime.now();
+    final last = _lastDraftWrite;
+    if (last != null &&
+        now.difference(last) < const Duration(milliseconds: 800)) {
+      return;
+    }
+    _lastDraftWrite = now;
+    unawaited(_persistDraft());
+  }
+
+  Map<String, dynamic> _draftPayload() => {
+        'date': _isoDate(DateTime.now()),
+        'pain': _pain,
+        'diarrhea': _diarrhea,
+        'stoolType': _stoolType,
+        'bowelCount': _bowelCount,
+        'blood': _blood,
+        'urgency': _urgency,
+        'mucus': _mucus,
+        'nausea': _nausea,
+        'fatigueFlag': _fatigueFlag,
+        'fatigue': _fatigue,
+        'bloatingFlag': _bloatingFlag,
+        'bloating': _bloating,
+        'feeling': _feeling,
+        'oralUlcer': _oralUlcer,
+        'jointPain': _jointPain,
+        'jointSites': _jointSites.toList(),
+        'customItems': _customItems,
+        'sleepHours': _sleepHours,
+        'sleepQuality': _sleepQuality,
+        'sleepInsomnia': _sleepInsomnia,
+        'nightWakes': _nightWakes,
+        'stressLevel': _stressLevel,
+        'stressSource': _stressSource,
+        'wellnessTouched': _wellnessTouched,
+      };
+
+  /// 草稿是"锦上添花"，取不到存储就降级为不启用，绝不让打卡主流程失败
+  /// （无插件实现的测试环境会抛 MissingPluginException）。
+  Future<SharedPreferences?> _prefs() async {
+    try {
+      return await SharedPreferences.getInstance();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _persistDraft() async {
+    final payload = _draftPayload();
+    final sp = await _prefs();
+    if (sp == null) return;
+    try {
+      await sp.setString(_draftKey, jsonEncode(payload));
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _draftSavedAt = DateTime.now());
+  }
+
+  /// 读取草稿。跨日草稿视为过期并丢弃，避免昨天的值被填进今天。
+  Future<Map<String, dynamic>?> _readDraft() async {
+    final sp = await _prefs();
+    if (sp == null) return null;
+    final raw = sp.getString(_draftKey);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final draft = Map<String, dynamic>.from(decoded);
+      if ('${draft['date']}' != _isoDate(DateTime.now())) {
+        await sp.remove(_draftKey);
+        return null;
+      }
+      return draft;
+    } catch (_) {
+      await sp.remove(_draftKey);
+      return null;
+    }
+  }
+
+  /// 把草稿值写回表单状态。草稿存在即代表"有未保存改动"，故置 _saved=false。
+  void _applyDraft(Map<String, dynamic> d) {
+    double numOf(Object? v, double fallback) =>
+        v is num ? v.toDouble() : fallback;
+    int intOf(Object? v, int fallback) => v is num ? v.toInt() : fallback;
+
+    _pain = numOf(d['pain'], _pain);
+    _diarrhea = intOf(d['diarrhea'], _diarrhea);
+    _stoolType = intOf(d['stoolType'], _stoolType);
+    _bowelCount = intOf(d['bowelCount'], _bowelCount);
+    final blood = '${d['blood'] ?? ''}';
+    if (blood == 'none' || blood == 'trace' || blood == 'obvious') {
+      _blood = blood;
+    }
+    _urgency = d['urgency'] == true;
+    _mucus = d['mucus'] == true;
+    _nausea = d['nausea'] == true;
+    _fatigueFlag = d['fatigueFlag'] == true;
+    _fatigue = numOf(d['fatigue'], _fatigue);
+    _bloatingFlag = d['bloatingFlag'] == true;
+    _bloating = numOf(d['bloating'], _bloating);
+    final feeling = '${d['feeling'] ?? ''}';
+    if (feeling == 'same' || feeling == 'better' || feeling == 'worse') {
+      _feeling = feeling;
+    }
+    _oralUlcer = d['oralUlcer'] == true;
+    _jointPain = d['jointPain'] == true;
+    final sites = d['jointSites'];
+    if (sites is List) {
+      _jointSites
+        ..clear()
+        ..addAll(
+          sites
+              .map((s) => '$s')
+              .where((s) => _jointSiteOptions.contains(s)),
+        );
+    }
+    final items = d['customItems'];
+    if (items is List) {
+      _customItems
+        ..clear()
+        ..addAll(_decodeCustomItems(jsonEncode(items)));
+    }
+    _sleepHours = numOf(d['sleepHours'], _sleepHours);
+    _sleepQuality = intOf(d['sleepQuality'], _sleepQuality);
+    _sleepInsomnia = d['sleepInsomnia'] == true;
+    _nightWakes = intOf(d['nightWakes'], _nightWakes);
+    _stressLevel = intOf(d['stressLevel'], _stressLevel);
+    final src = '${d['stressSource'] ?? ''}';
+    _stressSource = src.isEmpty ? null : src;
+    _wellnessTouched = d['wellnessTouched'] == true;
+    _saved = false;
+  }
+
+  Future<void> _clearDraft() async {
+    final sp = await _prefs();
+    if (sp != null) {
+      try {
+        await sp.remove(_draftKey);
+      } catch (_) {
+        // 清不掉不影响已落库的数据，下次进入会因日期/覆盖而失效
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _draftSavedAt = null;
+      _draftRestored = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// 退到后台/被系统回收前补写一次草稿，覆盖节流窗口内的最后一次编辑。
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      unawaited(_persistDraft());
+    }
   }
 
   static List<Map<String, String>> _decodeCustomItems(Object? raw) {
@@ -293,6 +498,8 @@ class _SymptomPageState extends State<SymptomPage> {
       );
       _severityByDate[date] = sev;
     });
+    // 已落库，草稿使命结束（不阻塞保存反馈）
+    unawaited(_clearDraft());
   }
 
   void _applyQuickTemplate(String feeling) {
@@ -363,7 +570,7 @@ class _SymptomPageState extends State<SymptomPage> {
       final src = '${m['stressSource'] ?? ''}';
       _stressSource = src.isEmpty ? null : src;
       if (_stressSource != null) _wellnessTouched = true;
-      _saved = false;
+      _markDirty();
     });
   }
 
@@ -405,14 +612,20 @@ class _SymptomPageState extends State<SymptomPage> {
     setState(() {
       _customItems
           .add({'label': label, 'value': valueCtrl.text.trim()});
-      _saved = false;
+      _markDirty();
     });
   }
 
+  /// 提示文字样式：随明暗切换，故不能是文件级 const。
+  TextStyle get _hintStyle => TextStyle(
+        fontSize: 12,
+        color: context.ibd.textSecondary,
+      );
+
   Color _painColor(double v) {
-    if (v <= 3) return IbdColors.success;
-    if (v <= 6) return IbdColors.warning;
-    return IbdColors.danger;
+    if (v <= 3) return context.ibd.success;
+    if (v <= 6) return context.ibd.warning;
+    return context.ibd.danger;
   }
 
   String _painHint(double v) {
@@ -426,19 +639,19 @@ class _SymptomPageState extends State<SymptomPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(
         automaticallyImplyLeading: !widget.embedded,
         title: const Text('今日打卡'),
         actions: [
           if (_saved)
-            const Padding(
-              padding: EdgeInsets.only(right: 16),
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
               child: Center(
                 child: Text(
                   '已保存',
                   style: TextStyle(
-                    color: IbdColors.success,
+                    color: context.ibd.success,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -446,10 +659,19 @@ class _SymptomPageState extends State<SymptomPage> {
             ),
         ],
       ),
+      // U4：保存按钮常驻底部（拇指区），不再随 11 张卡片滚到第 4 屏
+      bottomNavigationBar: _loading
+          ? null
+          : _CheckinSaveBar(
+              saved: _saved,
+              draftRestored: _draftRestored,
+              draftSavedAt: _draftSavedAt,
+              onSave: _save,
+            ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
               children: [
                 if (_bloatResetNotice) ...[
                   Container(
@@ -458,9 +680,9 @@ class _SymptomPageState extends State<SymptomPage> {
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF7E0),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: IbdColors.warning),
+                      border: Border.all(color: context.ibd.warning),
                     ),
-                    child: const Text(
+                    child: Text(
                       '数据修复提示：本日腹胀曾因历史缺陷被误存为疲劳值，'
                       '已置空并标记；疲劳值不受影响。补录腹胀并保存后本提示消失。',
                       style: _hintStyle,
@@ -471,14 +693,14 @@ class _SymptomPageState extends State<SymptomPage> {
                 if (_yesterday != null) ...[
                   _SectionCard(
                     title: '快捷模板',
-                    trailing: const Text(
+                    trailing: Text(
                       '预填昨日 · 仍需保存',
-                      style: TextStyle(fontSize: 11, color: IbdColors.textSecondary),
+                      style: TextStyle(fontSize: 11, color: context.ibd.textSecondary),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           '基于昨日记录一键预填，可再微调后保存。',
                           style: _hintStyle,
                         ),
@@ -510,10 +732,10 @@ class _SymptomPageState extends State<SymptomPage> {
                   title: '症状日历',
                   trailing: Text(
                     _selectedCalDate ?? '近 6 周',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: IbdColors.textSecondary,
+                      color: context.ibd.textSecondary,
                     ),
                   ),
                   child: Column(
@@ -528,14 +750,16 @@ class _SymptomPageState extends State<SymptomPage> {
                       ),
                       const SizedBox(height: 8),
                       Row(
-                        children: const [
-                          _LegendDot(color: Color(0xFFE2E8F0), label: '未记录'),
-                          SizedBox(width: 12),
-                          _LegendDot(color: IbdColors.success, label: '轻'),
-                          SizedBox(width: 12),
-                          _LegendDot(color: IbdColors.warning, label: '中'),
-                          SizedBox(width: 12),
-                          _LegendDot(color: IbdColors.danger, label: '重'),
+                        children: [
+                          // 图例带数值区间：格子里的数字 + 这里的区间，
+                          // 灰度/色盲下不用颜色也能推出档位（「5」→「4–6 中」）
+                          _LegendDot(color: context.ibd.divider, label: '未记录'),
+                          const SizedBox(width: 10),
+                          _LegendDot(color: context.ibd.success, label: '1–3 轻'),
+                          const SizedBox(width: 10),
+                          _LegendDot(color: context.ibd.warning, label: '4–6 中'),
+                          const SizedBox(width: 10),
+                          _LegendDot(color: context.ibd.danger, label: '7–10 重'),
                         ],
                       ),
                       if (_selectedCalDate != null) ...[
@@ -575,9 +799,9 @@ class _SymptomPageState extends State<SymptomPage> {
                     children: [
                       Text(
                         _painHint(_pain),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12.5,
-                          color: IbdColors.textSecondary,
+                          color: context.ibd.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -585,23 +809,30 @@ class _SymptomPageState extends State<SymptomPage> {
                         data: SliderTheme.of(context).copyWith(
                           activeTrackColor: _painColor(_pain),
                           thumbColor: _painColor(_pain),
-                          inactiveTrackColor: const Color(0xFFE2E8F0),
+                          inactiveTrackColor: context.ibd.divider,
                           trackHeight: 6,
                           thumbShape:
                               const RoundSliderThumbShape(enabledThumbRadius: 10),
                         ),
-                        child: Slider(
-                          value: _pain,
-                          max: 10,
-                          divisions: 10,
-                          onChanged: (v) => setState(() {
-                            _pain = v;
-                            _painTouched = true;
-                            _saved = false;
-                          }),
+                        child: Semantics(
+                          // container: false → 标签并入 Slider 自己的语义节点：
+                          // TalkBack 一次读完「腹痛程度 5 分」，且保留加减手势
+                          container: false,
+                          label: '腹痛程度',
+                          child: Slider(
+                            value: _pain,
+                            max: 10,
+                            divisions: 10,
+                            semanticFormatterCallback: (v) => '${v.round()} 分',
+                            onChanged: (v) => setState(() {
+                              _pain = v;
+                              _painTouched = true;
+                              _markDirty();
+                            }),
+                          ),
                         ),
                       ),
-                      const Row(
+                      Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text('0 不痛', style: _hintStyle),
@@ -626,7 +857,7 @@ class _SymptomPageState extends State<SymptomPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         '今天一共排便几次？（含成形便与稀便）',
                         style: _hintStyle,
                       ),
@@ -635,18 +866,23 @@ class _SymptomPageState extends State<SymptomPage> {
                         data: SliderTheme.of(context).copyWith(
                           activeTrackColor: IbdColors.primary,
                           thumbColor: IbdColors.primary,
-                          inactiveTrackColor: const Color(0xFFE2E8F0),
+                          inactiveTrackColor: context.ibd.divider,
                           trackHeight: 6,
                         ),
-                        child: Slider(
-                          value: _bowelCount.toDouble(),
-                          max: 20,
-                          divisions: 20,
-                          onChanged: (v) => setState(() {
-                            _bowelCount = v.round();
-                            _bowelTouched = true;
-                            _saved = false;
-                          }),
+                        child: Semantics(
+                          container: false,
+                          label: '今天排便次数',
+                          child: Slider(
+                            value: _bowelCount.toDouble(),
+                            max: 20,
+                            divisions: 20,
+                            semanticFormatterCallback: (v) => '${v.round()} 次',
+                            onChanged: (v) => setState(() {
+                              _bowelCount = v.round();
+                              _bowelTouched = true;
+                              _markDirty();
+                            }),
+                          ),
                         ),
                       ),
                     ],
@@ -666,7 +902,7 @@ class _SymptomPageState extends State<SymptomPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         '其中稀便/水样便有几次？',
                         style: _hintStyle,
                       ),
@@ -675,18 +911,23 @@ class _SymptomPageState extends State<SymptomPage> {
                         data: SliderTheme.of(context).copyWith(
                           activeTrackColor: IbdColors.primary,
                           thumbColor: IbdColors.primary,
-                          inactiveTrackColor: const Color(0xFFE2E8F0),
+                          inactiveTrackColor: context.ibd.divider,
                           trackHeight: 6,
                         ),
-                        child: Slider(
-                          value: _diarrhea.toDouble(),
-                          max: 15,
-                          divisions: 15,
-                          onChanged: (v) => setState(() {
-                            _diarrhea = v.round();
-                            _diarrheaTouched = true;
-                            _saved = false;
-                          }),
+                        child: Semantics(
+                          container: false,
+                          label: '稀便次数',
+                          child: Slider(
+                            value: _diarrhea.toDouble(),
+                            max: 15,
+                            divisions: 15,
+                            semanticFormatterCallback: (v) => '${v.round()} 次',
+                            onChanged: (v) => setState(() {
+                              _diarrhea = v.round();
+                              _diarrheaTouched = true;
+                              _markDirty();
+                            }),
+                          ),
                         ),
                       ),
                     ],
@@ -706,10 +947,10 @@ class _SymptomPageState extends State<SymptomPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         '选最像今天大便外观的一项。4 型为较理想状态。',
                         style: TextStyle(
-                            fontSize: 12.5, color: IbdColors.textSecondary),
+                            fontSize: 12.5, color: context.ibd.textSecondary),
                       ),
                       const SizedBox(height: 10),
                       ..._bristolOptions.map((o) {
@@ -717,34 +958,41 @@ class _SymptomPageState extends State<SymptomPage> {
                         final ideal = o.type == 4;
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 8),
-                          child: InkWell(
-                            onTap: () => setState(() {
-                              _stoolType = o.type;
-                              _stoolTouched = true;
-                              _saved = false;
-                            }),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
+                          child: Semantics(
+                            button: true,
+                            selected: selected,
+                            label: '${o.type} 型，${o.label}'
+                                '${ideal ? '，理想型' : ''}',
+                            // 读屏双击走语义节点，手指点击走 InkWell，
+                            // 两者共用 _selectStoolType 保证状态一致（U8）
+                            onTap: () => _selectStoolType(o.type),
+                            excludeSemantics: true,
+                            child: InkWell(
+                              onTap: () => _selectStoolType(o.type),
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                // 明暗自适应：原先写死 primary 底 + Colors.white，
+                                // 暗色下变成「白底 + 浅字」，几乎不可读（U6 真机发现）
                                 color: selected
-                                    ? IbdColors.primary
+                                    ? context.ibd.brandInk
                                     : (ideal
-                                        ? const Color(0xFFCCFBF1)
-                                        : Colors.white),
+                                        ? context.ibd.brandSoft
+                                        : context.ibd.surface),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: selected
-                                      ? IbdColors.primary
-                                      : const Color(0xFFE2E8F0),
+                                      ? context.ibd.brandInk
+                                      : context.ibd.divider,
                                   width: selected ? 1.5 : 1,
                                 ),
                               ),
-                              child: Row(
+                                child: Row(
                                 children: [
                                   Text(
                                     '${o.type}',
@@ -752,8 +1000,8 @@ class _SymptomPageState extends State<SymptomPage> {
                                       fontWeight: FontWeight.w800,
                                       fontSize: 16,
                                       color: selected
-                                          ? Colors.white
-                                          : IbdColors.textPrimary,
+                                          ? context.ibd.onBrand
+                                          : context.ibd.textPrimary,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -767,21 +1015,22 @@ class _SymptomPageState extends State<SymptomPage> {
                                             ? FontWeight.w600
                                             : FontWeight.w500,
                                         color: selected
-                                            ? Colors.white
-                                            : IbdColors.textPrimary,
+                                            ? context.ibd.onBrand
+                                            : context.ibd.textPrimary,
                                       ),
                                     ),
                                   ),
                                   if (ideal && !selected)
-                                    const Text(
+                                    Text(
                                       '理想',
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
-                                        color: IbdColors.primaryDark,
+                                        color: context.ibd.brandInk,
                                       ),
                                     ),
                                 ],
+                                ),
                               ),
                             ),
                           ),
@@ -793,12 +1042,13 @@ class _SymptomPageState extends State<SymptomPage> {
                 const SizedBox(height: 14),
                 _SectionCard(
                   title: '排便细项',
-                  trailing: const Text(
+                  // W0：打卡只写本表，不再回写排便细表，故这里恒定提示「仅记录在本页」。
+                  trailing: Text(
                     '仅记录在本页',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: IbdColors.textSecondary,
+                      color: context.ibd.textSecondary,
                     ),
                   ),
                   child: Column(
@@ -812,43 +1062,49 @@ class _SymptomPageState extends State<SymptomPage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
+                      Text(
                         '与排便细表同一套分级；打卡只记录在本页，不再自动写入细表。',
                         style: _hintStyle,
                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          _BloodChip(
+                          IbdChoiceChip(
+                            expanded: true,
                             label: '无',
                             selected: _blood == 'none',
-                            color: IbdColors.success,
+                            color: context.ibd.success,
                             onTap: () => setState(() {
                               _blood = 'none';
                               _bloodTouched = true;
                               _saved = false;
+                              _markDirty();
                             }),
                           ),
                           const SizedBox(width: 8),
-                          _BloodChip(
+                          IbdChoiceChip(
+                            expanded: true,
                             label: '擦拭有',
                             selected: _blood == 'trace',
-                            color: IbdColors.warning,
+                            color: context.ibd.warning,
                             onTap: () => setState(() {
                               _blood = 'trace';
                               _bloodTouched = true;
                               _saved = false;
+                              _markDirty();
                             }),
                           ),
                           const SizedBox(width: 8),
-                          _BloodChip(
+                          IbdChoiceChip(
+                            expanded: true,
                             label: '明显',
                             selected: _blood == 'obvious',
-                            color: IbdColors.danger,
+                            color: context.ibd.danger,
                             onTap: () => setState(() {
                               _blood = 'obvious';
                               _bloodTouched = true;
                               _saved = false;
+                              _markDirty();
                             }),
                           ),
                         ],
@@ -862,6 +1118,7 @@ class _SymptomPageState extends State<SymptomPage> {
                           _urgency = v;
                           _urgencyTouched = true;
                           _saved = false;
+                          _markDirty();
                         }),
                       ),
                       const Divider(height: 1),
@@ -873,6 +1130,7 @@ class _SymptomPageState extends State<SymptomPage> {
                           _mucus = v;
                           _mucusTouched = true;
                           _saved = false;
+                          _markDirty();
                         }),
                       ),
                       if (_todayBathSummary != null) ...[
@@ -888,21 +1146,21 @@ class _SymptomPageState extends State<SymptomPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 '今日排便细表记录',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12.5,
-                                  color: IbdColors.primaryDark,
+                                  color: context.ibd.brandInk,
                                 ),
                               ),
                               const SizedBox(height: 6),
                               Text(
                                 _todayBathSummary!,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
                                   height: 1.45,
-                                  color: IbdColors.textSecondary,
+                                  color: context.ibd.textSecondary,
                                 ),
                               ),
                             ],
@@ -923,7 +1181,7 @@ class _SymptomPageState extends State<SymptomPage> {
                         value: _bloatingFlag,
                         onChanged: (v) => setState(() {
                           _bloatingFlag = v;
-                          _saved = false;
+                          _markDirty();
                         }),
                       ),
                       if (_bloatingFlag) ...[
@@ -936,7 +1194,7 @@ class _SymptomPageState extends State<SymptomPage> {
                           divisions: 10,
                           onChanged: (v) => setState(() {
                             _bloating = v;
-                            _saved = false;
+                            _markDirty();
                           }),
                         ),
                       ],
@@ -949,6 +1207,7 @@ class _SymptomPageState extends State<SymptomPage> {
                           _nausea = v;
                           _nauseaTouched = true;
                           _saved = false;
+                          _markDirty();
                         }),
                       ),
                       const Divider(height: 1),
@@ -958,7 +1217,7 @@ class _SymptomPageState extends State<SymptomPage> {
                         value: _fatigueFlag,
                         onChanged: (v) => setState(() {
                           _fatigueFlag = v;
-                          _saved = false;
+                          _markDirty();
                         }),
                       ),
                       if (_fatigueFlag) ...[
@@ -971,7 +1230,7 @@ class _SymptomPageState extends State<SymptomPage> {
                           divisions: 10,
                           onChanged: (v) => setState(() {
                             _fatigue = v;
-                            _saved = false;
+                            _markDirty();
                           }),
                         ),
                       ],
@@ -982,7 +1241,7 @@ class _SymptomPageState extends State<SymptomPage> {
                         value: _oralUlcer,
                         onChanged: (v) => setState(() {
                           _oralUlcer = v;
-                          _saved = false;
+                          _markDirty();
                         }),
                       ),
                       const Divider(height: 1),
@@ -992,12 +1251,12 @@ class _SymptomPageState extends State<SymptomPage> {
                         value: _jointPain,
                         onChanged: (v) => setState(() {
                           _jointPain = v;
-                          _saved = false;
+                          _markDirty();
                         }),
                       ),
                       if (_jointPain) ...[
                         const SizedBox(height: 4),
-                        const Text('部位（可多选）', style: _hintStyle),
+                        Text('部位（可多选）', style: _hintStyle),
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 8,
@@ -1013,15 +1272,15 @@ class _SymptomPageState extends State<SymptomPage> {
                                   } else {
                                     _jointSites.remove(site);
                                   }
-                                  _saved = false;
+                                  _markDirty();
                                 }),
                                 selectedColor:
                                     IbdColors.primary.withValues(alpha: 0.18),
-                                checkmarkColor: IbdColors.primaryDark,
+                                checkmarkColor: context.ibd.brandInk,
                                 labelStyle: TextStyle(
                                   color: _jointSites.contains(site)
-                                      ? IbdColors.primaryDark
-                                      : IbdColors.textPrimary,
+                                      ? context.ibd.brandInk
+                                      : context.ibd.textPrimary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -1050,7 +1309,7 @@ class _SymptomPageState extends State<SymptomPage> {
                                     tooltip: '删除',
                                     onPressed: () => setState(() {
                                       _customItems.removeAt(i);
-                                      _saved = false;
+                                      _markDirty();
                                     }),
                                   ),
                                 ),
@@ -1076,7 +1335,7 @@ class _SymptomPageState extends State<SymptomPage> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: IbdColors.textSecondary,
+                      color: context.ibd.textSecondary,
                     ),
                   ),
                   child: Column(
@@ -1091,24 +1350,24 @@ class _SymptomPageState extends State<SymptomPage> {
                         onChanged: (v) => setState(() {
                           _sleepHours = v;
                           _wellnessTouched = true;
-                          _saved = false;
+                          _markDirty();
                         }),
                       ),
                       const SizedBox(height: 4),
-                      const Text('睡眠质量', style: _hintStyle),
+                      Text('睡眠质量', style: _hintStyle),
                       const SizedBox(height: 8),
                       Row(
                         children: [
                           for (var q = 1; q <= 5; q++)
                             Padding(
                               padding: const EdgeInsets.only(right: 8),
-                              child: _QualityChip(
+                              child: IbdScoreChip(
                                 score: q,
                                 selected: _sleepQuality == q,
                                 onTap: () => setState(() {
                                   _sleepQuality = q;
                                   _wellnessTouched = true;
-                                  _saved = false;
+                                  _markDirty();
                                 }),
                               ),
                             ),
@@ -1122,7 +1381,7 @@ class _SymptomPageState extends State<SymptomPage> {
                         onChanged: (v) => setState(() {
                           _sleepInsomnia = v;
                           _wellnessTouched = true;
-                          _saved = false;
+                          _markDirty();
                         }),
                       ),
                       const Divider(height: 1),
@@ -1137,21 +1396,25 @@ class _SymptomPageState extends State<SymptomPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
+                              // 无 tooltip 的 IconButton 读屏只念「按钮」，
+                              // 不知道是加还是减（U8 语义守卫测试抓到的）
+                              tooltip: '减少夜醒次数',
                               onPressed: _nightWakes > 0
                                   ? () => setState(() {
                                         _nightWakes--;
                                         _wellnessTouched = true;
-                                        _saved = false;
+                                        _markDirty();
                                       })
                                   : null,
                               icon: const Icon(Icons.remove_rounded),
                             ),
                             IconButton(
+                              tooltip: '增加夜醒次数',
                               onPressed: _nightWakes < 10
                                   ? () => setState(() {
                                         _nightWakes++;
                                         _wellnessTouched = true;
-                                        _saved = false;
+                                        _markDirty();
                                       })
                                   : null,
                               icon: const Icon(Icons.add_rounded),
@@ -1169,11 +1432,11 @@ class _SymptomPageState extends State<SymptomPage> {
                         onChanged: (v) => setState(() {
                           _stressLevel = v.round();
                           _wellnessTouched = true;
-                          _saved = false;
+                          _markDirty();
                         }),
                       ),
                       const SizedBox(height: 4),
-                      const Text('压力来源（可空）', style: _hintStyle),
+                      Text('压力来源（可空）', style: _hintStyle),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -1185,14 +1448,14 @@ class _SymptomPageState extends State<SymptomPage> {
                               onSelected: (sel) => setState(() {
                                 _stressSource = sel ? s : null;
                                 _wellnessTouched = true;
-                                _saved = false;
+                                _markDirty();
                               }),
                               selectedColor:
                                   IbdColors.primary.withValues(alpha: 0.18),
                               labelStyle: TextStyle(
                                 color: _stressSource == s
-                                    ? IbdColors.primaryDark
-                                    : IbdColors.textPrimary,
+                                    ? context.ibd.brandInk
+                                    : context.ibd.textPrimary,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1207,43 +1470,49 @@ class _SymptomPageState extends State<SymptomPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         '和昨天比，今天整体怎么样？选一个最接近的。',
                         style: _hintStyle,
                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          _FeelingChip(
+                          IbdChoiceChip(
+                            expanded: true,
                             label: '比昨天差',
                             selected: _feeling == 'worse',
-                            color: IbdColors.danger,
+                            color: context.ibd.danger,
                             onTap: () => setState(() {
                               _feeling = 'worse';
                               _feelingTouched = true;
                               _saved = false;
+                              _markDirty();
                             }),
                           ),
                           const SizedBox(width: 8),
-                          _FeelingChip(
+                          IbdChoiceChip(
+                            expanded: true,
                             label: '差不多',
                             selected: _feeling == 'same',
-                            color: IbdColors.warning,
+                            color: context.ibd.warning,
                             onTap: () => setState(() {
                               _feeling = 'same';
                               _feelingTouched = true;
                               _saved = false;
+                              _markDirty();
                             }),
                           ),
                           const SizedBox(width: 8),
-                          _FeelingChip(
+                          IbdChoiceChip(
+                            expanded: true,
                             label: '比昨天好',
                             selected: _feeling == 'better',
-                            color: IbdColors.success,
+                            color: context.ibd.success,
                             onTap: () => setState(() {
                               _feeling = 'better';
                               _feelingTouched = true;
                               _saved = false;
+                              _markDirty();
                             }),
                           ),
                         ],
@@ -1252,22 +1521,51 @@ class _SymptomPageState extends State<SymptomPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: _save,
-                  icon: Icon(
-                      _saved ? Icons.check_circle_rounded : Icons.edit_rounded),
-                  label: Text(_saved ? '已保存到本机' : '保存今日打卡'),
-                ),
               ],
             ),
     );
   }
 }
 
-const _hintStyle = TextStyle(
-  fontSize: 12,
-  color: IbdColors.textSecondary,
-);
+/// U4：底部吸附保存条。常驻拇指区，并显式反馈草稿状态，
+/// 消除"滚了 4 屏才找到保存 / 中途退出全白填"的顾虑。
+class _CheckinSaveBar extends StatelessWidget {
+  const _CheckinSaveBar({
+    required this.saved,
+    required this.draftRestored,
+    required this.draftSavedAt,
+    required this.onSave,
+  });
+
+  final bool saved;
+  final bool draftRestored;
+  final DateTime? draftSavedAt;
+  final Future<void> Function() onSave;
+
+  String get _hint {
+    if (saved) return '已保存到本机 · 可随时修改';
+    if (draftRestored) return '已恢复上次未保存的草稿';
+    final at = draftSavedAt;
+    if (at != null) {
+      final hh = at.hour.toString().padLeft(2, '0');
+      final mm = at.minute.toString().padLeft(2, '0');
+      return '草稿已自动保存 $hh:$mm · 仅存本机';
+    }
+    return '离开页面会自动存草稿 · 仅存本机';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // U6：吸附栏骨架统一走 IbdStickyAction，这里只负责文案与图标
+    return IbdStickyAction(
+      label: saved ? '已保存到本机' : '保存今日打卡',
+      icon: saved ? Icons.check_circle_rounded : Icons.edit_rounded,
+      hint: _hint,
+      onPressed: () => onSave(),
+    );
+  }
+}
+
 
 class _BristolOption {
   const _BristolOption(this.type, this.label);
@@ -1298,13 +1596,9 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    // U6：卡片骨架统一走 IbdCard，这里只描述内容
+    return IbdCard(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-      decoration: BoxDecoration(
-        color: IbdColors.card,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1313,10 +1607,10 @@ class _SectionCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 16,
-                    color: IbdColors.textPrimary,
+                    color: context.ibd.textPrimary,
                   ),
                 ),
               ),
@@ -1363,92 +1657,6 @@ class _SwitchRow extends StatelessWidget {
   }
 }
 
-class _BloodChip extends StatelessWidget {
-  const _BloodChip({
-    required this.label,
-    required this.selected,
-    required this.color,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: selected ? color.withValues(alpha: 0.15) : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected ? color : const Color(0xFFE2E8F0),
-            ),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              color: selected ? color : IbdColors.textSecondary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FeelingChip extends StatelessWidget {
-  const _FeelingChip({
-    required this.label,
-    required this.selected,
-    required this.color,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: selected ? color.withValues(alpha: 0.15) : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected ? color : const Color(0xFFE2E8F0),
-            ),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              color: selected ? color : IbdColors.textSecondary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _QuickBtn extends StatelessWidget {
   const _QuickBtn({required this.label, required this.onTap});
 
@@ -1469,51 +1677,12 @@ class _QuickBtn extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
-                color: IbdColors.primaryDark,
+                color: context.ibd.brandInk,
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QualityChip extends StatelessWidget {
-  const _QualityChip({
-    required this.score,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final int score;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: 36,
-        height: 36,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? IbdColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected ? IbdColors.primary : const Color(0xFFE2E8F0),
-          ),
-        ),
-        child: Text(
-          '$score',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            color: selected ? Colors.white : IbdColors.textSecondary,
           ),
         ),
       ),
@@ -1538,7 +1707,7 @@ class _LegendDot extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: IbdColors.textSecondary)),
+        Text(label, style: TextStyle(fontSize: 11, color: context.ibd.textSecondary)),
       ],
     );
   }
@@ -1559,16 +1728,16 @@ class _SeverityCalendar extends StatelessWidget {
   static String _iso(DateTime n) =>
       '${n.year.toString().padLeft(4, '0')}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
 
-  Color _colorFor(DateTime day, bool isToday) {
+  Color _colorFor(BuildContext context, DateTime day, bool isToday) {
     final sev = severityByDate[_iso(day)];
-    if (sev == null) return const Color(0xFFE2E8F0);
+    if (sev == null) return context.ibd.divider;
     switch (severityBand(sev)) {
       case 'green':
-        return IbdColors.success;
+        return context.ibd.success;
       case 'warning':
-        return IbdColors.warning;
+        return context.ibd.warning;
       default:
-        return IbdColors.danger;
+        return context.ibd.danger;
     }
   }
 
@@ -1590,10 +1759,10 @@ class _SeverityCalendar extends StatelessWidget {
                 child: Center(
                   child: Text(
                     w,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: IbdColors.textSecondary,
+                      color: context.ibd.textSecondary,
                     ),
                   ),
                 ),
@@ -1612,33 +1781,69 @@ class _SeverityCalendar extends StatelessWidget {
                       final iso = _iso(day);
                       final isToday = iso == todayIso;
                       final isSel = iso == selected;
-                      final color = _colorFor(day, isToday);
-                      return InkWell(
-                        onTap: () => onSelect(iso, severityByDate[iso]),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          margin: const EdgeInsets.all(2),
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: color,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isToday || isSel
-                                  ? IbdColors.primaryDark
-                                  : Colors.transparent,
-                              width: isToday || isSel ? 1.5 : 0,
+                      final sev = severityByDate[iso];
+                      final color = _colorFor(context, day, isToday);
+                      // 颜色之外的第二重编码：有记录时格内直接显示严重度数值。
+                      // 灰度截图 / 色盲下「5 下面有个 7」仍能读出这一档有多重，
+                      // 只靠红黄绿是读不出来的（WCAG 1.4.1）。
+                      final bandText = sev == null
+                          ? '无记录'
+                          : '严重度 ${sev.round()}，${severityBandText(sev)}';
+                      return Semantics(
+                        button: true,
+                        selected: isSel,
+                        label: '${day.month} 月 ${day.day} 日，$bandText'
+                            '${isToday ? '，今天' : ''}',
+                        // excludeSemantics 会连 InkWell 的 tap 动作一起丢掉，
+                        // 这里补回来，否则读屏念「按钮」但双击没反应
+                        onTap: () => onSelect(iso, sev),
+                        excludeSemantics: true,
+                        child: InkWell(
+                          onTap: () => onSelect(iso, sev),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            margin: const EdgeInsets.all(2),
+                            // 40 + 上下各 2 的外边距 = 44，满足最小触控区
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isToday || isSel
+                                    ? context.ibd.brandInk
+                                    : Colors.transparent,
+                                width: isToday || isSel ? 1.5 : 0,
+                              ),
                             ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            '${day.day}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight:
-                                  isToday ? FontWeight.w800 : FontWeight.w600,
-                              color: severityByDate[iso] == null
-                                  ? IbdColors.textSecondary
-                                  : Colors.white,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '${day.day}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    height: 1.1,
+                                    fontWeight: isToday
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                    // 有记录的格子用 onBrand：浅色档位是深底配白字，
+                                    // 暗色档位是亮底配深字（白字在亮绿/亮黄上读不出）
+                                    color: sev == null
+                                        ? context.ibd.textSecondary
+                                        : context.ibd.onBrand,
+                                  ),
+                                ),
+                                if (sev != null)
+                                  Text(
+                                    '${sev.round()}',
+                                    style: TextStyle(
+                                      fontSize: 8.5,
+                                      height: 1.1,
+                                      fontWeight: FontWeight.w800,
+                                      color: context.ibd.onBrand,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ),

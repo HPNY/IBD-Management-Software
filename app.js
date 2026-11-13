@@ -129,7 +129,7 @@ function load() {
 
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, panels: state.panels }));
-  dirty = false;
+  markClean();
 }
 
 function normalizePanels(panels) {
@@ -165,12 +165,88 @@ function uid(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function toast(msg) {
+function hideToast() {
   const el = document.getElementById("toast");
-  el.textContent = msg;
+  el.classList.remove("show", "has-action");
+  clearTimeout(toast._t);
+}
+
+/**
+ * 提示条。传 actionLabel + onAction 会变成「可撤销」提示，停留更久。
+ * 破坏性操作不再弹 confirm，而是先执行、再给 6 秒撤销窗口——
+ * 少一次打断，且错了能立刻挽回。
+ */
+function toast(msg, opts = {}) {
+  const el = document.getElementById("toast");
+  el.textContent = "";
+  const text = document.createElement("span");
+  text.textContent = msg;
+  el.appendChild(text);
+
+  const hasAction = Boolean(opts.actionLabel && typeof opts.onAction === "function");
+  if (hasAction) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "toast-action";
+    btn.textContent = opts.actionLabel;
+    btn.addEventListener("click", () => {
+      hideToast();
+      opts.onAction();
+    });
+    el.appendChild(btn);
+  }
+
+  el.classList.toggle("has-action", hasAction);
   el.classList.add("show");
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => el.classList.remove("show"), 1800);
+  toast._t = setTimeout(hideToast, opts.duration ?? (hasAction ? 6000 : 1800));
+}
+
+// ---------- 脏状态 ----------
+function updateDirtyFlag() {
+  const el = document.getElementById("dirty-flag");
+  if (el) {
+    el.textContent = dirty ? "未保存" : "已保存";
+    el.dataset.state = dirty ? "dirty" : "clean";
+    el.title = dirty
+      ? "有修改尚未写入浏览器本地存储，点「保存」或 Ctrl+S"
+      : "已写入浏览器本地存储";
+  }
+  document.title = `${dirty ? "• " : ""}IBDers · 检验套餐模板维护`;
+}
+
+function markDirty() {
+  dirty = true;
+  updateDirtyFlag();
+}
+
+function markClean() {
+  dirty = false;
+  updateDirtyFlag();
+}
+
+// ---------- 撤销栈 ----------
+const undoStack = [];
+const UNDO_LIMIT = 10;
+
+/** 破坏性操作前拍快照。用整份 panels 快照而不是逐操作反向补丁，
+ *  代码少、覆盖全（删除小项 / 删除套餐 / 重置 / 导入都走同一条路）。 */
+function pushUndo() {
+  undoStack.push({ panels: deepClone(state.panels), activePanelId });
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+}
+
+function undo() {
+  const snap = undoStack.pop();
+  if (!snap) return;
+  state.panels = snap.panels;
+  activePanelId = state.panels.some((p) => p.id === snap.activePanelId)
+    ? snap.activePanelId
+    : state.panels[0]?.id || null;
+  editingItemIndex = null;
+  markDirty();
+  renderAll();
+  toast("已撤销");
 }
 
 function fmtRef(item) {
@@ -266,12 +342,12 @@ function renderMain() {
 
   title.addEventListener("input", () => {
     panel.title = title.value;
-    dirty = true;
+    markDirty();
     renderPanelList();
   });
   subtitle.addEventListener("input", () => {
     panel.subtitle = subtitle.value;
-    dirty = true;
+    markDirty();
     renderPanelList();
   });
   idInput.addEventListener("change", () => {
@@ -285,7 +361,7 @@ function renderMain() {
     const old = panel.id;
     panel.id = next;
     if (activePanelId === old) activePanelId = next;
-    dirty = true;
+    markDirty();
     renderPanelList();
   });
 
@@ -338,12 +414,15 @@ function renderRows(panel) {
       renderItemEditor(panel);
     });
     tr.querySelector('[data-act="del"]').addEventListener("click", () => {
-      if (!confirm(`删除小项「${item.nameNorm}」？`)) return;
+      pushUndo();
       panel.items.splice(realIndex, 1);
       if (editingItemIndex === realIndex) editingItemIndex = null;
-      dirty = true;
+      markDirty();
       renderAll();
-      toast("已删除小项");
+      toast(`已删除小项「${item.nameNorm}」`, {
+        actionLabel: "撤销",
+        onAction: undo,
+      });
     });
     tr.querySelector('[data-act="up"]').addEventListener("click", () => moveItem(panel, item, -1));
     tr.querySelector('[data-act="down"]').addEventListener("click", () => moveItem(panel, item, 1));
@@ -362,7 +441,7 @@ function moveItem(panel, item, dir) {
   const t = a.sort;
   a.sort = b.sort;
   b.sort = t;
-  dirty = true;
+  markDirty();
   renderRows(panel);
 }
 
@@ -477,7 +556,7 @@ function renderItemEditor(panel) {
       panel.items[editingItemIndex] = next;
       toast("已保存小项");
     }
-    dirty = true;
+    markDirty();
     editingItemIndex = null;
     renderAll();
   });
@@ -498,7 +577,7 @@ function addPanel() {
   });
   activePanelId = id;
   editingItemIndex = null;
-  dirty = true;
+  markDirty();
   renderAll();
   toast("已新建套餐");
 }
@@ -506,13 +585,16 @@ function addPanel() {
 function deletePanel() {
   const panel = activePanel();
   if (!panel) return;
-  if (!confirm(`删除套餐「${panel.title}」及其全部小项？`)) return;
+  pushUndo();
   state.panels = state.panels.filter((p) => p !== panel);
   activePanelId = state.panels[0]?.id || null;
   editingItemIndex = null;
-  dirty = true;
+  markDirty();
   renderAll();
-  toast("已删除套餐");
+  toast(`已删除套餐「${panel.title}」（${panel.items.length} 项）`, {
+    actionLabel: "撤销",
+    onAction: undo,
+  });
 }
 
 function duplicatePanel() {
@@ -524,7 +606,7 @@ function duplicatePanel() {
   state.panels.push(copy);
   activePanelId = copy.id;
   editingItemIndex = null;
-  dirty = true;
+  markDirty();
   renderAll();
   toast("已复制套餐");
 }
@@ -594,14 +676,16 @@ function importJsonFile(file) {
       const parsed = JSON.parse(String(reader.result));
       const panels = normalizePanels(parsed.panels || parsed);
       if (!panels.length) throw new Error("文件中没有套餐");
-      if (!confirm(`导入 ${panels.length} 个套餐并替换当前数据？`)) return;
+      pushUndo();
       state.panels = panels;
       activePanelId = panels[0].id;
       editingItemIndex = null;
-      dirty = true;
       save();
       renderAll();
-      toast("导入成功");
+      toast(`已导入 ${panels.length} 个套餐`, {
+        actionLabel: "撤销",
+        onAction: undo,
+      });
     } catch (e) {
       toast(`导入失败：${e.message || e}`);
     }
@@ -610,13 +694,13 @@ function importJsonFile(file) {
 }
 
 function resetDefaults() {
-  if (!confirm("重置为内置默认模板？当前修改将丢失。")) return;
+  pushUndo();
   state.panels = deepClone(DEFAULT_PANELS);
   activePanelId = state.panels[0].id;
   editingItemIndex = null;
   save();
   renderAll();
-  toast("已重置默认模板");
+  toast("已重置为内置默认模板", { actionLabel: "撤销", onAction: undo });
 }
 
 function bindChrome() {
@@ -630,11 +714,31 @@ function bindChrome() {
   document.getElementById("btn-export").addEventListener("click", exportJson);
   document.getElementById("btn-export-dart").addEventListener("click", exportDart);
   document.getElementById("btn-reset").addEventListener("click", resetDefaults);
+  // 原来靠行内 onclick 触发隐藏的 file input，挪到这里统一绑定
+  document.getElementById("btn-import").addEventListener("click", () => {
+    document.getElementById("file-import").click();
+  });
   document.getElementById("file-import").addEventListener("change", (e) => {
     const file = e.target.files?.[0];
     if (file) importJsonFile(file);
     e.target.value = "";
   });
+
+  // Ctrl/Cmd + S 保存；Ctrl/Cmd + Z 撤销（撤销只在有快照时生效）
+  document.addEventListener("keydown", (e) => {
+    const mod = e.ctrlKey || e.metaKey;
+    if (!mod) return;
+    const key = e.key.toLowerCase();
+    if (key === "s") {
+      e.preventDefault();
+      save();
+      toast("已保存到浏览器本地存储");
+    } else if (key === "z" && undoStack.length) {
+      e.preventDefault();
+      undo();
+    }
+  });
+
   window.addEventListener("beforeunload", (e) => {
     if (dirty) {
       e.preventDefault();
@@ -647,4 +751,6 @@ document.addEventListener("DOMContentLoaded", () => {
   load();
   bindChrome();
   renderAll();
+  // load() 之后才能读到 DOM 上的脏标记节点
+  updateDirtyFlag();
 });

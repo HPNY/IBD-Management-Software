@@ -5,6 +5,7 @@ import '../../core/api/api_config.dart';
 import '../../core/api/ibd_api_client.dart';
 import '../../core/auth/auth_session.dart';
 import '../../core/identity/local_identity.dart';
+import '../../core/ui/state_views.dart';
 import '../../core/ui/theme.dart';
 
 /// T5：患者侧医生数据源（可注入，便于测试与降级处理）。
@@ -208,14 +209,14 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(title: const Text('我的医生')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const Text(
+          Text(
             '仅授权后医生可查看指定范围；可随时收回。授权码由医生端生成。',
-            style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
           ),
           const SizedBox(height: 12),
           const Text('扫码/输入授权码',
@@ -268,9 +269,12 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
               ),
             ),
           const SizedBox(height: 8),
-          FilledButton(
-            onPressed: _busy ? null : _confirmLocal,
-            child: const Text('确认授权'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _busy ? null : _confirmLocal,
+              child: const Text('确认授权'),
+            ),
           ),
           const SizedBox(height: 20),
           const Text('我的授权',
@@ -290,10 +294,10 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
               decoration: BoxDecoration(
                 color: const Color(0xFFFFF7E0),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: IbdColors.warning),
+                border: Border.all(color: context.ibd.warning),
               ),
               child: Text(_loadError!,
-                  style: const TextStyle(fontSize: 12, color: IbdColors.textSecondary)),
+                  style: TextStyle(fontSize: 12, color: context.ibd.textSecondary)),
             ),
             TextButton(
               onPressed: _loading ? null : _loadAll,
@@ -301,8 +305,10 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
             ),
           ],
           if (!_loading && _loadError == null && _grants.isEmpty)
-            const Text('暂无授权',
-                style: TextStyle(color: IbdColors.textSecondary)),
+            const IbdEmptyInline(
+              icon: Icons.vpn_key_off_rounded,
+              message: '还没有授权任何医生。需要医生查看时，用上面的授权码生成一条，随时可收回。',
+            ),
           ..._grants.asMap().entries.map((e) {
             final g = e.value;
             final revoked = g['revokedAt'] != null;
@@ -339,8 +345,10 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
           const SizedBox(height: 8),
           if (!_loading && _notes.isEmpty)
-            const Text('暂无建议',
-                style: TextStyle(color: IbdColors.textSecondary)),
+            const IbdEmptyInline(
+              icon: Icons.forum_outlined,
+              message: '还没有医生建议。医生通过授权查看后会在这里留言。',
+            ),
           ..._notes.map(
             (n) => Card(
               child: ListTile(
@@ -358,8 +366,10 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
           const SizedBox(height: 8),
           if (!_loading && _audits.isEmpty)
-            const Text('暂无审计记录',
-                style: TextStyle(color: IbdColors.textSecondary)),
+            const IbdEmptyInline(
+              icon: Icons.receipt_long_outlined,
+              message: '还没有审计记录。每次授权、查看、收回都会留痕，方便你核对。',
+            ),
           ..._audits.map(
             (a) => ListTile(
               dense: true,
@@ -368,9 +378,9 @@ class _MyDoctorsPageState extends State<MyDoctorsPage> {
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             '数据来自本人授权记录（/doctor-grants、/doctor-patient）；仅显示本账号数据。',
-            style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
           ),
         ],
       ),
