@@ -178,7 +178,7 @@ void main() {
 
   testWidgets('在排便细表页手记一笔，不会变成打卡同步', (tester) async {
     await pumpBathroom(tester, bathroom);
-    expect(find.text('暂无记录'), findsOneWidget);
+    expect(find.textContaining('还没有历史记录'), findsOneWidget);
 
     await scrollToAndTap(tester, find.text('记一笔'));
 

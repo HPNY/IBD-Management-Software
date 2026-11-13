@@ -95,9 +95,10 @@ void main() {
 
   testWidgets('空态：无授权/建议/审计', (tester) async {
     await _pump(tester, _FakeSource());
-    expect(find.text('暂无授权'), findsOneWidget);
-    expect(find.text('暂无建议'), findsOneWidget);
-    expect(find.text('暂无审计记录'), findsOneWidget);
+    // U6：空态从「暂无 X」升级为带引导文案的卡片
+    expect(find.textContaining('还没有授权任何医生'), findsOneWidget);
+    expect(find.textContaining('还没有医生建议'), findsOneWidget);
+    expect(find.textContaining('还没有审计记录'), findsOneWidget);
   });
 
   testWidgets('加载失败：错误态 + 重试可用，确认入口保留', (tester) async {

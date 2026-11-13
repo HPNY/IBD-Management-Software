@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/activity/activity_service.dart';
 import '../../core/db/repositories.dart';
 import '../../core/ui/disclaimer.dart';
+import '../../core/ui/cards.dart';
 import '../../core/ui/theme.dart';
 import '../injection/injection_page.dart';
 import '../medication/medication_page.dart';
@@ -117,21 +118,10 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
     return daysUntilInjection('${sorted.first['planned_date']}');
   }
 
-  Color _lightColor(String light) {
-    switch (light) {
-      case 'red':
-        return IbdColors.danger;
-      case 'green':
-        return IbdColors.success;
-      default:
-        return const Color(0xFFCBD5E1);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(title: const Text('疾病活动度')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -153,44 +143,15 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                           Expanded(
                             child: Padding(
                               padding: const EdgeInsets.only(right: 10),
-                              child: Column(
-                                children: [
-                                  Container(
-                                    width: 18,
-                                    height: 18,
-                                    decoration: BoxDecoration(
-                                      color: _lightColor(t.light),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    t.label,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    t.value ?? '—',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w800,
-                                      color: t.light == 'red'
-                                          ? IbdColors.danger
-                                          : IbdColors.textPrimary,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  Text(
-                                    t.date ?? '暂无数据',
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: IbdColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
+                              // U6：与首页三灯同一个组件。原来这里只有圆点颜色，
+                              // 没有「偏高/正常/未测」文字——色盲下信息全丢（WCAG 1.4.1）
+                              child: IbdMetric.status(
+                                label: t.label,
+                                value: t.value ?? '—',
+                                state: inflammationStateText(t.light),
+                                caption: t.date ?? '暂无数据',
+                                tone: IbdMetricTone.ofLight(t.light),
+                                dotSize: 18,
                               ),
                             ),
                           ),
@@ -227,19 +188,19 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                                   fontSize: 22,
                                   fontWeight: FontWeight.w800,
                                   color: _daysToNext == null
-                                      ? IbdColors.textSecondary
+                                      ? context.ibd.textSecondary
                                       : (_daysToNext! <= 3
-                                          ? IbdColors.warning
-                                          : IbdColors.primaryDark),
+                                          ? context.ibd.warning
+                                          : context.ibd.brandInk),
                                 ),
                               ),
                             ),
                             if (_pendingInj.isNotEmpty)
                               Text(
                                 '${_pendingInj.first['drug'] ?? ''}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  color: IbdColors.textSecondary,
+                                  color: context.ibd.textSecondary,
                                 ),
                               ),
                           ],
@@ -252,9 +213,9 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                               child: Text(
                                 '· ${row['planned_date'] ?? ''} '
                                 '${row['drug'] ?? ''} ${row['dose'] ?? ''}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12.5,
-                                  color: IbdColors.textSecondary,
+                                  color: context.ibd.textSecondary,
                                 ),
                               ),
                             ),
@@ -285,9 +246,9 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                       child: const Text('管理'),
                     ),
                     child: _medsNow.isEmpty
-                        ? const Text(
+                        ? Text(
                             '暂无在用药物',
-                            style: TextStyle(color: IbdColors.textSecondary),
+                            style: TextStyle(color: context.ibd.textSecondary),
                           )
                         : Column(
                             children: [
@@ -307,9 +268,9 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                                       ),
                                       Text(
                                         '${m['frequency'] ?? ''} · ${m['status'] ?? ''}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
-                                          color: IbdColors.textSecondary,
+                                          color: context.ibd.textSecondary,
                                         ),
                                       ),
                                     ],
@@ -343,9 +304,9 @@ class _Card extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
       decoration: BoxDecoration(
-        color: IbdColors.card,
+        color: context.ibd.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+        border: Border.all(color: context.ibd.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -366,9 +327,9 @@ class _Card extends StatelessWidget {
                     if (subtitle != null)
                       Text(
                         subtitle!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: IbdColors.textSecondary,
+                          color: context.ibd.textSecondary,
                         ),
                       ),
                   ],
@@ -403,9 +364,9 @@ class _ScoreTrendCard extends StatelessWidget {
       child: rows.isEmpty
           ? Text(
               emptyHint,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
-                color: IbdColors.textSecondary,
+                color: context.ibd.textSecondary,
                 height: 1.4,
               ),
             )
@@ -418,18 +379,18 @@ class _ScoreTrendCard extends StatelessWidget {
                       children: [
                         Text(
                           r.date,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12.5,
-                            color: IbdColors.textSecondary,
+                            color: context.ibd.textSecondary,
                           ),
                         ),
                         const Spacer(),
                         Text(
                           r.value,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 14,
-                            color: IbdColors.primaryDark,
+                            color: context.ibd.brandInk,
                           ),
                         ),
                       ],
@@ -438,9 +399,9 @@ class _ScoreTrendCard extends StatelessWidget {
                 if (rows.length > 8)
                   Text(
                     '仅显示最近 8 条 · 共 ${rows.length} 条',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: IbdColors.textSecondary,
+                      color: context.ibd.textSecondary,
                     ),
                   ),
                 // T7：非诊断/非治疗声明

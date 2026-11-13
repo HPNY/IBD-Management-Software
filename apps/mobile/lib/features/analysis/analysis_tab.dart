@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/ui/cards.dart';
 import '../../core/ui/theme.dart';
 import 'clinical_pages.dart';
 import 'export_page.dart';
@@ -21,7 +22,7 @@ class AnalysisTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(title: const Text('分析与病程')),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -189,21 +190,11 @@ class _NavCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    // U6：卡片骨架统一走 IbdCard（水波纹/描边/圆角都在里面）
+    return IbdCard(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: IbdColors.card,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
-            ),
-            child: Row(
+      onTap: onTap,
+      child: Row(
               children: [
                 Container(
                   width: 44,
@@ -224,17 +215,14 @@ class _NavCard extends StatelessWidget {
                               fontWeight: FontWeight.w700, fontSize: 15)),
                       const SizedBox(height: 2),
                       Text(subtitle,
-                          style: const TextStyle(
-                              fontSize: 12, color: IbdColors.textSecondary)),
+                          style: TextStyle(
+                              fontSize: 12, color: context.ibd.textSecondary)),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded,
-                    color: IbdColors.textSecondary),
-              ],
-            ),
-          ),
-        ),
+                Icon(Icons.chevron_right_rounded,
+                    color: context.ibd.textSecondary),
+        ],
       ),
     );
   }

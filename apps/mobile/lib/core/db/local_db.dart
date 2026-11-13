@@ -33,6 +33,34 @@ class LocalDb {
     return _opening ??= _open();
   }
 
+  /// U16：重建本地库。关闭连接、删除库文件（含 -wal/-shm）、丢弃密钥。
+  /// 这是不可逆操作，只应在库无法打开、且用户明确同意后调用。
+  Future<void> resetLocalDb() async {
+    try {
+      await _db?.close();
+    } catch (_) {
+      // 库本来就打不开，关闭失败可忽略
+    }
+    _db = null;
+    _opening = null;
+    final dir = await getApplicationDocumentsDirectory();
+    for (final name in <String>[
+      dbFileName,
+      '$dbFileName-wal',
+      '$dbFileName-shm',
+    ]) {
+      final f = File(p.join(dir.path, name));
+      if (await f.exists()) {
+        try {
+          await f.delete();
+        } catch (_) {
+          // 单文件删不掉不阻断其余步骤
+        }
+      }
+    }
+    await DbKeyService.instance.clearKey();
+  }
+
   Future<Database> _open() async {
     try {
       final dir = await getApplicationDocumentsDirectory();

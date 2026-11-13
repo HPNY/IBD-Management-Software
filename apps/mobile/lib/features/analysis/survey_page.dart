@@ -18,6 +18,10 @@ class _SurveyPageState extends State<SurveyPage> {
   final _repo = QualitySurveyRepository();
   String _kind = 'PHQ9';
   List<int> _scores = [];
+
+  /// 已作答的题号。用于区分"真的选了 0 分"与"还没作答"（U13）：
+  /// 未作答时不能显示「当前合计 0 分 · 无或极轻微」，那是医学解读，会误导。
+  final Set<int> _answered = <int>{};
   List<Map<String, dynamic>> _history = [];
 
   @override
@@ -34,6 +38,7 @@ class _SurveyPageState extends State<SurveyPage> {
     setState(() {
       _kind = kind;
       _scores = List.filled(qs.length, def);
+      _answered.clear();
     });
   }
 
@@ -94,7 +99,7 @@ class _SurveyPageState extends State<SurveyPage> {
     final domainResult = _sf36Domains;
 
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(title: const Text('生活质量量表')),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -114,7 +119,7 @@ class _SurveyPageState extends State<SurveyPage> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: IbdColors.chipBg,
+              color: context.ibd.brandSoft,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -122,8 +127,8 @@ class _SurveyPageState extends State<SurveyPage> {
               children: [
                 Text(
                   SurveyKit.kindTitle(_kind),
-                  style: const TextStyle(
-                    color: IbdColors.primaryDark,
+                  style: TextStyle(
+                    color: context.ibd.brandInk,
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
                   ),
@@ -131,19 +136,21 @@ class _SurveyPageState extends State<SurveyPage> {
                 const SizedBox(height: 6),
                 Text(
                   intro,
-                  style: const TextStyle(
-                    color: IbdColors.primaryDark,
+                  style: TextStyle(
+                    color: context.ibd.brandInk,
                     fontSize: 13,
                     height: 1.45,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  domainResult == null
-                      ? '当前合计 $_total 分 · $band'
-                      : '简化合计 $_total 分 · $band',
-                  style: const TextStyle(
-                    color: IbdColors.textPrimary,
+                  _answered.isEmpty
+                      ? '尚未作答'
+                      : domainResult == null
+                          ? '当前合计 $_total 分 · $band'
+                          : '简化合计 $_total 分 · $band',
+                  style: TextStyle(
+                    color: context.ibd.textPrimary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -151,8 +158,8 @@ class _SurveyPageState extends State<SurveyPage> {
                   const SizedBox(height: 8),
                   Text(
                     '标准 8 维均分 ${domainResult.stdAverage} · 分越高越好',
-                    style: const TextStyle(
-                      color: IbdColors.primaryDark,
+                    style: TextStyle(
+                      color: context.ibd.brandInk,
                       fontWeight: FontWeight.w700,
                       fontSize: 13,
                     ),
@@ -187,9 +194,9 @@ class _SurveyPageState extends State<SurveyPage> {
               padding: const EdgeInsets.only(bottom: 4),
               child: Text(
                 '${o.value} · ${o.label} — ${o.detail}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12.5,
-                  color: IbdColors.textSecondary,
+                  color: context.ibd.textSecondary,
                   height: 1.35,
                 ),
               ),
@@ -217,18 +224,18 @@ class _SurveyPageState extends State<SurveyPage> {
                     const SizedBox(height: 4),
                     Text(
                       '怎么理解：${q.hint}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12.5,
-                        color: IbdColors.textSecondary,
+                        color: context.ibd.textSecondary,
                         height: 1.4,
                       ),
                     ),
                     const SizedBox(height: 10),
                     Text(
                       '选：$score · $label',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: IbdColors.primaryDark,
+                        color: context.ibd.brandInk,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -247,7 +254,10 @@ class _SurveyPageState extends State<SurveyPage> {
                           ),
                           selected: sel,
                           onSelected: (_) {
-                            setState(() => _scores[i] = o.value);
+                            setState(() {
+                              _scores[i] = o.value;
+                              _answered.add(i);
+                            });
                           },
                         );
                       }).toList(),
@@ -258,11 +268,17 @@ class _SurveyPageState extends State<SurveyPage> {
             );
           }),
           const SizedBox(height: 8),
-          FilledButton(onPressed: _save, child: const Text('保存量表')),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _save,
+              child: const Text('保存量表'),
+            ),
+          ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             '仅供自我记录与就医沟通参考，不能替代医生诊断。',
-            style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
           ),
           const SizedBox(height: 20),
           if (_sf36Trend.isNotEmpty) ...[
@@ -328,7 +344,7 @@ class _Sf36TrendCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: IbdColors.card,
+        color: context.ibd.surface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -336,25 +352,28 @@ class _Sf36TrendCard extends StatelessWidget {
         children: [
           Text(
             '8 维均分：${stds.map((e) => e.round()).join(' → ')}',
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 13,
-              color: IbdColors.primaryDark,
+              color: context.ibd.brandInk,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             '${recent.first.date} → ${recent.last.date} · ${recent.length} 次',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11.5,
-              color: IbdColors.textSecondary,
+              color: context.ibd.textSecondary,
             ),
           ),
           const SizedBox(height: 12),
           SizedBox(
             height: 120,
             child: CustomPaint(
-              painter: _DomainSparkPainter(points: recent),
+              painter: _DomainSparkPainter(
+                points: recent,
+                gridColor: context.ibd.divider,
+              ),
               size: const Size(double.infinity, 120),
             ),
           ),
@@ -366,9 +385,9 @@ class _Sf36TrendCard extends StatelessWidget {
               for (final id in sf36DomainLabels.keys)
                 Text(
                   sf36DomainLabels[id]!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: IbdColors.textSecondary,
+                    color: context.ibd.textSecondary,
                   ),
                 ),
             ],
@@ -380,9 +399,12 @@ class _Sf36TrendCard extends StatelessWidget {
 }
 
 class _DomainSparkPainter extends CustomPainter {
-  _DomainSparkPainter({required this.points});
+  _DomainSparkPainter({required this.points, required this.gridColor});
 
   final List<Sf36TrendPoint> points;
+
+  /// CustomPainter 无 BuildContext，网格色由 build 处注入（U5）。
+  final Color gridColor;
 
   static const _colors = [
     Color(0xFF2563EB),
@@ -422,7 +444,7 @@ class _DomainSparkPainter extends CustomPainter {
       canvas.drawPath(path, paint);
     }
     final grid = Paint()
-      ..color = const Color(0xFFE2E8F0)
+      ..color = gridColor
       ..strokeWidth = 1;
     for (final t in [0.0, 50.0, 100.0]) {
       final y = pad + h - (t / 100.0) * h;

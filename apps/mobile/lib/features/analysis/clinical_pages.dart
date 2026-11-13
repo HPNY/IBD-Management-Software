@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/db/repositories.dart';
+import '../../core/ui/state_views.dart';
 import '../../core/ui/theme.dart';
 
 /// D3：检查影像 / 手术本地录入
@@ -118,7 +119,7 @@ class _ExamPageState extends State<ExamPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(title: const Text('检查与手术')),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -145,7 +146,13 @@ class _ExamPageState extends State<ExamPage> {
           const SizedBox(height: 20),
           const Text('检查', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
           const SizedBox(height: 8),
-          if (_examList.isEmpty) const Text('暂无', style: TextStyle(color: IbdColors.textSecondary)),
+          if (_examList.isEmpty)
+            IbdEmptyInline(
+              icon: Icons.monitor_heart_rounded,
+              message: '还没有检查记录。拍下的报告可以在这里录入，之后趋势页会自动画出来。',
+              actionLabel: '添加检查',
+              onAction: _addExam,
+            ),
           ..._examList.map((e) => Card(
                 child: ListTile(
                   leading: const Icon(Icons.monitor_heart_rounded),
@@ -159,7 +166,13 @@ class _ExamPageState extends State<ExamPage> {
           const SizedBox(height: 16),
           const Text('手术', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
           const SizedBox(height: 8),
-          if (_surgList.isEmpty) const Text('暂无', style: TextStyle(color: IbdColors.textSecondary)),
+          if (_surgList.isEmpty)
+            IbdEmptyInline(
+              icon: Icons.local_hospital_rounded,
+              message: '还没有手术记录。有过手术史的话记一笔，就诊摘要会自动带上。',
+              actionLabel: '添加手术',
+              onAction: _addSurgery,
+            ),
           ..._surgList.map((s) => Card(
                 child: ListTile(
                   leading: const Icon(Icons.local_hospital_rounded),
@@ -246,7 +259,7 @@ class _BathroomPageState extends State<BathroomPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(title: const Text('排便记录')),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -254,7 +267,7 @@ class _BathroomPageState extends State<BathroomPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: IbdColors.card,
+              color: context.ibd.surface,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
@@ -294,20 +307,29 @@ class _BathroomPageState extends State<BathroomPage> {
                     ],
                   ),
                 ),
-                FilledButton(onPressed: _add, child: const Text('记一笔')),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _add,
+                    child: const Text('记一笔'),
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 16),
           const Text('历史', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '完成「今日打卡」会自动写入对应历史，无需在本页重复填写。',
-            style: TextStyle(fontSize: 12, color: IbdColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: context.ibd.textSecondary),
           ),
           const SizedBox(height: 8),
           if (_rows.isEmpty)
-            const Text('暂无记录', style: TextStyle(color: IbdColors.textSecondary)),
+            const IbdEmptyInline(
+              icon: Icons.history_rounded,
+              message: '还没有历史记录。完成「今日打卡」后会自动出现在这里。',
+            ),
           ..._rows.map((r) {
             final fromCheckin = '${r['source'] ?? 'manual'}' == 'checkin';
             final bloodText = _bloodText(r['blood']);
@@ -346,8 +368,8 @@ class _BathroomPageState extends State<BathroomPage> {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: fromCheckin
-                              ? IbdColors.primaryDark
-                              : IbdColors.textSecondary,
+                              ? context.ibd.brandInk
+                              : context.ibd.textSecondary,
                         ),
                       ),
                     ),
@@ -441,7 +463,7 @@ class _VisitSummaryPageState extends State<VisitSummaryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(title: const Text('就诊摘要')),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -452,7 +474,7 @@ class _VisitSummaryPageState extends State<VisitSummaryPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: IbdColors.card,
+                  color: context.ibd.surface,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: SingleChildScrollView(

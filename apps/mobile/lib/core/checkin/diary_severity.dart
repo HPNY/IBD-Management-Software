@@ -33,3 +33,13 @@ String severityBand(double severity) {
   if (severity < 7) return 'warning';
   return 'danger';
 }
+
+/// 分档的中文表达：颜色之外的第二重编码（WCAG 1.4.1）。
+///
+/// 日历格子、图例、读屏文案共用这一套词，避免各处自创
+/// （出现过「偏高 / 较重 / 红色」三种说法指同一档）。
+String severityBandText(double severity) => switch (severityBand(severity)) {
+      'green' => '轻',
+      'warning' => '中',
+      _ => '重',
+    };

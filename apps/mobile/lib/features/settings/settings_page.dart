@@ -18,6 +18,7 @@ import '../../core/skill/local_skill_store.dart';
 import '../../core/diagnostics/diagnostics_prefs.dart';
 import '../../core/i18n/app_locale.dart';
 import '../../core/ui/accessibility.dart';
+import '../../core/ui/cards.dart';
 import '../../core/ui/theme.dart';
 import '../auth/login_page.dart';
 
@@ -510,7 +511,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final identity = context.watch<LocalIdentity>();
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(
         automaticallyImplyLeading: !widget.embedded,
         title: Text(widget.embedded ? '我的' : '隐私与备份'),
@@ -631,12 +632,12 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
                 if (_followups.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                     child: Text(
                       '暂无复查提醒；复查项目与频率请遵医嘱',
                       style: TextStyle(
-                          fontSize: 12, color: IbdColors.textSecondary),
+                          fontSize: 12, color: context.ibd.textSecondary),
                     ),
                   ),
                 for (final e in _followups)
@@ -655,7 +656,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           const SizedBox(height: 16),
-          Text('诊断（崩溃/性能）', style: Theme.of(context).textTheme.titleSmall),
+          const IbdSectionHeader(
+            '诊断（崩溃/性能）',
+            padding: EdgeInsets.only(top: 4, bottom: 10),
+          ),
           Consumer<DiagnosticsPrefs>(
             builder: (context, diag, _) => SwitchListTile(
               title: const Text('允许匿名诊断上报'),
@@ -666,7 +670,10 @@ class _SettingsPageState extends State<SettingsPage> {
               onChanged: (v) => diag.setEnabled(v),
             ),
           ),
-          Text('语言 / Language', style: Theme.of(context).textTheme.titleSmall),
+          const IbdSectionHeader(
+            '语言 / Language',
+            padding: EdgeInsets.only(top: 4, bottom: 10),
+          ),
           Consumer<AppLocale>(
             builder: (context, loc, _) => RadioGroup<String>(
               groupValue: loc.locale.languageCode,
@@ -685,7 +692,10 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
-          Text('可用性（大字/简洁）', style: Theme.of(context).textTheme.titleSmall),
+          const IbdSectionHeader(
+            '可用性（大字/简洁）',
+            padding: EdgeInsets.only(top: 4, bottom: 10),
+          ),
           Consumer<AccessibilityPrefs>(
             builder: (context, a11y, _) => Column(
               children: [
@@ -704,7 +714,10 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
           ),
-          Text('系统推送（可选）', style: Theme.of(context).textTheme.titleSmall),
+          const IbdSectionHeader(
+            '系统推送（可选）',
+            padding: EdgeInsets.only(top: 4, bottom: 10),
+          ),
           const SizedBox(height: 4),
           Text(
             '远程推送默认关闭。开启后仅注册设备令牌（只绑本机 app_user_uuid，'
@@ -747,7 +760,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
           const SizedBox(height: 12),
-          Text('应用标识（本机）', style: Theme.of(context).textTheme.titleSmall),
+          const IbdSectionHeader(
+            '应用标识（本机）',
+            padding: EdgeInsets.only(top: 4, bottom: 10),
+          ),
           SelectableText(identity.uuid),
           const SizedBox(height: 12),
           if (_dbProbe != null)
@@ -769,7 +785,10 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           const SizedBox(height: 16),
-          Text('云同步（可选）', style: Theme.of(context).textTheme.titleSmall),
+          const IbdSectionHeader(
+            '云同步（可选）',
+            padding: EdgeInsets.only(top: 4, bottom: 10),
+          ),
           const SizedBox(height: 4),
           Text(
             '病历默认只存在本机，不上传服务器。开启同步或关联手机号前，'

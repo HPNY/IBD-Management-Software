@@ -101,7 +101,7 @@ class _MedicationPageState extends State<MedicationPage> {
     }
 
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(
         automaticallyImplyLeading: !widget.embedded,
         title: const Text('用药管理'),
@@ -194,7 +194,7 @@ class _MedicationPageState extends State<MedicationPage> {
                         height: 28,
                         decoration: BoxDecoration(
                           color: stopped
-                              ? const Color(0xFFE2E8F0)
+                              ? context.ibd.divider
                               : IbdColors.primary.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
@@ -202,7 +202,7 @@ class _MedicationPageState extends State<MedicationPage> {
                           stopped ? Icons.stop_rounded : Icons.medication_rounded,
                           size: 14,
                           color: stopped
-                              ? IbdColors.textSecondary
+                              ? context.ibd.textSecondary
                               : IbdColors.primary,
                         ),
                       ),
@@ -210,7 +210,7 @@ class _MedicationPageState extends State<MedicationPage> {
                         Container(
                           width: 2,
                           height: 28,
-                          color: const Color(0xFFE2E8F0),
+                          color: context.ibd.divider,
                         ),
                     ],
                   ),
@@ -220,7 +220,7 @@ class _MedicationPageState extends State<MedicationPage> {
                       margin: EdgeInsets.only(bottom: last ? 0 : 10),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: IbdColors.card,
+                        color: context.ibd.surface,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Column(
@@ -233,17 +233,17 @@ class _MedicationPageState extends State<MedicationPage> {
                           Text(
                             '${m['frequency'] ?? ''} · ${m['start_date']}'
                             '${m['end_date'] != null ? ' → ${m['end_date']}' : ' → 至今'}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: IbdColors.textSecondary,
+                              color: context.ibd.textSecondary,
                             ),
                           ),
                           if (m['reason'] != null && '${m['reason']}'.isNotEmpty)
                             Text(
                               '${m['reason']}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: IbdColors.textSecondary,
+                                color: context.ibd.textSecondary,
                               ),
                             ),
                         ],
@@ -257,7 +257,7 @@ class _MedicationPageState extends State<MedicationPage> {
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(_error!,
-                    style: const TextStyle(color: IbdColors.danger)),
+                    style: TextStyle(color: context.ibd.danger)),
               ),
           ],
         ),
@@ -289,18 +289,18 @@ class _SectionHeader extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 16,
-                    color: IbdColors.textPrimary,
+                    color: context.ibd.textPrimary,
                   ),
                 ),
                 if (subtitle != null)
                   Text(
                     subtitle!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: IbdColors.textSecondary,
+                      color: context.ibd.textSecondary,
                     ),
                   ),
               ],
@@ -326,10 +326,10 @@ class _EmptyHint extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: IbdColors.card,
+          color: context.ibd.surface,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Text(text, style: const TextStyle(color: IbdColors.textSecondary)),
+        child: Text(text, style: TextStyle(color: context.ibd.textSecondary)),
       ),
     );
   }
@@ -346,9 +346,9 @@ class _InjectionCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: IbdColors.card,
+        color: context.ibd.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+        border: Border.all(color: context.ibd.outline),
       ),
       child: Row(
         children: [
@@ -374,16 +374,16 @@ class _InjectionCard extends StatelessWidget {
                 Text(
                   '下次/最近计划 ${row['planned_date']}'
                   '${done ? ' · 已完成' : ' · 待注射'}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: IbdColors.textSecondary,
+                    color: context.ibd.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded,
-              color: IbdColors.textSecondary),
+          Icon(Icons.chevron_right_rounded,
+              color: context.ibd.textSecondary),
         ],
       ),
     );
@@ -407,9 +407,9 @@ class _DailyMedCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.fromLTRB(14, 12, 8, 8),
       decoration: BoxDecoration(
-        color: IbdColors.card,
+        color: context.ibd.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+        border: Border.all(color: context.ibd.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -440,9 +440,9 @@ class _DailyMedCard extends StatelessWidget {
                     ),
                     Text(
                       '${med['frequency'] ?? ''}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: IbdColors.textSecondary,
+                        color: context.ibd.textSecondary,
                       ),
                     ),
                   ],
@@ -451,8 +451,8 @@ class _DailyMedCard extends StatelessWidget {
               TextButton(onPressed: onEdit, child: const Text('编辑')),
               TextButton(
                 onPressed: onStop,
-                child: const Text('停用',
-                    style: TextStyle(color: IbdColors.danger)),
+                child: Text('停用',
+                    style: TextStyle(color: context.ibd.danger)),
               ),
             ],
           ),

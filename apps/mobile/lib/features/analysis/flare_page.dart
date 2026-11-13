@@ -35,11 +35,11 @@ class _FlarePageState extends State<FlarePage> {
   Color _color(FlareLevel l) {
     switch (l) {
       case FlareLevel.red:
-        return IbdColors.danger;
+        return context.ibd.danger;
       case FlareLevel.yellow:
-        return IbdColors.warning;
+        return context.ibd.warning;
       case FlareLevel.green:
-        return IbdColors.success;
+        return context.ibd.success;
     }
   }
 
@@ -58,7 +58,7 @@ class _FlarePageState extends State<FlarePage> {
   Widget build(BuildContext context) {
     final r = _result;
     return Scaffold(
-      backgroundColor: IbdColors.bg,
+      backgroundColor: context.ibd.bg,
       appBar: AppBar(title: const Text('发作预警')),
       body: _busy && r == null
           ? const Center(child: CircularProgressIndicator())
@@ -129,11 +129,11 @@ class _FlarePageState extends State<FlarePage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
+                    Text(
                       '本预警基于本机症状与检验记录，不构成医疗诊断。',
                       style: TextStyle(
                         fontSize: 12,
-                        color: IbdColors.textSecondary,
+                        color: context.ibd.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 16),

@@ -782,9 +782,12 @@ class _LabEntryPageState extends State<LabEntryPage> {
             label: const Text('添加自定义一项'),
           ),
           const SizedBox(height: 8),
-          FilledButton(
-            onPressed: _busy ? null : _save,
-            child: Text(_busy ? '保存中…' : '保存本次检验到本机'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _busy ? null : _save,
+              child: Text(_busy ? '保存中…' : '保存本次检验到本机'),
+            ),
           ),
           if (_ok != null)
             Padding(

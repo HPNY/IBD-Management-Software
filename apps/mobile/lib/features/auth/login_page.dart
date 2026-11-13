@@ -76,9 +76,12 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
           const SizedBox(height: 20),
-          FilledButton(
-            onPressed: _busy ? null : _link,
-            child: Text(_busy ? '关联中…' : '关联手机号'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _busy ? null : _link,
+              child: Text(_busy ? '关联中…' : '关联手机号'),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).maybePop(),
