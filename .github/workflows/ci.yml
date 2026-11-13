@@ -97,6 +97,12 @@ jobs:
         env:
           SCAN_BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
 
+      # 守卫脚本自身的回归。2026-11-13 发现 TASK_RE 只认 T/F/G 三种前缀且区分
+      # 大小写，导致合法 PR（P11 / U7 / V13-05 …）被判「缺少任务号」直接红。
+      # 没有测试时这种缺陷只能靠人工读脚本发现，故把冒烟挂进门禁。
+      - name: PR guard self-test
+        run: pnpm pr:guard:smoke
+
   typecheck:
     name: Typecheck (all packages)
     runs-on: ubuntu-latest

@@ -33,6 +33,7 @@
     "format:check:all": "prettier --check .",
     "secrets:scan": "node scripts/scan-secrets.mjs",
     "pr:guard": "node scripts/pr-guard.mjs",
+    "pr:guard:smoke": "node scripts/pr-guard-smoke.mjs",
     "quality": "pnpm lint && pnpm typecheck"
   },
   "engines": {
