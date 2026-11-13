@@ -102,7 +102,7 @@
 | T0.6 | 优先修复红 CI：AuthModule DI 接线（R0.13 遗留） | 已完成 | 裁决「CI 红优先修复」：TypeOrmModule.forFeature 补 DevicePubKeyEntity；启动探针证实 DI 恢复；推送后 CI + Fullstack E2E **双绿** · `task/t0.6-auth-di-fix` |
 | T3 | App 本地 Skill 缓存可读/可命中/可清理 | 已完成 | txt 报告本地快速通道（全命中才走本地、未命中回落云端）；formatVersion 失效；clear/clearAll+设置页清理入口；不改服务端契约；flutter 123 全过 · 证据 docs/audit-evidence/t3-local-skill-cache.md · `task/t3-local-skill-cache` |
 | T4 | 注射提醒提前天数可配置 | 已完成 | 默认 {3} 兼容；ReminderPrefs 持久化（归一化/损坏回退）；调度读配置多提前量（0/1/2/3/7）；设置页多选入口+保存即重排；调度时刻纯函数测试 · 证据 docs/audit-evidence/t4-injection-lead-config.md · `task/t4-injection-lead-config` |
-| T5 | 医生端患者侧建议/审计接真实 API | 已完成 | 授权/建议/审计接 /doctor-grants/mine + /doctor-patient/*；修 revoke 传 grantId；空态/错误降级/本地未同步诚实标注；服务端零改动（scope 边界核实）；新增 5 用例，flutter 137 全过 · 证据 docs/audit-evidence/t5-my-doctors-api.md · `task/t5-my-doctors-api` |
+| T5 | 医生端患者侧建议/审计接真实 API | 已完成 | 授权/建议/审计接 /doctor-grants/mine + /doctor-patient/*；修 revoke 传 grantId；空态/错误降级/本地未同步诚实标注；服务端零改动（scope 边界核实）；新增 6 用例，flutter 137 全过 · 证据 docs/audit-evidence/t5-my-doctors-api.md · `task/t5-my-doctors-api` |
 | T6 | 提醒体系补全（用药/复查/当天证件） | 已完成 | 三类提醒（注射 lead=0 当天证件档/用药每日默认关/复查自定义）可创建取消；ReminderScheduler 统一重排；文案全脱敏（禁词表测试固化）；T4 移交两项已处置 · 证据 docs/audit-evidence/t6-reminder-system.md · `task/t6-reminder-system` |
 | T7 | 合规与安全前置 | 已完成 | DisclaimerFooter×5 页（非诊断/非治疗）；DPIA+知情同意模板入 docs/compliance（法务 BLOCKED 如实标注）；security-checklist 30 项 · 证据 docs/audit-evidence/t7-compliance-security.md · `task/t7-compliance-security` |
 | F2 | PRD v1.2 刷新（P0 核对） | 已完成 | 中英两版 V1.2（保留 v1.0/v1.1）：T1–T7 实现状态逐节更正、§7 遗留待办刷新、附录 V1.1→V1.2 修订 9 条 · `task/prd-v1.2-refresh` |
@@ -111,18 +111,18 @@
 
 | ID | 任务 | 状态 |
 |----|------|------|
-| T8 | App 趋势增强：多指标叠加/3M/6M/1Y/全部/用药节点/钙卫蛋白 200 阈值线 | 待办 |
+| T8 | App 趋势增强：多指标叠加/3M/6M/1Y/全部/用药节点/**分层阈值线（≤50/50–150/>150，见 V13-04）** | 待办 |
 | T9 | 时间线增强：疾病/不良反应事件、点击详情、年/月缩放、PDF 导出 | 待办 |
 | T10 | 导出补全：就诊摘要/时间线/年报 PDF（DOCX 仅评估不实现） | 待办 |
-| T11 | 注射排期夯实：诱导/维持双频率、延迟顺延、实际日期 | 待办 |
+| T11 | 注射排期夯实：诱导/维持双频率、实际日期、**nextAppointment + 医嘱优先；「延迟顺延」已撤销（见 V13-20/V13-35）** | 待办 |
 | T12 | 副作用记录 App UI（接现有 API） | 待办 |
-| T13 | 检查/手术服务端化（实体/API+迁移方案；附件仅评估） | 待办 |
+| T13 | 检查/手术服务端化（**检查部分=V13-18 已并入清单；手术部分仍待点名**；附件仅评估） | 待办 |
 | T14 | Flare 夯实：体温字段/发热条件、评估持久化、摘要复制 | 待办 |
 | T15 | i18n 中英文界面生效 + 简洁模式真正精简 | 待办 |
 | T16 | 跨端同步升级：记录级去重合并、Web↔App 互通、防重复恢复 | 待办 |
 | T17 | 相机拍照上传（保留文件选择） | 待办 |
 | T18 | 年度报告增强：年度指标趋势图、Web 年报只读/导出 | 待办 |
-| T19 | 解析 Skill 夯实：check_fn 统一异常判定、multiline 执行、accuracy 统计口径 | 待办 |
+| T19 | 解析 Skill 夯实（**已拆入 V13-10/11/25/26**）：check_fn 统一异常判定、multiline 执行、accuracy 统计口径 | 待办 |
 | T20 | 小程序订阅消息模板接入 | 阻塞（缺微信 appid/模板 ID，见 P8.4） |
 | T21 | dev 工具链升级（Taro/Vite/webpack 链）+ 门禁收紧 | 待办 | 裁决（2026-10-26）：**P1 之后执行**；消化 docs/dependency-audit-notes.md 遗留 11 项后，CI 门禁收紧回全量 `pnpm audit --audit-level=high` |
 
@@ -144,6 +144,58 @@
 | DPIA / 知情同意法务审核 | T7 | 需法务确认（文档模板先行入库） |
 | Android/iOS 真机验收 | T4/T6 | 需设备；按 docs/device-test-checklist.md 执行 |
 
+### P8.5 · PRD v1.3 对齐（Skill v1.4.1；2026-11-02 登记）
+
+> 详细任务、批次、依赖与可判定验收见 [PRD v1.3 工作清单](PRD-v1.3-工作清单.md)（44 项；P0 23 / P1 18 / P2 3；含 2026-11-02 用户补充的注射偏差理由 V13-44，可选填）。本节只做状态登记，验收标准以该文件同名行为准；状态变更须同时回写本表与清单。
+> 执行纪律：批0 文档与口径 → 批1 数据模型与指标字典（**阻塞批2/3/4**）→ 批2 解析能力 → 批3 模块补全 → 批4 规则与呈现。
+
+| ID | 任务 | 状态 | 验收（摘要） |
+|---|---|---|---|
+| V13-01 | 全局边界与文案禁令（PRD 已完成，剩 5 个解读页回指） | 待办 | 5 页回指 §1.5；UI 禁词 0 命中 |
+| V13-02 | 文档头五态图例 + 修订清单 + §4.2.6 + §7（PRD 文本） | 已完成 | v1.3 已含五态图例、21 条修订、矩阵增 10 行、§7 增 7 组 |
+| V13-03 | 附录 B Skill v1.4.1 能力映射表 | 已完成 | 16 行映射在位，版本号可追溯 |
+| V13-04 | FCP 分层参考 + 阈值线纠偏 | 待办 | ≤50/50–150/>150；「200 缓解线」0 命中；阈值常量 1 处 |
+| V13-05 | SF-36 可比性禁令与 UI 命名 | 待办 | 「SF-36 得分」0 命中；量表页有禁令 |
+| V13-06 | 简版 IBDQ 命名与总分断言（非 SIBDQ） | 待办 | UI 标「自定义」；单测 10–50 |
+| V13-07 | 指标字典（核心 14 + 可选 26） | 待办 | 字典行数 14/26；录入与趋势同源 |
+| V13-08 | 检验长表 → 宽表（只增不删） | 待办 | 1 报告 = long N 行 + wide 1 行；新指标自动加列 |
+| V13-09 | 参考范围来源优先级（pdf/mapping） | 待办 | PDF 优先，缺省回退并标来源 |
+| V13-10 | 值语义（运算符/定性原文） | 待办 | 「>1800」原样展示、不做数值比较 |
+| V13-11 | 解析追溯字段（confidence/aliases）+ accuracy 口径 | 待办 | 可查置信度/别名；无样本显示「暂无」 |
+| V13-12 | activity_score 三拆 + SES-CD 0–56 口径 | 待办 | 56 通过/57 标异常；旧数据不报错 |
+| V13-13 | 超声综合评估归并（Limberg/IBUS-SAS） | 待办 | 无「Limberg 好转/加重」；三档状态在位 |
+| V13-14 | 检查类型六值枚举 + 兼容映射 | 待办 | 旧值映射可查；统计无「未知」 |
+| V13-15 | 待核对队列（pending/manual_fixed） | 待办 | 失败进队列；补齐移出；重复失败合并不增行 |
+| V13-16 | 已处理 PDF 清单（五状态） | 待办 | 删原件后清单可查；五状态可构造 |
+| V13-17 | 去重键（日期+项目 / 日期+类型） | 待办 | 重复上传不新增，落 skipped_duplicate |
+| V13-18 | Examination 服务端化 + 报告路径策略 | 待办 | 服务端可读同一记录；路径可跳转 |
+| V13-19 | SymptomDiary 补体重/发热/急性加重/夜间症状 | 待办 | 旧数据 null 不报错；迁移幂等 |
+| V13-20 | Injection 加 nextAppointment/scheduleRule/偏差字段 | 待办 | 预约优先；冲突只提示不改日期；偏差原因可选见 V13-44 |
+| V13-21 | 记录型实体 schema（就诊/疫苗/营养/心理） | 待办 | 5 实体可读写；升级不丢数据 |
+| V13-22 | MedicationChange 七类 + monitoring 频率枚举 | 待办 | 七类可写入时间轴；as_directed 不逾期 |
+| V13-23 | 统一 TimelineEvent 表 + 排序权重 | 待办 | 九类可见；近 12 个月；权重单测 |
+| V13-24 | 检验日期四层优先级 + dateSource | 待办 | 四类样本各 3 例命中；无日期进队列 |
+| V13-25 | 指标名子串误匹配排除规则 | 待办 | 8 例冲突样本全对 |
+| V13-26 | 病案号等非检验数值过滤 | 待办 | 13070186 不入 items |
+| V13-27 | 检查解析 + 档案产品化（含 L49 口径修正） | 待办 | 3 项目合并 1 条；失败进队列；L49 改口径 |
+| V13-28 | 症状补录界面（体重/发热/急性加重/夜间症状） | 待办 | 可录入回显；体温越界拒绝 |
+| V13-29 | 用药监测清单模块 | 待办 | 7 频率可建；as_directed 无逾期标记 |
+| V13-30 | 用药变更史模块（七类） | 待办 | 剂量调整生成 dose_change；停药必填原因 |
+| V13-31 | 就诊/住院/急诊模块 | 待办 | 三类各建 1 条并进时间轴 |
+| V13-32 | 疫苗与感染筛查模块 | 待办 | 项目/剂次/结果可录；无接种建议文案 |
+| V13-33 | 营养状态模块（体重/BMI/特殊饮食） | 待办 | BMI 自动算不可改；营养检验不双写 |
+| V13-34 | 心理轻量记录（PHQ-2/GAD-2） | 待办 | 可只填轻量档；提示可关闭 |
+| V13-35 | 注射排期纠偏（服务端 complete） | 待办 | 默认 complete 后续日期不变 |
+| V13-36 | 预警规则表（10 类） | 待办 | 10 类各有样本与期望输出 |
+| V13-37 | 待办中心 | 待办 | 命中生成、完成留痕、按事件去重 |
+| V13-38 | 统一时间轴呈现 | 待办 | 九类渲染；默认近 12 个月 |
+| V13-39 | 活动度与量表呈现口径 | 待办 | 量表默认折叠；SF-36/IBDQ 标签合规 |
+| V13-40 | 预警与解读文案去建议化 | 待办 | UI 建议动词 0 命中；5 页有边界声明 |
+| V13-41 | 数据完整性自检（11 项） | 待办 | 11 项三态输出；失败有修复入口 |
+| V13-42 | 备份与导出目录约定 | 待办 | 目录命名与示例；无 PDF/DOCX 承诺 |
+| V13-43 | 英文版 PRD v1.3 翻译 | 待办 | 中英节数一致、关键口径逐条对应 |
+| V13-44 | 注射偏差理由字段与偏差天数（可选填写，实际≠计划≥1 天） | 待办 | 偏差天数计算正确；原因可选不阻断；不改后续排期 |
+
 ---
 
 ## 建议开工顺序
@@ -151,6 +203,7 @@
 1. **T2.1 → T2.2**（推送真发闭环）∥ **T5.1**（隐私承诺，改动面小）
 2. **T3.1**（小程序从 0 到 1）
 3. 其余按 P3 → P4 收尾 → P5/P6/P7
+4. **PRD v1.3 对齐**（P8.5）按批0 → 批1 → 批2 → 批3 → 批4 串行；批1 数据模型阻塞后续批次
 
 ## 勾选历史
 
@@ -198,12 +251,30 @@
 | 2026-10 | T0.6 | 已完成 | 优先修复红 CI（E2E 红根因非 T2，系 R0.13/826d37f 遗留 DI 缺失致 API 起不来）：AuthModule 补 DevicePubKeyEntity 注册；启动探针 + 7 smoke 过；推送后 CI + Fullstack E2E 双绿 |
 | 2026-10 | T3 | 已完成 | 本地 Skill 缓存闭环：txt 快速通道（skill_matcher 纯函数、全命中才本地、engine=skill 与 T2 闭环）、formatVersion 失效、clear/clearAll+设置页清理；不改服务端契约；新增 12 用例，flutter 123 全过、analyze 0 新增 info |
 | 2026-10 | T4 | 已完成 | 注射提醒提前量可配置：ReminderPrefs 通用配置模块（T6 复用）+ 调度时刻纯函数 + 多提前量（含当天/1 天）+ 设置页多选与保存即重排；默认 {3} 兼容；新增 9 用例，flutter 132 全过；遗留：通知文案脱敏归 T6、ensureInjectionReminderRule 死代码归 T6 处置 |
-| 2026-10 | T5 | 已完成 | 患者侧建议/审计/授权接真实 API（替换硬编码骨架，DoctorPatientSource 可注入 seam）；修 revoke 传 code→grantId 缺陷；诚实降级（本地未同步/收回失败不伪称）；测试暴露并修复不可变列表崩溃；新增 5 用例，flutter 137 全过、analyze 9（0 新增） |
+| 2026-10 | T5 | 已完成 | 患者侧建议/审计/授权接真实 API（替换硬编码骨架，DoctorPatientSource 可注入 seam）；修 revoke 传 code→grantId 缺陷；诚实降级（本地未同步/收回失败不伪称）；测试暴露并修复不可变列表崩溃；新增 6 用例，flutter 137 全过、analyze 9（0 新增） |
 | 2026-10 | T6 | 已完成 | 提醒体系补全：三类提醒（当天证件档/用药每日/复查自定义）+ ReminderScheduler 统一重排（修 cancelAll 互清隐患）+ 文案全脱敏（reminder_copy 禁词表测试）+ 删 ensureInjectionReminderRule 死代码（T4 移交）；新增 9 用例，flutter 146 全过、analyze 9（0 新增） |
 | 2026-10 | T7 | 已完成 | 合规与安全前置（P0 收口）：非诊断/非治疗声明植入 5 解读页；DPIA+知情同意模板入 docs/compliance（⛔ 法务 BLOCKED，占位符化无真实个人信息）；生产安全 checklist 6 节 30 项；flutter 147 全过、analyze 9（0 新增） |
 | 2026-10 | P0-验收 | 已完成 | T1–T7 独立验收复核（全量验证批重跑 + 验收点抽查 + git/worklist 一致性）：7/7 达标、无代码缺陷；F1 遗留 T6.4 状态更正、F2 PRD v1.2 刷新待点名 · 报告 docs/audit-evidence/p0-acceptance-2026-10-27.md |
 | 2026-10 | P0-签发 | 已完成 | **用户确认签发 P0 验收**（T1–T7 关闭）；裁决：先做 F2「PRD v1.2 刷新」，随后进入 P1（T8 起） |
 | 2026-10 | F2 | 已完成 | PRD v1.2 刷新：中英双版（docs/*PRD-v1.2.md）；14 组状态更正（来源标记/Skill 缓存/提醒体系/腹胀/数据模型/合规/患者端/遗留待办）；中英锚点交叉核验一致（7/7）；英文版原委托子任务失败无产物，由本体补完 |
+| 2026-11 | V13-02/V13-03 | 已完成 | PRD v1.3（中文）：Skill v1.4.1 对齐修订——医学口径（FCP 分层/SES-CD 0–56/Limberg 0–3/SF-36 禁令/IBDQ 非 SIBDQ/PHQ-2·GAD-2）、新增 §1.5 边界与五态图例、§2.1.5–2.1.7 检查解析与指标字典、§2.2.3 注射医嘱优先纠偏、§2.2.4–2.2.5 监测/变更史、§2.4.1 统一时间轴、§2.8–2.11 四模块与规则表、§3.1/§3.2 数据模型、§4.5 自检、附录B 能力映射；保留 v1.2 原文 |
+| 2026-11 | V13（PRD 修订） | 已完成 | PRD v1.3 + 对照分析 + 工作清单 + 两卷证据：`docs/IBD病程管理程序PRD-v1.3.md`（1569 行）、`docs/IBD-PRD-Skill对照分析-v1.4.1-vs-v1.2.md`、`docs/PRD-v1.3-工作清单.md`（43 项）、`var/prd-audit/v13-{issue-matrix,medical-evidence,code-evidence}.md`；P8.5 登记；用户裁决：仅中文 v1.3、英文列 V13-43 |
+| 2026-11 | V13-44 | 待办 | 用户补充（2026-11-02）：医生对注射前后相差数天无强烈反对，实际日期与计划/预约不一致时**可**补充偏差理由（非强制）——PRD §2.2.3 规则 6、§3.1 字段；清单 V13-44（P1，依赖 V13-20） |
+
+## P6 · 代码审查机制（T8）
+
+> 目标：把"代码质量参差不齐"从个人经验问题，变成可执行、可验证、可度量的机制。
+> 标准：[code-review-standard.md](code-review-standard.md) · 流程：[code-review-process.md](code-review-process.md) · 模板：[`.github/pull_request_template.md`](../.github/pull_request_template.md)
+
+| ID | 任务 | 状态 | 验收标准 |
+|----|------|------|----------|
+| T8.1 | 代码审查标准与流程文档 + PR 模板 | 已完成 | 标准（S0–S3 严重度 / C1–C4 分级 / 8 组维度清单 / R1–R13 红线 / G0–G3 门禁）+ 流程（角色 / 7 步 / 时间盒 / AI 代理 7 条规则 / 4 周路线图）+ PR 模板；均与本仓库实际缺陷对应 |
+| T8.2 | ESLint 9 + Prettier 3 + EditorConfig 基线 | 已完成 | `eslint.config.mjs`（扁平配置，类型感知规则限有 tsconfig 的目录）；`pnpm lint` = 0 error / 9 warning（151 文件）；存量 17 处违规基线化到 `eslint-suppressions.json`；`.prettierrc.json` 对齐既有风格（双引号/分号/2 空格/尾逗号） |
+| T8.3 | CI 门禁落地（lint / 全量 typecheck / PR 级 E2E / 密钥扫描） | 已完成 | `ci.yml` 新增 lint 与 typecheck job；`ci-fullstack.yml` 增加 pull_request 触发；`scripts/scan-secrets.mjs`（全仓 65658 行 0 误报，正向检出已验证）；`scripts/check-format-changed.mjs`（增量格式门禁） |
+| T8.4 | 两条硬规则可执行化 | 已完成 | 硬规则 1：`.github/workflows/pr-guard.yml` + `scripts/pr-guard.mjs`（任务号 / 描述章节 / 定级 / 勾选数 / 证据区），正负用例已本地验证；硬规则 2：分支保护配置见 [branch-protection.md](branch-protection.md)（**需仓库管理员手动开启**） |
+| T8.5 | 解除 17 处 lint 基线（修存量违规） | 待办 | 逐条修 `eslint-suppressions.json` 中的 17 项（12 unused-vars、5 promise 相关）；修完执行 `pnpm lint:prune` 收缩基线；promise 类需补失败路径处理，不可只加 `void` |
+| T8.6 | 补齐 `api-client` / `ui-tokens` 的 tsconfig 与 typecheck | 待办 | 两包当前无 tsconfig、`api-client` 无 typecheck 脚本，导致 `pnpm -r typecheck` 静默跳过；补齐后类型感知 lint 可扩展到 packages |
+| T8.7 | Dart 侧增量格式门禁（`dart format`） | 待办 | 当前 `flutter analyze` 只查正确性不查格式；按 T8.2 同样的增量策略接入，避免一次性重排 75 个文件 |
 
 ## 二次验证 / 审阅遗留（跨会话必读）
 
@@ -233,5 +304,32 @@ equestSubscribeMessage 参数按微信语义断言（规避 Taro 类型 entityId
 | T2.9 | 清理 info：`const FirebaseOptions` · Radio 弃用改 RadioGroup | 已完成 | analyze **No issues found** |
 | T4.2a | T4.2 清单措辞：与真上传行为一致 | 已完成 | 已改为「真上传链路」描述 |
 | SWIPER-R1 | swiper 12 override 运行时真机兼容（限期验证风险项） | 进行中 | 裁决（2026-10-26）：接受风险、不直接豁免；**owner：lead（协调）+ 真机执行人待指派；截止 2026-11-09**；矩阵/场景/回滚预案见 [audit-evidence/t05-build-and-swiper.md](audit-evidence/t05-build-and-swiper.md)；逾期未验立即上报裁决 |
+
+## P9 · 评审 P0 修复（2026-11-12）
+
+> 来源：`docs/task-inventory-2026-11-12.md` Wave 0。8 组任务一次性落地；C1/C3 无 TS 单测基建，验证以 typecheck + 代码复核为主（不伪造 E2E）。
+
+| ID | 任务 | 状态 | 验收 / 证据 |
+|----|------|------|-------------|
+| W0-01 | C1 `medications/timeline` 跨租户泄漏 | 已完成 | 先 `resolveOwnedPatientId`，副作用查询加 `m.patientId = :pid`；新增 `e2e-authz.mjs`（A 写入 → B 不可见 + 直读 404）并接入 `ci-fullstack.sh`；**本地无 DB/Redis 未执行，CI fullstack 覆盖** |
+| W0-02 | C2 SQLCipher 迁移残留明文 `.plain.bak` | 已完成 | 移除明文备份副本 + 启动/迁移双清理；`local_db_plain_backup_test` 幂等用例通过 |
+| W0-03 | C3 Web 批量解析 confirm 失败仍删原件 | 已完成 | 映射抽到 `apps/web/src/lib/parse-items.ts`；失败不删原件、不标 done；`parse-items-smoke.mjs` 9 项断言通过并接入 CI typecheck job |
+| W0-04 | C4 定性值 NaN 打挂解析 | 已完成 | worker `value=None + value_text`；运算符值不参与数值比较；App 映射拒绝 NaN；`test_ai_engine` 新增用例 ALL_PASS |
+| W0-05 | 备份/恢复同构 + 去重 + 换机可解密 | 已完成 | 导出/恢复覆盖 12 类（含检查/手术/打卡/副作用）；按主键/日期/唯一键幂等；云快照新增 `kdfSalt`（迁移 1727700000000）；恢复支持原设备标识；`lab_and_backup_test` 二次导入 0 新增 |
+| W0-06 | 白蛋白精确匹配 | 已完成 | `seriesByName` 由 `LIKE '%name%'` 改 `name_norm = ?`；测试证明前白蛋白不混入 |
+| W0-07 | 注射首屏加载 + 覆盖确认 | 已完成 | `initState` 加载排期并按最近一针回填起始日；重新生成前弹覆盖确认 |
+| W0-08 | UI P0 八组 | 已完成 | 匿名会话真 token（App 三处 + 小程序检验页）；打卡未触碰写 null 且停止自动写细表；检验记录列表/编辑/删除/合并重复；小程序 DEMO 改空态、摘要删 uuid；量表未答禁存 + PHQ-9 Q9 求助卡；密文备份改名 + 明文导出风险提示 |
+
+**验证记录（2026-11-12）**
+- `flutter analyze` → 0 error / 0 warning（9 info 为既有基线）
+- `flutter test` → **153 全过**（新增 6 用例：C2 清理、C4 映射、H17 精确匹配、备份幂等、打卡新语义）
+- `pnpm -r --if-present typecheck` → 7 包全过
+- `pnpm lint` → 0 error / 8 warning（存量基线，已 `lint:prune`）
+- parse-worker `test_ai_engine` → ALL_PASS；`test_lab_data_consistency` → OK
+
+**遗留 / 未验证**
+- C1 的 E2E 需 DB/Redis（本机无 Docker，标 BLOCKED）；CI fullstack 已接入。C3 已有纯函数回归 + CI 门禁。
+- 云快照换机恢复需真机 + 后端联调（本机仅验证加解密单元逻辑与迁移编译）。
+- 检验记录页的「合并重复」为手动触发，未做自动入库去重（避免静默合并不同报告）。
 
 **规范提醒**：任何新增工作（含审阅遗留、bugfix、文档）必须**同时**写入本清单（ID/任务/状态/验收），避免会话切换丢失。

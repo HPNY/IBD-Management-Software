@@ -50,7 +50,16 @@ class _SymptomPageState extends State<SymptomPage> {
   bool _bloatResetNotice = false;
   String _feeling = 'same';
   bool _saved = false;
-  bool _syncedToBathroom = false;
+  // P0-3：未触碰的字段写 null（未记录），不能把默认值当成真实症状。
+  bool _painTouched = false;
+  bool _diarrheaTouched = false;
+  bool _stoolTouched = false;
+  bool _bowelTouched = false;
+  bool _bloodTouched = false;
+  bool _urgencyTouched = false;
+  bool _mucusTouched = false;
+  bool _nauseaTouched = false;
+  bool _feelingTouched = false;
   String? _todayBathSummary;
   bool _loading = true;
 
@@ -96,20 +105,28 @@ class _SymptomPageState extends State<SymptomPage> {
     if (!mounted) return;
     setState(() {
       if (row != null) {
+        _painTouched = row['pain_level'] != null;
         _pain = ((row['pain_level'] as num?) ?? 0).toDouble();
+        _diarrheaTouched = row['diarrhea_count'] != null;
         _diarrhea = ((row['diarrhea_count'] as num?) ?? 0).toInt();
+        _stoolTouched = row['stool_type'] != null;
         _stoolType = ((row['stool_type'] as num?) ?? 4).toInt();
+        _bowelTouched = row['bowel_count'] != null;
         _bowelCount = ((row['bowel_count'] as num?) ??
                 (row['diarrhea_count'] as num?) ??
                 0)
             .toInt();
+        _bloodTouched = row['bloody_stool'] != null;
         _blood = '${row['bloody_stool'] ?? 'none'}';
         if (_blood != 'none' && _blood != 'trace' && _blood != 'obvious') {
           _blood = _blood == '1' || _blood == 'true' ? 'obvious' : 'none';
         }
+        _urgencyTouched = row['urgency'] != null;
         _urgency = row['urgency'] == 1;
+        _mucusTouched = row['mucus'] != null;
         _mucus = row['mucus'] == 1;
         final nausea = row['nausea'];
+        _nauseaTouched = row['nausea'] != null;
         _nausea = nausea == 1 || nausea == true;
         final fatigue = ((row['fatigue'] as num?) ?? 0).toDouble();
         _fatigueFlag = fatigue > 0;
@@ -121,6 +138,7 @@ class _SymptomPageState extends State<SymptomPage> {
             (((row['data_flags'] as num?) ?? 0).toInt() &
                 kDataFlagBloatingReset) !=
             0;
+        _feelingTouched = row['overall_feeling'] != null;
         _feeling = '${row['overall_feeling'] ?? 'same'}';
         // G2/G4 回读
         final ulcer = row['oral_ulcer'];
@@ -166,8 +184,6 @@ class _SymptomPageState extends State<SymptomPage> {
           bloodyStool: '${s['bloody_stool'] ?? ''}',
         );
       }
-      _syncedToBathroom =
-          bathRows.any((r) => '${r['source'] ?? ''}' == 'checkin');
       _todayBathSummary = bathRows.isEmpty ? null : _formatBathSummary(bathRows);
       _loading = false;
     });
@@ -237,20 +253,20 @@ class _SymptomPageState extends State<SymptomPage> {
           );
     await _repo.upsert(
       date: date,
-      painLevel: _pain.round(),
-      diarrheaCount: _diarrhea,
-      stoolType: _stoolType,
-      bloodyStool: _blood,
+      painLevel: _painTouched ? _pain.round() : null,
+      diarrheaCount: _diarrheaTouched ? _diarrhea : null,
+      stoolType: _stoolTouched ? _stoolType : null,
+      bloodyStool: _bloodTouched ? _blood : null,
       // T1.1（裁决 B）：仅实际录入腹胀才写非空值（非空值会解除修复标记）；
       // 开关关闭时写 null，避免误清标记，也避免残留滑块旧值。
       bloating: _bloatingFlag ? _bloating.round() : null,
       // T1.2：疲劳同构修复——开关关闭时不写滑块旧值，写 null（未记录）。
       fatigue: _fatigueFlag ? _fatigue.round() : null,
-      nausea: _nausea,
-      overallFeeling: _feeling,
-      urgency: _urgency,
-      mucus: _mucus,
-      bowelCount: _bowelCount,
+      nausea: _nauseaTouched ? _nausea : null,
+      overallFeeling: _feelingTouched ? _feeling : null,
+      urgency: _urgencyTouched ? _urgency : null,
+      mucus: _mucusTouched ? _mucus : null,
+      bowelCount: _bowelTouched ? _bowelCount : null,
       oralUlcer: _oralUlcer,
       jointPain: _jointPain,
       jointPainSite: _jointPain && _jointSites.isNotEmpty
@@ -268,8 +284,6 @@ class _SymptomPageState extends State<SymptomPage> {
     if (!mounted) return;
     setState(() {
       _saved = true;
-      _syncedToBathroom =
-          bathRows.any((r) => '${r['source'] ?? ''}' == 'checkin');
       _todayBathSummary = bathRows.isEmpty ? null : _formatBathSummary(bathRows);
       final sev = diarySeverity(
         painLevel: _pain.round(),
@@ -286,18 +300,27 @@ class _SymptomPageState extends State<SymptomPage> {
     if (y == null) return;
     final m = prefilledFromYesterday(y, overallFeeling: feeling);
     setState(() {
+      _painTouched = true;
       _pain = ((m['painLevel'] as num?) ?? 0).toDouble();
+      _diarrheaTouched = true;
       _diarrhea = (m['diarrheaCount'] as num?)?.toInt() ?? 0;
+      _stoolTouched = true;
       _stoolType = (m['stoolType'] as num?)?.toInt() ?? 4;
+      _bowelTouched = true;
       _bowelCount = (m['bowelCount'] as num?)?.toInt() ?? 0;
+      _bloodTouched = true;
       _blood = '${m['bloodyStool'] ?? 'none'}';
+      _urgencyTouched = true;
       _urgency = m['urgency'] == true;
+      _mucusTouched = true;
       _mucus = m['mucus'] == true;
+      _nauseaTouched = true;
       _nausea = m['nausea'] == true;
       _fatigueFlag = m['fatigueFlag'] == true;
       _fatigue = (m['fatigue'] as num?)?.toDouble() ?? 0;
       _bloatingFlag = m['bloatingFlag'] == true;
       _bloating = (m['bloating'] as num?)?.toDouble() ?? 0;
+      _feelingTouched = true;
       _feeling = '${m['overallFeeling'] ?? feeling}';
       _oralUlcer = m['oralUlcer'] == true;
       _jointPain = m['jointPain'] == true;
@@ -573,6 +596,7 @@ class _SymptomPageState extends State<SymptomPage> {
                           divisions: 10,
                           onChanged: (v) => setState(() {
                             _pain = v;
+                            _painTouched = true;
                             _saved = false;
                           }),
                         ),
@@ -620,6 +644,7 @@ class _SymptomPageState extends State<SymptomPage> {
                           divisions: 20,
                           onChanged: (v) => setState(() {
                             _bowelCount = v.round();
+                            _bowelTouched = true;
                             _saved = false;
                           }),
                         ),
@@ -659,6 +684,7 @@ class _SymptomPageState extends State<SymptomPage> {
                           divisions: 15,
                           onChanged: (v) => setState(() {
                             _diarrhea = v.round();
+                            _diarrheaTouched = true;
                             _saved = false;
                           }),
                         ),
@@ -694,6 +720,7 @@ class _SymptomPageState extends State<SymptomPage> {
                           child: InkWell(
                             onTap: () => setState(() {
                               _stoolType = o.type;
+                              _stoolTouched = true;
                               _saved = false;
                             }),
                             borderRadius: BorderRadius.circular(12),
@@ -766,14 +793,12 @@ class _SymptomPageState extends State<SymptomPage> {
                 const SizedBox(height: 14),
                 _SectionCard(
                   title: '排便细项',
-                  trailing: Text(
-                    _syncedToBathroom ? '已同步细表' : '保存后同步细表',
+                  trailing: const Text(
+                    '仅记录在本页',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: _syncedToBathroom
-                          ? IbdColors.success
-                          : IbdColors.textSecondary,
+                      color: IbdColors.textSecondary,
                     ),
                   ),
                   child: Column(
@@ -788,7 +813,7 @@ class _SymptomPageState extends State<SymptomPage> {
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        '与排便细表同一套分级，打卡保存后自动写入细表历史。',
+                        '与排便细表同一套分级；打卡只记录在本页，不再自动写入细表。',
                         style: _hintStyle,
                       ),
                       const SizedBox(height: 8),
@@ -800,6 +825,7 @@ class _SymptomPageState extends State<SymptomPage> {
                             color: IbdColors.success,
                             onTap: () => setState(() {
                               _blood = 'none';
+                              _bloodTouched = true;
                               _saved = false;
                             }),
                           ),
@@ -810,6 +836,7 @@ class _SymptomPageState extends State<SymptomPage> {
                             color: IbdColors.warning,
                             onTap: () => setState(() {
                               _blood = 'trace';
+                              _bloodTouched = true;
                               _saved = false;
                             }),
                           ),
@@ -820,6 +847,7 @@ class _SymptomPageState extends State<SymptomPage> {
                             color: IbdColors.danger,
                             onTap: () => setState(() {
                               _blood = 'obvious';
+                              _bloodTouched = true;
                               _saved = false;
                             }),
                           ),
@@ -832,6 +860,7 @@ class _SymptomPageState extends State<SymptomPage> {
                         value: _urgency,
                         onChanged: (v) => setState(() {
                           _urgency = v;
+                          _urgencyTouched = true;
                           _saved = false;
                         }),
                       ),
@@ -842,6 +871,7 @@ class _SymptomPageState extends State<SymptomPage> {
                         value: _mucus,
                         onChanged: (v) => setState(() {
                           _mucus = v;
+                          _mucusTouched = true;
                           _saved = false;
                         }),
                       ),
@@ -917,6 +947,7 @@ class _SymptomPageState extends State<SymptomPage> {
                         value: _nausea,
                         onChanged: (v) => setState(() {
                           _nausea = v;
+                          _nauseaTouched = true;
                           _saved = false;
                         }),
                       ),
@@ -1189,6 +1220,7 @@ class _SymptomPageState extends State<SymptomPage> {
                             color: IbdColors.danger,
                             onTap: () => setState(() {
                               _feeling = 'worse';
+                              _feelingTouched = true;
                               _saved = false;
                             }),
                           ),
@@ -1199,6 +1231,7 @@ class _SymptomPageState extends State<SymptomPage> {
                             color: IbdColors.warning,
                             onTap: () => setState(() {
                               _feeling = 'same';
+                              _feelingTouched = true;
                               _saved = false;
                             }),
                           ),
@@ -1209,6 +1242,7 @@ class _SymptomPageState extends State<SymptomPage> {
                             color: IbdColors.success,
                             onTap: () => setState(() {
                               _feeling = 'better';
+                              _feelingTouched = true;
                               _saved = false;
                             }),
                           ),
@@ -1218,19 +1252,6 @@ class _SymptomPageState extends State<SymptomPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (_saved && _syncedToBathroom)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 10),
-                    child: Text(
-                      '排便细项已同步到「分析 · 排便细表」，无需再填一遍。',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: IbdColors.success,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
                 FilledButton.icon(
                   onPressed: _save,
                   icon: Icon(

@@ -59,7 +59,7 @@ class _DrugReviewPageState extends State<DrugReviewPage> {
     // C 组 T5：优先社区聚合 API，失败回落本地
     try {
       final identity = context.read<LocalIdentity>();
-      final session = AuthSession.parseSession('', identity.uuid);
+      final session = await AuthSession.mintParseSession(identity.uuid);
       final api = IbdApiClient(ApiConfig.dev(), session);
       final remote = await api.drugReviewSummary(drug);
       if (!mounted) return;

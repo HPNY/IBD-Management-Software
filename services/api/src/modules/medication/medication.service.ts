@@ -1,10 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import {
-  AdverseEventEntity,
-  MedicationEntity,
-} from "../../database/entities";
+import { AdverseEventEntity, MedicationEntity } from "../../database/entities";
 import { PatientService } from "../patient/patient.service";
 
 export type CreateMedicationDto = {
@@ -60,10 +57,7 @@ export class MedicationService {
     });
   }
 
-  async listCurrent(
-    userId: string,
-    patientId?: string,
-  ): Promise<MedicationEntity[]> {
+  async listCurrent(userId: string, patientId?: string): Promise<MedicationEntity[]> {
     const all = await this.list(userId, patientId);
     return all.filter((m) => m.status === "active" || m.status === "paused");
   }
@@ -182,19 +176,26 @@ export class MedicationService {
 
   /** 用药切换链时间线（按开始日排序 + 副作用事件）。 */
   async timeline(userId: string, patientId?: string) {
-    const meds = await this.list(userId, patientId);
+    // C1：先解析归属，副作用事件必须与用药同属一个 patient，
+    // 不能只凭 medicationId 关联（否则会读出其他患者的副作用）。
+    const pid = await this.patients.resolveOwnedPatientId(userId, patientId);
+    const meds = await this.meds.find({
+      where: { patientId: pid },
+      order: { startDate: "DESC" },
+    });
     const events = await this.adverse
       .createQueryBuilder("ae")
       .innerJoin(MedicationEntity, "m", "m.id = ae.medicationId")
+      .where("m.patientId = :pid", { pid })
       .select([
         "ae.id AS id",
-        "ae.medicationId AS \"medicationId\"",
+        'ae.medicationId AS "medicationId"',
         "ae.title AS title",
         "ae.severity AS severity",
-        "ae.\"occurredAt\" AS \"occurredAt\"",
-        "m.drugName AS \"drugName\"",
+        'ae."occurredAt" AS "occurredAt"',
+        'm.drugName AS "drugName"',
       ])
-      .orderBy("ae.\"occurredAt\"", "ASC")
+      .orderBy('ae."occurredAt"', "ASC")
       .getRawMany();
 
     return {

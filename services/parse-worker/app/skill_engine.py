@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from pathlib import Path
 from typing import Any
@@ -17,7 +18,10 @@ SKILL_DIR = Path(__file__).resolve().parent.parent / "skills"
 class ParsedItem(BaseModel):
     name: str
     name_raw: str
-    value: float
+    # C4：定性结果（如「阴性」）没有数值，用 value=None + value_text 保留原文；
+    # 禁止把非数值强转成 NaN（NaN 会让 Redis/JSON 链路整体失败）。
+    value: float | None = None
+    value_text: str | None = None
     unit: str | None = None
     ref_min: float | None = None
     ref_max: float | None = None
@@ -111,6 +115,9 @@ def skill_parse(skill: dict[str, Any], text: str) -> SkillParseResult:
         try:
             value = float(raw)
         except ValueError:
+            continue
+        # C4：nan/inf 不是合法检验值，跳过而不是让整份结果序列化失败
+        if not math.isfinite(value):
             continue
         ref = rule.get("ref_range") or [None, None]
         item = ParsedItem(

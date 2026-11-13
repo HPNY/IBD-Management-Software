@@ -37,6 +37,13 @@ export class SyncSnapshotEntity {
   @Column({ type: "text", nullable: true })
   mac: string | null;
 
+  /**
+   * H2：PBKDF2 盐（base64）。旧快照为 NULL，客户端回退用 appUserId 派生。
+   * 新快照必须带盐，否则换机后 appUserId 变化将无法解密。
+   */
+  @Column({ type: "text", nullable: true })
+  kdfSalt: string | null;
+
   /** 版本号，客户端单调递增 */
   @Column({ type: "bigint", default: "1" })
   version: string;

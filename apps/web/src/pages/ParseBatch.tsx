@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { createClient, type IbdApiClient, type LabItemDto } from "@ibd/api-client";
+import { toLabItems } from "../lib/parse-items";
 
 interface FileTask {
   file: File;
@@ -89,24 +90,32 @@ export default function ParseBatch() {
           patch(t.name, { status: "failed", error: done.error ?? "解析失败" });
           continue;
         }
-        const items = (done.items as LabItemDto[] | null) ?? [];
+        const rawItems = (done.items as unknown[] | null) ?? [];
+        const items = toLabItems(rawItems);
+        const skipped = rawItems.length - items.length;
+        if (items.length === 0) {
+          // 没有可写回的数值项：保留云端原件，明确失败，不伪装成功
+          patch(t.name, {
+            status: "failed",
+            error: skipped > 0 ? `无可写回数值项（${skipped} 项定性/无效）` : "未解析出检验项",
+          });
+          continue;
+        }
         try {
           await api.confirmParse(job.id, {
-            items: items.map((i) => ({
-              nameNorm: i.nameNorm,
-              nameRaw: i.nameRaw,
-              value: i.value,
-              unit: i.unit,
-              refMin: i.refMin,
-              refMax: i.refMax,
-              flag: i.flag ?? null,
-            })),
+            items,
             deleteSource: true,
           });
-        } catch {
-          await api.deleteParseSource(job.id).catch(() => undefined);
+        } catch (e) {
+          // C3：confirm 失败不得删原件，也不得标记 done
+          patch(t.name, { status: "failed", error: `写回失败：${String(e)}` });
+          continue;
         }
-        patch(t.name, { status: "done", items });
+        patch(t.name, {
+          status: "done",
+          items,
+          error: skipped > 0 ? `${skipped} 项定性结果未写回` : undefined,
+        });
       } catch (e) {
         patch(t.name, { status: "failed", error: String(e) });
       }
@@ -115,16 +124,10 @@ export default function ParseBatch() {
     setBusy(false);
   };
 
-  const confirmAll = async () => {
-    setMsg("已逐份 confirm 写回（见各文件结果）");
-  };
-
   return (
     <div>
       <h1>批量 PDF 解析</h1>
-      <p className="hint">
-        多文件上传 → 逐份解析 → 确认写回。默认「用完即删」云端原件。
-      </p>
+      <p className="hint">多文件上传 → 逐份解析 → 确认写回。默认「用完即删」云端原件。</p>
       <div className="card">
         <div className="row">
           <label>
@@ -137,10 +140,7 @@ export default function ParseBatch() {
           </label>
           <label>
             报告类型{" "}
-            <select
-              value={reportType}
-              onChange={(e) => setReportType(e.target.value)}
-            >
+            <select value={reportType} onChange={(e) => setReportType(e.target.value)}>
               <option>血常规</option>
               <option>生化</option>
               <option>炎症指标</option>
@@ -156,10 +156,8 @@ export default function ParseBatch() {
           <button disabled={busy || tasks.length === 0} onClick={runBatch}>
             {busy ? "处理中…" : "开始批量解析"}
           </button>
-          <button className="ghost" onClick={confirmAll}>
-            说明
-          </button>
         </div>
+        <p className="hint">每份文件单独确认写回；写回失败会保留云端原件，不会标记成功。</p>
         {msg && <div className="msg">{msg}</div>}
       </div>
       <div className="card">
@@ -177,15 +175,12 @@ export default function ParseBatch() {
                 <td>{t.name}</td>
                 <td>{t.status}</td>
                 <td>
-                  {t.error ??
-                    (t.items?.length
-                      ? `${t.items.length} 项 · ${t.items
-                          .slice(0, 3)
-                          .map((i) => i.nameNorm)
-                          .join("、")}`
-                      : t.status === "done"
-                        ? "已解析并写回"
-                        : "—")}
+                  {t.items?.length
+                    ? `${t.items.length} 项 · ${t.items
+                        .slice(0, 3)
+                        .map((i) => i.nameNorm)
+                        .join("、")}${t.error ? ` · ${t.error}` : ""}`
+                    : (t.error ?? (t.status === "done" ? "已解析并写回" : "—"))}
                 </td>
               </tr>
             ))}

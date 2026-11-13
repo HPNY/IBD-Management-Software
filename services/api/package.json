@@ -21,7 +21,8 @@
     "e2e:fullstack": "node scripts/e2e-fullstack.mjs",
     "e2e:injection": "node scripts/e2e-injection.mjs",
     "e2e:medication": "node scripts/e2e-medication.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "e2e:authz": "node scripts/e2e-authz.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1131.0",

@@ -61,6 +61,8 @@ grep -q '"db":"ok"' /tmp/ibd-health.json
 
 echo "==> e2e fullstack"
 node services/api/scripts/e2e-fullstack.mjs
+echo "==> e2e authz (C1 tenant isolation)"
+node services/api/scripts/e2e-authz.mjs
 echo "==> e2e injection"
 node services/api/scripts/e2e-injection.mjs
 echo "==> e2e medication"

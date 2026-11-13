@@ -108,3 +108,23 @@ jobs:
       - name: Unit tests (full suite)
         working-directory: apps/mobile
         run: flutter test
+
+  web-parse-smoke:
+    name: Web parse mapping (C3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # C3 回归：worker snake_case → confirm camelCase 映射（纯函数，无需浏览器）
+      - name: Smoke parse item mapping
+        run: pnpm --filter @ibd/web test:parse-items

@@ -76,42 +76,7 @@ class FakeSymptomRepository extends SymptomRepository {
       'stress_source': stressSource,
     };
 
-    final hasBathroomPayload = stoolType != null ||
-        urgency != null ||
-        mucus != null ||
-        bloodyStool != null ||
-        bowelCount != null ||
-        diarrheaCount != null;
-    if (!hasBathroomPayload) return;
-
-    final n = DateTime.now();
-    final time =
-        '${n.hour.toString().padLeft(2, '0')}:${n.minute.toString().padLeft(2, '0')}';
-    store.bathrooms.removeWhere(
-      (r) => r['date'] == date && r['source'] == 'checkin',
-    );
-    final bloodText = bloodyStool;
-    int? bloodFlag;
-    if (bloodText == 'none') {
-      bloodFlag = 0;
-    } else if (bloodText == 'trace') {
-      bloodFlag = 1;
-    } else if (bloodText == 'obvious') {
-      bloodFlag = 2;
-    }
-    store.bathrooms.add({
-      'id': 'bath-checkin-$date-${n.microsecondsSinceEpoch}',
-      'date': date,
-      'time': time,
-      'stool_type': stoolType,
-      'urgency': urgency == null ? null : (urgency ? 1 : 0),
-      'blood': bloodFlag,
-      'mucus': mucus == null ? null : (mucus ? 1 : 0),
-      'source': 'checkin',
-      'daily_count': bowelCount,
-      'diarrhea_count': diarrheaCount,
-      'notes': '打卡同步',
-    });
+    // P0-3：打卡不再自动写入排便细表（与生产实现一致）。
   }
 
   @override
