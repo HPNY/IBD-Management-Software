@@ -288,7 +288,7 @@
 | R0.3 | 检验套餐数据单一数据源（app.js/domain-types/lab_panels.dart 三处重复） | 已完成 | Dart 加 `kCoreLabNames`、`latestCore()` 复用；app.js exportDart 输出权威 `kCoreLabNames` + 转义修复；新增跨副本一致性守卫 `test_lab_data_consistency.py` 挂 CI（正/负向均已验证） |
 | R0.4 | 本地全链路验证（装 git/node/pnpm/python3.12 工具链） | 已完成 | build:api + typecheck（@ibd/api 等 4 包零 error）· flutter test 98 全过 · flutter analyze 0 warning/0 error · parse-worker 一致性守卫 + test_ai_engine ALL_PASS |
 | R0.5 | 清理既有 analyze warning（避免 CI 卡既有问题） | 已完成 | 删 `ibd_api_client.dart` 4 处冗余 cast + `my_doctors_page.dart` 未用 import；analyze warning 16→0；my_doctors_page 未用 import 已补 |
-| R0.6 | 修复 miniapp 既有 wx 类型错误（审查 M1） | 已完成 | 装 miniprogram-api-typings + tsconfig types 引入 + 
+| R0.6 | 修复 miniapp 既有 wx 类型错误（审查 M1） | 已完成 | 装 miniprogram-api-typings + tsconfig types 引入 + requestSubscribeMessage 参数按微信语义断言（规避 Taro 类型 entityIds 支付宝必填缺陷）；miniapp typecheck 15 error→0；全仓 5 包 typecheck 全绿 |
 | R0.7 | README 英文化（英文为主 + 中文切换链接） | 已完成 | `README.md` 改为英文主版（含 `简体中文` 切换链接）；原中文版移至 `README.zh-CN.md`（含 `English` 切换链接）；session-worklist 锚点改指 zh 版；两版对齐（补 SF-36、CI 表述更准确）；审阅并修正 docs 夸大实现 |
 | R0.8 | 安全审查修复轮2（H3 依赖治本 + C1 文件穿越 + C2 文档诚实） | 进行中 | H3 xlsx→exceljs（消无补丁 critical）；C1 resolveSafe 加固 + meta IDOR 形状校验（8 穿越向量全拦）；C2 PRD 虚假 AES-256/PIPL 声明如实修正；后续 H1-H8/M 待办 |
 | R0.9 | 安全加固（H1 CORS/Swagger + H5 端口/Redis + H6 compose 默认 + H7 parse 穿越/大小 + H8 SSRF） | 已完成 | H1 CORS 白名单+Swagger 生产禁用；H5 端口绑 127.0.0.1+Redis requirepass；H6 NODE_ENV 强制/DEV_SMS 无默认；H7 load_skill 白名单+uploads 大小/PDF 魔数；H8 拒 URL/绝对路径 objectKey；py_compile+回归全过；余 H2 限流/H3 会话绑定/H4 审核角色/M 待办 |
@@ -296,14 +296,13 @@
 | R0.11 | M 系列加固（M1 gitignore 密钥 + M3 grant code 脱敏 + M5 ReDoS 防护） | 已完成 | M1 .gitignore 补 Firebase/jks/pem（修 firebase-setup 虚假声明）；M3 listForPatient 确认后 code 脱敏；M5 skill_engine safe_re_search 拒灾难性回溯正则；typecheck+py_compile+回归全过；余 H3 会话绑定/H4 审核角色/M4,M6,M7 待办 |
 | R0.12 | M 系列收尾（M2 venv 确认 + M4 fetch 大小上限 + M6 grant 限流/wrappedDek 校验 + M7 客户端 PII 文档） | 已完成 | M2 git 确认 venv 0 追踪；M4 fetch_object_bytes 三处 read 加 20MB 上限；M6 grantLimiter 限流 + wrappedDek base64 校验；M7 web README 客户端 PII 暴露提示；typecheck+build+py_compile+回归全过；余 H3 会话绑定/H4 审核角色 待办 |
 | R0.13 | H3 DPoP-lite 设备绑定 + H4 医生审核轻量加固 | 进行中 | H3: device_pubkeys 表 + Ed25519 持有证明 + JWT 绑定公钥 + X-PoP 校验 + REQUIRE_POP 渐进开关（默认关）；H4: approve 审计日志 + 限流 + HTTPS 告警 |
-equestSubscribeMessage 参数按微信语义断言（规避 Taro 类型 entityIds 支付宝必填缺陷）；miniapp typecheck 15 error→0；全仓 5 包 typecheck 全绿 |
 | T4.2b | PC Web 批量解析接真上传（presign/enqueue/confirm） | 已完成 | 真 API：presign→PUT→enqueue→轮询→confirm(deleteSource) |
 | T2.6 | `GET /parse/jobs/:id` 补归属校验（getForUser） | 已完成 | 他人 jobId 返回 404 · tsc 通过 |
 | T2.7 | Web 装依赖后跑 `tsc --noEmit` | 已完成 | 零 error · 顺带修复 api-client 重复方法（prd-v15-gaps） |
 | T2.8 | 真机/模拟器 UI 回归（analyze 通过后） | 已完成 | Widget 回归全过（五 Tab/设置大字/语言/诊断）· 真机残留见 T2.4/T2.5 |
 | T2.9 | 清理 info：`const FirebaseOptions` · Radio 弃用改 RadioGroup | 已完成 | analyze **No issues found** |
 | T4.2a | T4.2 清单措辞：与真上传行为一致 | 已完成 | 已改为「真上传链路」描述 |
-| SWIPER-R1 | swiper 12 override 运行时真机兼容（限期验证风险项） | 进行中 | 裁决（2026-10-26）：接受风险、不直接豁免；**owner：lead（协调）+ 真机执行人待指派；截止 2026-11-09**；矩阵/场景/回滚预案见 [audit-evidence/t05-build-and-swiper.md](audit-evidence/t05-build-and-swiper.md)；逾期未验立即上报裁决 |
+| SWIPER-R1 | swiper 12 override 运行时真机兼容（限期验证风险项） | 进行中（2026-11-13 补静态证据，真机项仍缺） | 裁决（2026-10-26）：接受风险、不直接豁免；**owner：lead（协调）+ 真机执行人待指派；截止 2026-11-09 已逾期，按用户 2026-11-13 裁决继续限期、不回滚 override**；矩阵/场景/回滚预案见 [audit-evidence/t05-build-and-swiper.md](audit-evidence/t05-build-and-swiper.md)。**2026-11-13 静态取证结论**：① `pnpm why swiper -r` 确认 override 生效（`@tarojs/components 3.6.34` → swiper 12.2.0，其 package.json 原声明 6.8.0）；② `apps/miniapp/src` **零** `Swiper`/`swiper` 引用，小程序代码不用该组件；③ `apps/miniapp/dist/*.js` 中 `swiper` 仅 7 处、**全在 `taro.js`**，且全为组件属性表/组件映射/标签名表/hydrate 判断，`SwiperCore`/`swiper-wrapper`/`slidesPerView`/`wrapperEl`/`watchSlidesProgress`/`swiper-button-next` 等 swiper 12 运行时符号 **0 命中**；`hammer`/`hls.js`/`stencil` 亦 0 命中 → weapp 打包不加载 swiper 运行时，**运行时污染风险在产物层面不成立**。**未闭环部分**：本机未安装微信开发者工具（三处常见安装路径均不存在），矩阵里「微信基础库 ≥2.30 真机渲染 / 冷启动 + 弱网」仍无证据，需在装有开发者工具或真机的环境补做后才能把本项置为已完成 |
 
 ## P9 · 评审 P0 修复（2026-11-12）
 
