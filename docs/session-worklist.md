@@ -269,10 +269,10 @@
 | ID | 任务 | 状态 | 验收标准 |
 |----|------|------|----------|
 | T8.1 | 代码审查标准与流程文档 + PR 模板 | 已完成 | 标准（S0–S3 严重度 / C1–C4 分级 / 8 组维度清单 / R1–R13 红线 / G0–G3 门禁）+ 流程（角色 / 7 步 / 时间盒 / AI 代理 7 条规则 / 4 周路线图）+ PR 模板；均与本仓库实际缺陷对应 |
-| T8.2 | ESLint 9 + Prettier 3 + EditorConfig 基线 | 已完成 | `eslint.config.mjs`（扁平配置，类型感知规则限有 tsconfig 的目录）；`pnpm lint` = 0 error / 9 warning（151 文件）；存量 17 处违规基线化到 `eslint-suppressions.json`；`.prettierrc.json` 对齐既有风格（双引号/分号/2 空格/尾逗号） |
+| T8.2 | ESLint 9 + Prettier 3 + EditorConfig 基线 | 已完成 | `eslint.config.mjs`（扁平配置，类型感知规则限有 tsconfig 的目录）；`pnpm lint` = 0 error / 8 warning；存量违规基线化到 `eslint-suppressions.json`（合并 UI 分支后 prune 至 16 处 / 10 文件）；`.prettierrc.json` 对齐既有风格（双引号/分号/2 空格/尾逗号） |
 | T8.3 | CI 门禁落地（lint / 全量 typecheck / PR 级 E2E / 密钥扫描） | 已完成 | `ci.yml` 新增 lint 与 typecheck job；`ci-fullstack.yml` 增加 pull_request 触发；`scripts/scan-secrets.mjs`（全仓 65658 行 0 误报，正向检出已验证）；`scripts/check-format-changed.mjs`（增量格式门禁） |
 | T8.4 | 两条硬规则可执行化 | 已完成 | 硬规则 1：`.github/workflows/pr-guard.yml` + `scripts/pr-guard.mjs`（任务号 / 描述章节 / 定级 / 勾选数 / 证据区），正负用例已本地验证；硬规则 2：分支保护配置见 [branch-protection.md](branch-protection.md)（**需仓库管理员手动开启**） |
-| T8.5 | 解除 17 处 lint 基线（修存量违规） | 待办 | 逐条修 `eslint-suppressions.json` 中的 17 项（12 unused-vars、5 promise 相关）；修完执行 `pnpm lint:prune` 收缩基线；promise 类需补失败路径处理，不可只加 `void` |
+| T8.5 | 解除 17 处 lint 基线（修存量违规） | 待办 | 逐条修 `eslint-suppressions.json` 中的存量项（合并 UI 分支并 prune 后为 16 处：9 unused-vars、4 promise 相关、1 floating、1 exhaustive-deps、1 unused-disable 类）；修完执行 `pnpm lint:prune` 收缩基线；promise 类需补失败路径处理，不可只加 `void` |
 | T8.6 | 补齐 `api-client` / `ui-tokens` 的 tsconfig 与 typecheck | 待办 | 两包当前无 tsconfig、`api-client` 无 typecheck 脚本，导致 `pnpm -r typecheck` 静默跳过；补齐后类型感知 lint 可扩展到 packages |
 | T8.7 | Dart 侧增量格式门禁（`dart format`） | 待办 | 当前 `flutter analyze` 只查正确性不查格式；按 T8.2 同样的增量策略接入，避免一次性重排 75 个文件 |
 
@@ -355,6 +355,28 @@
 | U17 | **P1 主题隐患根治**：`minimumSize: Size.fromHeight(48)`（无限宽）导致按钮进 Row 就整页静默空白 | **已完成** | ① 主题 3 处改 `Size(64, 48)`（`grep -c Size.fromHeight` = 0，仅注释保留历史说明）；② 按「按钮分层」迁移 12 处 Block CTA 为 `SizedBox(width: double.infinity, child: ...)`：打卡保存 / 注射生成排期 / 检验保存 / 导出 CSV / 量表保存 / 用药保存 / 药物评价保存 / 同城保存档案 / 排便记一笔 / 食物记一笔 / 我的医生确认授权 / 登录关联手机号；其余内联按钮（查询、发帖、重新生成、分享、弹窗动作）回归内容宽。验证：`flutter test` **151 全过**、`dart analyze` 0 error；真机目视 5 Tab + 药物评价/年报/导出（`.workbuddy-ai/screens/reg/sheet_U*.png`）——Block CTA 仍整行宽、内联按钮层级清晰、无溢出 |
 | U15 | P2 细节：检查与手术空态无 CTA；设置页若干 subtitle 被截断 | **已完成**（2026-11-13） | ✅ 检查与手术「检查/手术」空态已升级为 `IbdEmptyInline`（图标 + 说明 + 「添加检查/添加手术」CTA）；排便细表历史、我的医生三处空态同步升级。 ✅ 设置页 10 处 `ListTile`/`SwitchListTile` 的 `subtitle` 全部补 `maxLines: 2` + `overflow: TextOverflow.ellipsis`（AI 解析 / 注射提醒 / 用药提醒 / 匿名诊断上报 / 大字体 / 简洁模式 / 系统推送 / 本地库 / 密文备份 / 关联手机号），长文案改为 2 行不再被腰斩。验证：`flutter test` **177 全过**、`flutter analyze --no-pub` 2 info / 0 error / 0 warning |
 | U12 | 无障碍缺陷：`main.dart` 覆盖系统字体缩放（WCAG 1.4.4） | 已完成 | 改为 `TextScaler.linear(system.scale(1.0) * appScale)` 相乘；系统 1.5× × 应用 1.25× 同时生效；`flutter test` 149 全过 |
+
+## P11 · 分支合并收口（2026-11-13）
+
+> 背景：WorkBuddy 的 UI 评审改动此前只存在于 `C:\Users\huangmingyu\WorkBuddy\Worktrees\...` 的**未提交工作区**（256 项，含未跟踪文件），不在任何已推送分支上。本段把它固化为快照并合入 main，同时把四条积压的 task 分支一并合入。
+
+| ID | 事项 | 状态 | 验收 |
+|----|------|------|------|
+| M1 | WorkBuddy 工作区固化为快照提交 | 已完成 | 在 WorkBuddy worktree 内用临时 `GIT_INDEX_FILE` 建 commit `02fe347`（含未跟踪文件、排除 `.workbuddy-ai/`），**未触碰原工作区**（`git status` 仍 47 行、HEAD 仍 `c0eb9fe`）。快照相对 `c0eb9fe` = 46 文件 +4389/−971（比只看 tracked 的 1956+/971− 多出 2433 行未跟踪代码） |
+| M2 | 建 `task/ui-review-u1u17` 并解决 24 处冲突 | 已完成 | **基于 W0 `65c2aa5` 而非 main**——WorkBuddy 工作区基于 main，直接合并会回退 W0 的 C2（`local_db.dart` 仍生成 `.plain.bak`）。5 文件 24 块全部合成：`symptom_page.dart` 16 块（U8 `Semantics` + U4 `_markDirty()` 与 W0 的 `_*Touched` 状态机**必须合成不能二选一**，WorkBuddy 删光了 `_*Touched` 会回退 P0-3）、`survey_page.dart` 4 块（保留 W0 的 `List<int?>` null 语义，丢弃 WorkBuddy 的 `Set<int> _answered`，后者与 W0 同名 getter 冲突）、`dashboard_tab.dart` 2 块、`settings_page.dart` 1 块、`docs/session-worklist.md` 1 块。合并提交 `74d33e0` |
+| M3 | 修掉 WorkBuddy 侧两个真 bug | 已完成 | ① **Bristol 选项双击失效**：重复 `onTap` + 重复 `setState`，且 `excludeSemantics: true` 吞掉内层 `InkWell` 手势，点选后草稿不落盘 → 抽出单一 `_selectStoolType()` 供两层共用；② **排便细表空态假承诺**：W0 已移除「打卡自动写入细表」，空态文案仍写「完成打卡后会自动出现在这里」→ 改写为「打卡只记在打卡页」，并同步修 `checkin_bathroom_ui_test.dart` 断言 |
+| M4 | 暗色残留清零（24 → 0） | 已完成 | 业务代码中 `IbdColors.` 直引全部迁到 `context.ibd.*`（`primary`→`brandInk`，`bg/card/textSecondary`→对应字段，`.withValues` 挂到 `brandInk`）；受影响的 `const` 前缀同步去掉。现仅 `theme.dart` 内保留 20 处作为主题取值源。涉及 `disclaimer`/`drug_review`/`lab_records`/`timeline`/`trend`/`dashboard`/`injection`/`medication_*`/`symptom` 共 11 文件 |
+| M5 | 五条分支按序合入 main 并清理 | 已完成 | 顺序：#5 T0.4b → #2 W0 → #6 UI → #3 T8（先 merge main 再 `pnpm lint:prune`，`ParseBatch.tsx` 抑制数 2→1，commit `de26d81`）→ #4 V13。main `c0eb9fe` → **`1acef69`**。5 条远端分支与本地对应分支均已删除，远端仅剩 `main` |
+| M6 | 合并后全量门禁复验 | 已完成 | 在 main 上实跑：`pnpm lint` 0 error / 8 warning（exit 0）、`pnpm -r typecheck` 7 包、`pnpm secrets:scan` 0 命中、`pnpm build:api` 通过、`flutter test` **177 全过**、`flutter analyze` 2 info / 0 error / 0 warning、web build 11.6s、miniapp build 9.5s、`pnpm audit --prod` 15 项全 moderate（high/critical 0）。GitHub CI 在 `1acef69` 上 **6/6 success**（含 `Lint (eslint + format + secrets)`） |
+| M7 | 模拟器真机走查（亮/暗 × 5 Tab） | 已完成 | AVD `ibd_api34` / `emulator-5554`，17 张截图存 `var/screens/`。确认：U7 四组分层渲染正确、U15 省略号生效、U11 四宫格约 110dp 无溢出、U4 `_CheckinSaveBar` 常驻、U2/U5 暗色全页可读、冲突最复杂的 `survey_page` 显示「尚未作答 / 尚未选择」正确。运行日志 **0 处** `EXCEPTION CAUGHT`/`RenderFlex overflowed`/`Unhandled` |
+| M8 | worklist 破损行修复 + swiper 静态取证 | 已完成 | `R0.6` 历史上被断成两行（行尾悬空 `+ `，半段错位成孤立残句）→ 拼回单行；`docs/audit-evidence/t05-build-and-swiper.md` 追加「证据 E」。commit `7a8114d` |
+
+> **合并中发现的既有问题（未修，登记备查）**：
+>
+> 1. **T8.4 的分支保护从未开启**：GitHub API 查 `branches/main/protection` 返回 404，即 main 无保护规则。T8.4 的「硬规则 2」目前**只是流程约束、不具强制力**，PR 可被直接推送覆盖。
+> 2. **本机 `pnpm format:check` 存在系统性假阳性**：`core.autocrlf=true` 使工作区为 CRLF，而 `.prettierrc.json` 要求 `endOfLine: "lf"`，导致 6–24 个纯配置文件被误报。CI 在 Linux 上跑不受影响（实测 `Lint` job 通过）。判断方法：把文件按 LF 归一后 `prettier --check` 全过。
+> 3. **web 包体积 2.19 MB / gzip 686 kB 未分割**：超 Vite 500 kB 阈值，主 chunk 未做 `manualChunks` 或动态 import。
+> 4. **`apps/mobile` 之外无任何测试**：`services/api` 107 文件零 `*.spec.ts`（靠 18 个 smoke 脚本）、`apps/web` 零测试、`packages/api-client` 与 `ui-tokens` 无 tsconfig 被 `pnpm -r typecheck` 静默跳过（即 T8.6 待办项）。
 
 > **本机跑 Flutter 测试/分析的可用命令（2026-11-10 实测，开发者模式已开启）**：
 >
